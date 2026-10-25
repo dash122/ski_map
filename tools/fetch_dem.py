@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Fetch AWS Terrain Tiles (terrarium) for the Niseko area and bake public/data/dem.json.
+"""Fetch AWS Terrain Tiles (terrarium) for the $RESORT area (default niseko) and bake public/data/dem.json.
 
     python3 tools/fetch_dem.py public/data/dem.json
 """
 import math, io, urllib.request, numpy as np, json, sys, base64
 from PIL import Image
 Z=14
-W,E,S,N=140.615,140.745,42.815,42.905
+from resort import W, E, S, N
 def tx(lon): return (lon+180)/360*2**Z
 def ty(lat):
     r=math.radians(lat); return (1-math.log(math.tan(r)+1/math.cos(r))/math.pi)/2*2**Z

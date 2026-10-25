@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert an Overpass `out geom` response for tools/niseko_land.overpassql into public/data/land.json:
+"""Convert an Overpass `out geom` response for tools/land.overpassql into public/data/land.json:
 land cover polygons, roads, rivers, rail, buildings and the ski-area boundary, simplified and integer-encoded.
 
     python3 tools/build_land.py tools/data/osm_land.json public/data/land.json
@@ -9,7 +9,7 @@ per ring or line: [x0, y0, dx1, dy1, ...]. Each area feature is a list of rings 
 """
 import json, sys, math, datetime
 
-W, S, E, N = 140.615, 42.815, 140.745, 42.905
+from resort import W, S, E, N
 PAD = 0.003                      # keep a little beyond the terrain edge so fills don't stop short
 BOX = (W - PAD, S - PAD, E + PAD, N + PAD)
 LAT0 = (N + S) / 2

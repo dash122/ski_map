@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - tools/fetch_dem_gsi.py
+      - tools/resorts.json
       - .github/workflows/dem-data.yml
 
 permissions:
@@ -19,13 +20,16 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install numpy pillow
-      - name: Bake public/data/dem.json from GSI 10 m DEM
-        run: python3 tools/fetch_dem_gsi.py public/data/dem.json
+      - name: Bake each resort's dem.json from GSI 10 m DEM
+        run: |
+          python3 tools/fetch_dem_gsi.py public/data/dem.json
+          mkdir -p public/data/appi
+          RESORT=appi python3 tools/fetch_dem_gsi.py public/data/appi/dem.json
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data/dem.json
+          git add public/data/dem.json public/data/appi/dem.json
           if ! git diff --cached --quiet; then
             git commit -m "Update elevation from GSI 10 m DEM"
             git pull --rebase origin "$GITHUB_REF_NAME"
