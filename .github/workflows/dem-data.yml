@@ -1,0 +1,33 @@
+name: Build elevation data
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/fetch_dem_gsi.py
+      - .github/workflows/dem-data.yml
+
+permissions:
+  contents: write
+
+jobs:
+  dem:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pillow
+      - name: Bake public/data/dem.json from GSI 10 m DEM
+        run: python3 tools/fetch_dem_gsi.py public/data/dem.json
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/dem.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update elevation from GSI 10 m DEM"
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            git push
+          fi
