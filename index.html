@@ -62,6 +62,8 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #map canvas { display: block; width: 100%; height: auto; border-radius: 6px; cursor: crosshair; }
 #map .label { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); background: rgba(244, 248, 252, 0.85); padding: 1px 6px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
 #map .label.peak { background: var(--signal); }
+#map .label.place { background: none; color: var(--ink); font-size: 13px; font-style: italic; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+#map .label.bldg { background: rgba(92,84,77,0.85); color: var(--snow); font-size: 11px; letter-spacing: 0.02em; text-transform: none; }
 #map .me { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--signal); border: 2px solid var(--snow); pointer-events: none; }
 #map .cap { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--ink); background: rgba(244,248,252,0.8); padding: 2px 6px; border-radius: 3px; }
 #map .close { position: absolute; right: 8px; top: 8px; }
@@ -115,7 +117,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 <div class="hud panel" id="keys">
   <kbd>A</kbd><kbd>D</kbd> carve · <kbd>W</kbd> tuck/skate · <kbd>S</kbd> brake<br>
   <kbd>Space</kbd> ollie (A/D to spin) · <kbd>C</kbd> camera<br>
-  <kbd>M</kbd> map / teleport · <kbd>R</kbd> back to drop · <kbd>E</kbd> ride lift · <kbd>1</kbd>–<kbd>5</kbd> spots
+  <kbd>M</kbd> map / teleport · <kbd>R</kbd> back to drop · <kbd>E</kbd> ride lift (hold <kbd>W</kbd> to fast-forward) · <kbd>1</kbd>–<kbd>5</kbd> spots
 </div>
 <div class="hud" id="toast"></div>
 <button class="hud btn" id="prompt" hidden></button>
@@ -155,7 +157,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     <canvas id="bigmap" width="1280" height="1024"></canvas>
     <div id="labels"></div>
     <div class="me" id="me"></div>
-    <div class="cap">Tap or click to drop in · 100 m contours</div>
+    <div class="cap">Tap or click to drop in · 100 m contours · <span style="color:#b8321f">■</span> gondola · ● chair · <span style="color:#ff6a1a">- -</span> ski area boundary</div>
     <button class="btn close" id="mapClose">Close</button>
   </div>
 </div>
@@ -208,6 +210,28 @@ function normalAt(x, z, out = _n) {
   return out.set(height(x - e, z) - height(x + e, z), 2 * e, height(x, z - e) - height(x, z + e)).normalize();
 }
 
+// Fall line at the scale of a run, not a single grid cell: lowest average ground on rings 15–50 m out.
+function downhillDir(x, z, out = new THREE.Vector3()) {
+  let best = 0, bh = Infinity;
+  for (let a = 0; a < 24; a++) {
+    const ang = a / 24 * Math.PI * 2, cx = Math.cos(ang), cz = Math.sin(ang);
+    const h = height(x + cx * 15, z + cz * 15) + height(x + cx * 30, z + cz * 30) + height(x + cx * 50, z + cz * 50);
+    if (h < bh) { bh = h; best = ang; }
+  }
+  return out.set(Math.cos(best), 0, Math.sin(best));
+}
+// Flattest ground within r metres (lift unloads and summits are rarely exactly where the line ends).
+function flatNear(x, z, r = 30) {
+  let bx = x, bz = z, by = -1;
+  const n = new THREE.Vector3();
+  for (let dz = -r; dz <= r; dz += 5) for (let dx = -r; dx <= r; dx += 5) {
+    if (dx * dx + dz * dz > r * r) continue;
+    const y = normalAt(x + dx, z + dz, n).y - Math.hypot(dx, dz) * 0.0004;   // prefer nearer when equally flat
+    if (y > by) { by = y; bx = x + dx; bz = z + dz; }
+  }
+  return { x: bx, z: bz };
+}
+
 // Real summit straight from the elevation grid.
 let peakK = 0; for (let i = 1; i < H.length; i++) if (H[i] > H[peakK]) peakK = i;
 const PEAK = { x: (peakK % GX) * CX - WIDTH / 2, z: Math.floor(peakK / GX) * CZ - DEPTH / 2 };
@@ -222,7 +246,7 @@ const RESORTS = [
 ].map(r => ({ ...r, ...toWorld(r.lon, r.lat) }));
 
 // Drop-in spots: the summit, then part-way from summit toward each resort base.
-const SPOTS = [{ name: 'Annupuri summit', x: PEAK.x + 40, z: PEAK.z + 25 }].concat(RESORTS.map(r => ({
+const SPOTS = [{ name: 'Annupuri summit', ...flatNear(PEAK.x + 30, PEAK.z + 20, 25) }].concat(RESORTS.map(r => ({
   name: `Above ${r.name}`, x: PEAK.x + (r.x - PEAK.x) * 0.13, z: PEAK.z + (r.z - PEAK.z) * 0.13,
 })));
 
@@ -270,7 +294,7 @@ if (OSM) {
   for (const l of OSM.lifts || []) {
     let pts = worldPts(l.c); if (pts.length < 2) continue;
     if (height(pts[0].x, pts[0].z) > height(pts.at(-1).x, pts.at(-1).z)) pts = pts.reverse(); // ride uphill
-    if (l.t !== 'zip_line') LIFTS.push({ name: l.n || 'Lift', type: l.t || '', pts });
+    if (l.t !== 'zip_line') LIFTS.push({ name: l.n || 'Lift', type: l.t || '', pts, raw: l });
   }
   // Drop-in spots at the top of the highest lift on each resort's face of the mountain.
   RESORTS.forEach((r, ri) => {
@@ -283,10 +307,17 @@ if (OSM) {
       if (da < 0.5 && Math.hypot(top.x - r.x, top.z - r.z) < 5000 && h > bh) { bh = h; best = L; }
     }
     if (best) {
+      // On the flat just past the unload ramp, like stepping off the chair.
       const [a, b] = [best.pts.at(-2), best.pts.at(-1)], d = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-      SPOTS[ri + 1] = { name: `Top of ${best.name}`, x: b.x + (b.x - a.x) / d * 20, z: b.z + (b.z - a.z) / d * 20 };
+      SPOTS[ri + 1] = { name: `Top of ${best.name}`, top: height(b.x, b.z), ...flatNear(b.x + (b.x - a.x) / d * 16, b.z + (b.z - a.z) / d * 16, 14) };
     }
   });
+  // Start at the highest lift unload, facing down the fall line; the summit (a hike in real life) moves to the end.
+  const tops = SPOTS.slice(1).filter(s => s.top);
+  if (tops.length) {
+    const first = tops.reduce((a, b) => (b.top > a.top ? b : a));
+    SPOTS.splice(0, SPOTS.length, first, ...SPOTS.slice(1).filter(s => s !== first), SPOTS[0]);
+  }
 }
 function onPiste(x, z) {
   if (!pisteData) return false;
@@ -304,6 +335,117 @@ function pisteAt(x, z) {
     if (d < bd) { bd = d; best = p; }
   }
   return best;
+}
+
+// ---------- Land cover from OpenStreetMap (optional: data/land.json, built by tools/build_land.py) ----------
+// Rasterised once into masks the trees, terrain shader and trail map share. Without the file, forests fall back to noise.
+let LAND = null;
+try { const r = await fetch('data/land.json'); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
+const LOW_END = matchMedia('(pointer: coarse)').matches;
+const LW = LOW_END ? 1024 : 2048, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
+const LANDW = { areas: {}, lines: {}, buildings: [], labels: [] };
+if (LAND) {
+  const [ow, on] = LAND.origin, Q = LAND.q;
+  const dec = c => { const out = []; let x = 0, y = 0; for (let i = 0; i < c.length; i += 2) { x += c[i]; y += c[i + 1]; out.push(toWorld(ow + x / Q, on - y / Q)); } return out; };
+  for (const [k, feats] of Object.entries(LAND.areas || {})) LANDW.areas[k] = feats.map(rings => rings.map(dec));
+  for (const [k, ls] of Object.entries(LAND.lines || {})) LANDW.lines[k] = ls.map(dec);
+  LANDW.buildings = (LAND.buildings || []).map(b => ({ h: b.h, name: b.n || '', roof: b.r || '', pts: dec(b.c) }));
+  LANDW.labels = (LAND.labels || []).map(l => ({ name: l.n, kind: l.k, ele: l.e, ...dec(l.c)[0] }));
+}
+const TREE_R = LOW_END ? 950 : 1700, TREE_CHUNK = 400;   // trees are drawn this far; the terrain shader paints canopy beyond
+const HAS_SKI = PISTES.length > 0;
+const ROAD_W = { road1: 9, road2: 7, road3: 5, track: 3.5 };
+const lmask = (() => {
+  const c = document.createElement('canvas'); c.width = LW; c.height = LH;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  const P = q => [(q.x + WIDTH / 2) * LPX, (q.z + DEPTH / 2) * LPX];
+  const path = (pts, close) => { pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo'](...P(q))); if (close) g.closePath(); };
+  const api = {
+    fill(feats, a = 1) { g.globalAlpha = a; for (const rings of feats || []) { g.beginPath(); for (const r of rings) path(r, true); g.fill('evenodd'); } g.globalAlpha = 1; },
+    stroke(lines, m, a = 1) { g.globalAlpha = a; g.lineWidth = Math.max(1, m * LPX); for (const l of lines || []) { g.beginPath(); path(l); g.stroke(); } g.globalAlpha = 1; },
+    poly(pts, m = 0) { g.beginPath(); path(pts, true); g.fill(); if (m) { g.lineWidth = m * LPX; g.stroke(); } },
+  };
+  return draw => {
+    g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, LW, LH);
+    g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
+    draw(api);
+    const d = g.getImageData(0, 0, LW, LH).data, out = new Uint8Array(LW * LH);
+    for (let i = 0; i < out.length; i++) out[i] = d[i * 4];
+    return out;
+  };
+})();
+const A = LANDW.areas, Ln = LANDW.lines;
+const forestM = lmask(m => { m.fill(A.forest); m.fill(A.scrub, 0.45); m.stroke(Ln.treerow, 8); });
+const openM = lmask(m => { m.fill(A.farm); m.fill(A.grass); m.fill(A.town, 0.85); m.fill(A.paved); m.fill(A.rock); m.fill(A.wetland, 0.6); m.fill(A.water); });
+const roadM = lmask(m => { for (const [k, w] of Object.entries(ROAD_W)) m.stroke(Ln[k], w); m.stroke(Ln.rail, 4, 0.8); m.fill(A.paved, 0.75); });
+const waterM = lmask(m => { m.fill(A.water); m.stroke(Ln.river, 12); m.stroke(Ln.stream, 3, 0.55); });
+// Ski area: OSM resort polygons where mapped, plus everything within reach of the runs and lifts
+// (pistes and lift lines grown by 90 m, then shrunk by 55 m, which fills the gaps between runs).
+const skiM = (() => {
+  const base = lmask(m => {
+    m.fill(A.ski);
+    for (const p of PISTES) { if (p.area) m.fill([[p.pts]]); else m.stroke([p.pts], 40); }
+    for (const L of LIFTS) m.stroke([L.pts], 30);
+  });
+  const dist = inside => {   // two-pass chamfer distance (metres) to the nearest pixel where inside(k) is true
+    const d = new Float32Array(LW * LH), a = 1 / LPX, b = Math.SQRT2 / LPX;
+    for (let k = 0; k < d.length; k++) d[k] = inside(k) ? 0 : 1e9;
+    for (let j = 0; j < LH; j++) for (let i = 0; i < LW; i++) {
+      const k = j * LW + i; let v = d[k];
+      if (i > 0) v = Math.min(v, d[k - 1] + a);
+      if (j > 0) { v = Math.min(v, d[k - LW] + a); if (i > 0) v = Math.min(v, d[k - LW - 1] + b); if (i < LW - 1) v = Math.min(v, d[k - LW + 1] + b); }
+      d[k] = v;
+    }
+    for (let j = LH - 1; j >= 0; j--) for (let i = LW - 1; i >= 0; i--) {
+      const k = j * LW + i; let v = d[k];
+      if (i < LW - 1) v = Math.min(v, d[k + 1] + a);
+      if (j < LH - 1) { v = Math.min(v, d[k + LW] + a); if (i < LW - 1) v = Math.min(v, d[k + LW + 1] + b); if (i > 0) v = Math.min(v, d[k + LW - 1] + b); }
+      d[k] = v;
+    }
+    return d;
+  };
+  if (!PISTES.length) return base;
+  const grown = dist(k => base[k] > 127);
+  const shrunk = dist(k => grown[k] > 90);
+  const out = new Uint8Array(LW * LH);
+  for (let k = 0; k < out.length; k++) out[k] = base[k] > 127 || shrunk[k] > 55 ? 255 : 0;
+  return out;
+})();
+// Where trees can't stand: roads with their verges, rivers, buildings, car parks, under lift lines.
+const hardM = lmask(m => {
+  for (const [k, w] of Object.entries(ROAD_W)) m.stroke(Ln[k], w + 5);
+  m.stroke(Ln.rail, 9); m.stroke(Ln.river, 14); m.stroke(Ln.stream, 4); m.fill(A.water); m.fill(A.paved);
+  for (const b of LANDW.buildings) m.poly(b.pts, 4);
+  for (const L of LIFTS) m.stroke([L.pts], /gondola|cable_car/.test(L.type) ? 20 : 15);
+});
+const lidx = (x, z) => {
+  const i = Math.floor((x + WIDTH / 2) * LPX), j = Math.floor((z + DEPTH / 2) * LPX);
+  return i >= 0 && j >= 0 && i < LW && j < LH ? j * LW + i : -1;
+};
+const maskAt = (m, x, z) => { const k = lidx(x, z); return k < 0 ? 0 : m[k] / 255; };
+function inResort(x, z) { return HAS_SKI && maskAt(skiM, x, z) > 0.5; }
+// Tree cover 0–255 on the land grid: OSM woods and scrub, noise-driven woodland where OSM says nothing,
+// thinned by the treeline, cliffs, pistes and anything built.
+const TREELINE = (x, z) => 880 + (vnoise(x / 900, z / 900) - 0.5) * 260;
+const DEN = new Uint8Array(LW * LH);
+{
+  const t0 = performance.now(), n = new THREE.Vector3();
+  for (let j = 0; j < LH; j++) for (let i = 0; i < LW; i++) {
+    const k = j * LW + i, x = (i + 0.5) / LPX - WIDTH / 2, z = (j + 0.5) / LPX - DEPTH / 2;
+    if (hardM[k] > 200 || onPiste(x, z)) continue;
+    const h = height(x, z), tl = TREELINE(x, z);
+    if (h > tl + 160) continue;
+    const proc = THREE.MathUtils.smoothstep(fbm(x / 520, z / 520), 0.38, 0.58);
+    const f = forestM[k] / 255, o = openM[k] / 255;
+    let d = LAND ? Math.max(f, proc * (1 - o) * 0.85) : proc;
+    // Upper slopes thin to stunted birch and rime-crusted firs, then open snow.
+    d *= h < tl ? 1 : 0.22 * (1 - (h - tl) / 160);
+    if (h > tl - 150) d = Math.max(d, 0.1 * (1 - o));
+    normalAt(x, z, n);
+    if (n.y < 0.8) d *= THREE.MathUtils.smoothstep(n.y, 0.68, 0.8);
+    DEN[k] = Math.round(255 * d * (1 - hardM[k] / 255));
+  }
+  console.log(`land cover ${LW}×${LH} in ${Math.round(performance.now() - t0)} ms`);
 }
 
 // ---------- Renderer & scene ----------
@@ -328,11 +470,19 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16), new THREE.Sh
   uniforms: { top: { value: new THREE.Color(0x2f62a3) }, horizon: { value: FOG }, sunDir: { value: new THREE.Vector3(-0.45, 0.42, 0.78).normalize() } },
   vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
   fragmentShader: `uniform vec3 top, horizon, sunDir; varying vec3 vP;
+    float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+      return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
     void main(){
       vec3 d = normalize(vP);
       float h = clamp(d.y * 3.0, 0., 1.);
       vec3 c = mix(horizon, top, pow(h, 0.7));
       float s = max(dot(d, sunDir), 0.);
+      // High, thin winter cloud: streaky cirrus projected on a flat layer, fading into the horizon haze.
+      vec2 q = d.xz / (d.y + 0.1) * vec2(0.7, 1.8);
+      float cl = vn(q) * 0.55 + vn(q * 2.1 + 7.) * 0.3 + vn(q * 4.3 + 3.) * 0.15;
+      cl = smoothstep(0.55, 0.95, cl) * smoothstep(0.03, 0.25, d.y) * 0.5;
+      c = mix(c, vec3(0.96, 0.97, 1.0) + vec3(0.12, 0.08, 0.02) * pow(s, 6.), cl);
       c += vec3(1.0, 0.86, 0.66) * (pow(s, 8.) * 0.25 + smoothstep(0.9993, 0.9997, s) * 3.);   // glow and disc
       gl_FragColor = vec4(c, 1.);
     }`,
@@ -392,9 +542,10 @@ function grainTexture() {
     const k = j * MX + i, x = i * ST * CX - WIDTH / 2, z = j * ST * CZ - DEPTH / 2, h = H[j * ST * GX + i * ST];
     pos.set([x, h, z], k * 3); uv.set([x / 7, z / 7], k * 2);
     normalAt(x, z, n);
-    const rock = THREE.MathUtils.smoothstep(1 - n.y, 0.32, 0.5) * 0.55;  // wind-scoured cliffs
+    // Wind-scoured cliffs: dark brown-grey rock streaked with snow where it's steep enough not to hold it.
+    const rock = THREE.MathUtils.smoothstep(1 - n.y, 0.3, 0.48) * (0.55 + 0.45 * vnoise(x / 6, z / 14));
     const lowTint = THREE.MathUtils.smoothstep(600 - h, 0, 500) * 0.03;   // valley snow slightly warmer
-    col.set([0.95 - rock * 0.5 + lowTint, 0.965 - rock * 0.5 + lowTint * 0.6, 1.0 - rock * 0.45], k * 3);
+    col.set([0.95 + lowTint - rock * 0.6, 0.965 + lowTint * 0.6 - rock * 0.62, 1.0 - rock * 0.63], k * 3);
   }
   const idx = new Uint32Array((MX - 1) * (MZ - 1) * 6);
   let p = 0;
@@ -409,20 +560,53 @@ function grainTexture() {
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeVertexNormals();
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: grainTexture(), normalMap: snowNormalTexture(), normalScale: new THREE.Vector2(0.22, 0.22), roughness: 0.78, metalness: 0 });
-  if (pisteData) {
-    // Groomed runs: smoother, slightly bluer snow with faint corduroy, from the OSM piste mask.
-    const maskTex = new THREE.CanvasTexture(pisteCanvas);
-    maskTex.flipY = false;
-    mat.onBeforeCompile = sh => {
-      sh.uniforms.pisteMask = { value: maskTex };
-      sh.uniforms.extent = { value: new THREE.Vector4(-WIDTH / 2, -DEPTH / 2, WIDTH, DEPTH) };
-      sh.vertexShader = 'varying vec2 vWXZ;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvWXZ = (modelMatrix * vec4(position, 1.0)).xz;');
-      sh.fragmentShader = 'uniform sampler2D pisteMask;\nuniform vec4 extent;\nvarying vec2 vWXZ;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
-        float pm = texture2D(pisteMask, (vWXZ - extent.xy) / extent.zw).r;
-        float cord = 0.975 + 0.025 * sin(dot(vWXZ, vec2(2.6, 0.9)));
-        diffuseColor.rgb = mix(diffuseColor.rgb, vColor.rgb * vec3(0.93, 0.955, 0.995) * cord, pm * 0.8);`);
-    };
-  }
+  // Land texture: R tree cover, G roads and car parks, B water, A ski area.
+  const land = new Uint8Array(LW * LH * 4);
+  for (let k = 0; k < LW * LH; k++) { land[k * 4] = DEN[k]; land[k * 4 + 1] = roadM[k]; land[k * 4 + 2] = waterM[k]; land[k * 4 + 3] = skiM[k]; }
+  const landTex = new THREE.DataTexture(land, LW, LH, THREE.RGBAFormat);
+  landTex.magFilter = THREE.LinearFilter; landTex.minFilter = THREE.LinearMipmapLinearFilter; landTex.generateMipmaps = true;
+  landTex.anisotropy = 4; landTex.needsUpdate = true;
+  const maskTex = new THREE.CanvasTexture(pisteCanvas);
+  maskTex.flipY = false;
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.pisteMask = { value: maskTex };
+    sh.uniforms.landTex = { value: landTex };
+    sh.uniforms.extent = { value: new THREE.Vector4(-WIDTH / 2, -DEPTH / 2, WIDTH, DEPTH) };
+    sh.uniforms.treeFar = { value: new THREE.Vector2(TREE_R * 0.55, TREE_R * 0.95) };
+    sh.vertexShader = 'varying vec2 vWXZ;\nvarying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvWXZ = (modelMatrix * vec4(position, 1.0)).xz;\nvWN = normal;');
+    sh.fragmentShader = `uniform sampler2D pisteMask, landTex;
+      uniform vec4 extent; uniform vec2 treeFar;
+      varying vec2 vWXZ; varying vec3 vWN;
+      float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+        return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
+      ` + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        vec2 luv = (vWXZ - extent.xy) / extent.zw;
+        float pm = texture2D(pisteMask, luv).r;
+        vec4 land = texture2D(landTex, luv);
+        float dist = distance(vWXZ, cameraPosition.xz);
+        float near = 1. - smoothstep(25., 70., dist);
+        // Groomed runs: smoother, slightly bluer snow with corduroy running down the fall line.
+        vec2 fl = normalize(vWN.xz + vec2(1e-4));
+        float cord = 1. - 0.035 * near * (0.5 + 0.5 * sin(dot(vWXZ, vec2(-fl.y, fl.x)) * 19.));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vColor.rgb * vec3(0.94, 0.96, 0.995) * cord, pm * 0.85);
+        // Off-piste: wind crust and sastrugi, a few percent of brightness at 3–30 m scales.
+        float crust = vn(vWXZ / 3.) * 0.5 + vn(vWXZ / 11.) * 0.3 + vn(vWXZ / 29.) * 0.2;
+        diffuseColor.rgb *= mix(0.95 + 0.07 * crust, 1., pm);
+        // Woods: shaded snow under the trees up close; beyond the tree draw distance, the canopy itself:
+        // grey-brown bare birch with patches of dark fir.
+        float fir = smoothstep(0.45, 0.7, vn(vWXZ / 140.) * 0.7 + vn(vWXZ / 37.) * 0.3);
+        vec3 canopy = mix(vec3(0.43, 0.39, 0.38), vec3(0.17, 0.24, 0.21), fir) * (0.85 + 0.3 * vn(vWXZ / 9.));
+        float far = smoothstep(treeFar.x, treeFar.y, dist);
+        diffuseColor.rgb *= 1. - land.r * (1. - far) * 0.12;
+        diffuseColor.rgb = mix(diffuseColor.rgb, canopy, land.r * far * 0.8);
+        // Ploughed roads: grey compacted snow with darker wheel tracks; rivers run open and dark.
+        vec3 road = vec3(0.56, 0.56, 0.58) * (0.9 + 0.15 * vn(vWXZ / 2.5));
+        diffuseColor.rgb = mix(diffuseColor.rgb, road, smoothstep(0.15, 0.7, land.g) * 0.85);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.07, 0.1, 0.12), smoothstep(0.25, 0.75, land.b));`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = mix(roughnessFactor, 0.25, smoothstep(0.4, 0.8, land.b));`);
+  };
   const terrain = new THREE.Mesh(geo, mat);
   terrain.receiveShadow = true;
   scene.add(terrain);
@@ -462,7 +646,7 @@ try {
   scene.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 })));
 } catch (err) { console.warn('horizon terrain unavailable', err); }
 
-// ---------- Trees (snow-loaded firs and birch, placed by elevation, slope and patchy noise) ----------
+// ---------- Trees: Sakhalin fir, Erman's and white birch, larch, rime-crusted firs at the treeline ----------
 function hash2(x, y) {
   let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
@@ -474,7 +658,7 @@ function vnoise(x, y) {
   const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
   return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
 }
-const fbm = (x, y) => vnoise(x, y) * 0.6 + vnoise(x * 2.1, y * 2.1) * 0.28 + vnoise(x * 4.3, y * 4.3) * 0.12;
+function fbm(x, y) { return vnoise(x, y) * 0.6 + vnoise(x * 2.1, y * 2.1) * 0.28 + vnoise(x * 4.3, y * 4.3) * 0.12; }
 
 function coloredGeo(geo, color) {
   if (geo.index) geo = geo.toNonIndexed();
@@ -494,57 +678,191 @@ function merge(parts) {
   }
   return out;
 }
+// Sakhalin fir (todomatsu): dark, narrow, five snow-loaded tiers. Far LOD: two cones.
 const firGeo = merge([
-  coloredGeo(new THREE.CylinderGeometry(0.12, 0.18, 2, 5).translate(0, 1, 0), 0x4a3a2c),
-  coloredGeo(new THREE.ConeGeometry(2.0, 3.6, 7).translate(0, 3.0, 0), 0x2c4a3c),
-  coloredGeo(new THREE.ConeGeometry(1.75, 0.5, 7).translate(0, 2.2, 0), 0xe9f0f5),
-  coloredGeo(new THREE.ConeGeometry(1.5, 3.0, 7).translate(0, 4.8, 0), 0x355a47),
-  coloredGeo(new THREE.ConeGeometry(1.2, 0.45, 7).translate(0, 4.4, 0), 0xe9f0f5),
-  coloredGeo(new THREE.ConeGeometry(0.9, 2.4, 7).translate(0, 6.6, 0), 0x3d6450),
-  coloredGeo(new THREE.ConeGeometry(0.45, 0.8, 7).translate(0, 7.6, 0), 0xf3f7fa),
+  coloredGeo(new THREE.CylinderGeometry(0.12, 0.2, 2.2, 5).translate(0, 1.1, 0), 0x4a3a2c),
+  ...[0, 1, 2, 3, 4].flatMap(i => {
+    const r = 2.0 * (1 - i / 5.6), y = 1.5 + i * 1.35, g = [0x1d3a2c, 0x22412f, 0x274833, 0x2c4f38, 0x31563d][i];
+    return [
+      coloredGeo(new THREE.ConeGeometry(r, 2.1, 8).translate(0, y + 1.05, 0), g),
+      coloredGeo(new THREE.ConeGeometry(r * 0.86, 0.75, 8, 1, true).translate(0, y + 1.0, 0), 0xe8eef4),   // snow on the boughs
+    ];
+  }),
+  coloredGeo(new THREE.ConeGeometry(0.32, 0.9, 6).translate(0, 8.9, 0), 0xf1f5f8),
 ]);
-const birchGeo = merge([
-  coloredGeo(new THREE.CylinderGeometry(0.1, 0.16, 7, 5).translate(0, 3.5, 0), 0xd9d6cf),
-  coloredGeo(new THREE.IcosahedronGeometry(1.7, 0).scale(1, 1.5, 1).translate(0, 6.3, 0), 0x8b7d6f),
+const firFarGeo = merge([
+  coloredGeo(new THREE.ConeGeometry(1.9, 6.5, 6, 1, true).translate(0, 4.3, 0), 0x24432f),
+  coloredGeo(new THREE.ConeGeometry(1.05, 3.2, 6, 1, true).translate(0, 7.3, 0), 0xdfe7ee),
 ]);
+// Rime-crusted firs near the treeline ("snow monsters"): white lumps with a little green showing.
+const rimeGeo = merge([
+  coloredGeo(new THREE.ConeGeometry(1.5, 5.5, 7).translate(0, 2.75, 0), 0xdbe3ea),
+  coloredGeo(new THREE.IcosahedronGeometry(1.3, 0).scale(1, 0.8, 1).translate(0.3, 1.6, 0.2), 0xf3f6f9),
+  coloredGeo(new THREE.IcosahedronGeometry(1.0, 0).scale(1, 0.9, 1).translate(-0.4, 3.0, -0.1), 0xeef3f7),
+  coloredGeo(new THREE.IcosahedronGeometry(0.7, 0).translate(0.1, 4.4, 0.2), 0xf6f9fb),
+  coloredGeo(new THREE.ConeGeometry(0.5, 1.0, 5).translate(0.9, 2.2, -0.6), 0x3a5244),
+]);
+// Bare deciduous trees as crossed cards: Erman's birch, Japanese white birch, larch. One atlas, a column each.
+function treeAtlas() {
+  const W = 128, Hh = 256, R = LOW_END ? 1 : 2, c = document.createElement('canvas'); c.width = W * 3 * R; c.height = Hh * R;
+  const g = c.getContext('2d');
+  g.scale(R, R);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const branch = (x, y, len, ang, w, depth, col, twig) => {
+    const x2 = x + Math.cos(ang) * len, y2 = y - Math.sin(ang) * len;
+    g.strokeStyle = depth > 2 ? col : twig; g.lineWidth = w; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke();
+    if (depth > 4 && rnd() < 0.5) { g.fillStyle = 'rgba(245,248,251,0.9)'; g.fillRect(x2 - w, y2 - w * 0.8, w * 2, w * 0.8); }   // snow on the crooks
+    if (depth <= 0) return;
+    const n = depth > 3 ? 2 : 3;
+    for (let i = 0; i < n; i++) branch(x2, y2, len * (0.62 + rnd() * 0.2), ang + (rnd() - 0.5) * 1.5, Math.max(0.6, w * 0.65), depth - 1, col, twig);
+  };
+  // Crown haze first, so distant mips keep a purple-grey silhouette instead of vanishing.
+  const haze = (cx, cy, rx, ry, col) => { const gr = g.createRadialGradient(cx, cy, 0, cx, cy, 1); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.translate(cx, cy); g.scale(rx, ry); g.translate(-cx, -cy); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, 1, 0, Math.PI * 2); g.fill(); g.restore(); };
+  // 0: Erman's birch (dake-kanba): short crooked pale trunk splitting low into a broad twiggy crown.
+  haze(64, 105, 56, 80, 'rgba(138,122,122,0.5)');
+  g.lineCap = 'round';
+  branch(64, 256, 60, Math.PI / 2 + 0.15, 7, 7, '#cfc6bc', '#5e4c4a');
+  branch(64, 220, 50, Math.PI / 2 - 0.5, 5, 6, '#c9bfb4', '#5e4c4a');
+  // 1: Japanese white birch (shirakaba): straight white trunk, narrow oval crown.
+  haze(W + 64, 80, 34, 70, 'rgba(140,124,124,0.5)');
+  g.strokeStyle = '#ebe7e1'; g.lineWidth = 6; g.beginPath(); g.moveTo(W + 64, 256); g.lineTo(W + 64, 30); g.stroke();
+  for (let y = 250; y > 40; y -= 9) { g.fillStyle = '#2b2725'; g.fillRect(W + 61 + rnd() * 3, y, 3 + rnd() * 2, 1.5); }
+  for (let y = 160; y > 30; y -= 12) for (const s of [-1, 1]) branch(W + 64, y, 18 + rnd() * 14, Math.PI / 2 - s * (0.6 + rnd() * 0.4), 2, 4, '#d8d2cb', '#5a4846');
+  // 2: Japanese larch (karamatsu) plantation tree: conical, horizontal whorls of orange-brown twigs.
+  haze(2 * W + 64, 120, 30, 110, 'rgba(140,104,76,0.6)');
+  g.strokeStyle = '#5a4433'; g.lineWidth = 4; g.beginPath(); g.moveTo(2 * W + 64, 256); g.lineTo(2 * W + 64, 6); g.stroke();
+  for (let y = 230; y > 12; y -= 10) {
+    const r = (y - 6) / 250 * 46;
+    for (const s of [-1, 1]) branch(2 * W + 64, y, r * 0.55, Math.PI / 2 - s * (1.35 + rnd() * 0.2), 1.6, 2, '#5e4a3c', '#77604e');
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+const cardGeo = (() => {
+  // Three crossed quads, base at y = 0, unit size. Normals point up so every card lights like the snow around it.
+  const pos = [], uv = [], nrm = [], idx = [];
+  for (let i = 0; i < 3; i++) {
+    const a = i * Math.PI / 3, cx = Math.cos(a) * 0.5, cz = Math.sin(a) * 0.5, o = pos.length / 3;
+    pos.push(-cx, 0, -cz, cx, 0, cz, cx, 1, cz, -cx, 1, -cz);
+    uv.push(0, 0, 1, 0, 1, 1, 0, 1);
+    for (let k = 0; k < 4; k++) nrm.push(0, 1, 0);
+    idx.push(o, o + 1, o + 2, o, o + 2, o + 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setIndex(idx);
+  return g;
+})();
+const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+const cardMat = new THREE.MeshLambertMaterial({ map: treeAtlas(), alphaTest: 0.35, side: THREE.DoubleSide, alphaToCoverage: !LOW_END });
+cardMat.onBeforeCompile = sh => {
+  sh.vertexShader = 'attribute float aVar;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv.x = (vMapUv.x + aVar) / 3.0;');
+};
+cardMat.customProgramCacheKey = () => 'treecard';
 
-const TREE_CELL = 12;
-const treeGrid = new Map(); // "ci,cj" -> [x, z, r, x, z, r, ...]
-{
-  const firs = [], birches = [];
-  const n = new THREE.Vector3();
-  const step = 13;
-  for (let z = -DEPTH / 2 + 20; z < DEPTH / 2 - 20; z += step) {
-    for (let x = -WIDTH / 2 + 20; x < WIDTH / 2 - 20; x += step) {
-      const jx = x + (hash2(x * 7, z * 3) - 0.5) * step, jz = z + (hash2(x * 5, z * 11) - 0.5) * step;
-      const h = height(jx, jz);
-      const forest = fbm(jx / 520, jz / 520);
-      const treeline = 880 + (vnoise(jx / 900, jz / 900) - 0.5) * 260;
-      if (h > treeline) continue;
-      normalAt(jx, jz, n);
-      if (n.y < 0.8 || onPiste(jx, jz)) continue;
-      const density = THREE.MathUtils.smoothstep(forest, 0.42, 0.62) * THREE.MathUtils.smoothstep(treeline - h, 0, 120);
-      if (hash2(jx * 13, jz * 17) > density * (MOBILE ? 0.15 : 0.24)) continue;
-      const birch = h < 650 && hash2(jx * 3, jz * 29) < 0.35;
-      const s = 0.7 + hash2(jx * 19, jz * 23) * 0.9;
-      (birch ? birches : firs).push([jx, h - 0.3, jz, s, hash2(jx, jz) * Math.PI * 2]);
+// Trees are generated in 400 m chunks around the rider, deterministically, so a chunk regenerates identically
+// when you come back. Each chunk: near/far firs sharing one instance buffer, rime firs, bare-tree cards.
+const TREE_CELL = 10;
+const treeGrid = new Map(); // "ci,cj" -> [x, z, r, ...]
+const chunks = new Map();
+const TREE_STEP = LOW_END ? 6.5 : 5, TREE_KEEP = LOW_END ? 0.5 : 0.62, NEAR_LOD = LOW_END ? 260 : 420;
+let treeCount = 0;
+function buildChunk(ci, cj) {
+  const fir = [], rime = [], card = [];
+  const x0 = ci * TREE_CHUNK, z0 = cj * TREE_CHUNK;
+  for (let z = z0; z < z0 + TREE_CHUNK; z += TREE_STEP) for (let x = x0; x < x0 + TREE_CHUNK; x += TREE_STEP) {
+    const jx = x + hash2(x * 7, z * 3) * TREE_STEP, jz = z + hash2(x * 5, z * 11) * TREE_STEP;
+    if (Math.abs(jx) > WIDTH / 2 - 20 || Math.abs(jz) > DEPTH / 2 - 20) continue;
+    const k = lidx(jx, jz); if (k < 0 || !DEN[k]) continue;
+    if (hash2(jx * 13, jz * 17) > DEN[k] / 255 * TREE_KEEP) continue;
+    const h = height(jx, jz), tl = TREELINE(jx, jz), r = hash2(jx * 3, jz * 29), s0 = hash2(jx * 19, jz * 23), rot = hash2(jx, jz) * Math.PI * 2;
+    const add = (list, s, sy, coll, extra) => {
+      list.push([jx, h - 0.3, jz, s, sy, rot, extra]);
       const key = `${Math.floor(jx / TREE_CELL)},${Math.floor(jz / TREE_CELL)}`;
       if (!treeGrid.has(key)) treeGrid.set(key, []);
-      treeGrid.get(key).push(jx, jz, (birch ? 0.3 : 0.45) * s + 0.35);
+      treeGrid.get(key).push(jx, jz, coll);
+    };
+    if (h > tl - 40) {
+      // Treeline: rime-crusted firs and low stunted birch.
+      if (r < 0.75) { const s = 0.5 + s0 * 0.6; add(rime, s, s, 0.6 * s + 0.4); }
+      else { const s = 3 + s0 * 2; add(card, s * 0.8, s, 0.3, 0); }
+      continue;
+    }
+    const rimeShare = THREE.MathUtils.smoothstep(h, tl - 200, tl - 40) * 0.7;
+    const conifer = THREE.MathUtils.clamp((h < 500 ? 0.5 : 0.32) + (vnoise(jx / 260, jz / 260) - 0.5) * 1.1, 0.05, 0.9);
+    if (r < rimeShare) { const s = 0.6 + s0 * 0.7; add(rime, s, s, 0.6 * s + 0.4); }
+    else if (hash2(jx * 31, jz * 37) < conifer) {
+      if (h < 520 && vnoise(jx / 600 + 40, jz / 600) > 0.74) { const s = 11 + s0 * 7; add(card, s * 0.45, s, 0.3, 2); }   // larch plantation
+      else { const s = 0.75 + s0 * 0.85; add(fir, s, s * (0.9 + hash2(jx * 41, jz) * 0.25), 0.45 * s + 0.35); }
+    } else {
+      const white = h < 520 && hash2(jx * 43, jz * 47) < 0.5;
+      const s = (white ? 10 : 7) + s0 * (white ? 6 : 6);
+      add(card, s * (white ? 0.55 : 0.85), s, 0.3, white ? 1 : 0);
     }
   }
-  const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), ps = new THREE.Vector3();
-  for (const [list, geo] of [[firs, firGeo], [birches, birchGeo]]) {
-    const im = new THREE.InstancedMesh(geo, treeMat, list.length);
-    list.forEach(([x, y, z, s, r], i) => {
-      q.setFromAxisAngle(up, r); sc.set(s, s * (0.9 + (s % 0.2)), s); ps.set(x, y, z);
-      im.setMatrixAt(i, m4.compose(ps, q, sc));
-    });
-    im.computeBoundingSphere();
-    scene.add(im);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  const inst = (geo, mat, list, f) => {
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach((t, i) => { f(t); im.setMatrixAt(i, m4.compose(ps, q, sc)); });
+    im.computeBoundingSphere(); im.receiveShadow = true;
+    scene.add(im); return im;
+  };
+  const C = { ci, cj, meshes: [], cx: x0 + TREE_CHUNK / 2, cz: z0 + TREE_CHUNK / 2 };
+  const std = ([x, y, z, s, sy, rot]) => { ps.set(x, y, z); q.setFromAxisAngle(up, rot); sc.set(s, sy, s); };
+  if (fir.length) {
+    C.firNear = inst(firGeo, treeMat, fir, std);
+    C.firFar = new THREE.InstancedMesh(firFarGeo, treeMat, fir.length);
+    C.firFar.instanceMatrix = C.firNear.instanceMatrix; C.firFar.boundingSphere = C.firNear.boundingSphere;
+    scene.add(C.firFar); C.meshes.push(C.firNear, C.firFar);
   }
-  console.log(`trees: ${firs.length} firs, ${birches.length} birch`);
+  if (rime.length) C.meshes.push(C.rime = inst(rimeGeo, treeMat, rime, std));
+  if (card.length) {
+    C.card = inst(cardGeo, cardMat, card, ([x, y, z, w, hgt, rot]) => { ps.set(x, y - 0.2, z); q.setFromAxisAngle(up, rot); sc.set(w, hgt, w); });
+    C.card.geometry = cardGeo.clone();   // small: each chunk carries its own variant attribute
+    C.card.geometry.setAttribute('aVar', new THREE.InstancedBufferAttribute(new Float32Array(card.map(t => t[6])), 1));
+    const col = new THREE.Color();
+    card.forEach((t, i) => C.card.setColorAt(i, col.setScalar(0.85 + hash2(t[0] * 3, t[2] * 7) * 0.3)));
+    C.meshes.push(C.card);
+  }
+  C.count = fir.length + rime.length + card.length;
+  treeCount += C.count;
+  chunks.set(ci + ',' + cj, C);
+}
+function dropChunk(key) {
+  const C = chunks.get(key);
+  for (const m of C.meshes) { scene.remove(m); m.dispose(); }
+  if (C.card) C.card.geometry.dispose();
+  const n = TREE_CHUNK / TREE_CELL;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) treeGrid.delete(`${C.ci * n + i},${C.cj * n + j}`);
+  treeCount -= C.count;
+  chunks.delete(key);
+}
+let treeT = 0;
+function updateTrees(dt, budget = 2) {
+  if ((treeT -= dt) > 0 && budget < 99) return;
+  treeT = 0.2;
+  const px = S.p.x, pz = S.p.z, want = [];
+  const r = Math.ceil(TREE_R / TREE_CHUNK) + 1, pci = Math.floor(px / TREE_CHUNK), pcj = Math.floor(pz / TREE_CHUNK);
+  const dist = (ci, cj) => {   // nearest point of the chunk to the rider
+    const dx = Math.max(ci * TREE_CHUNK - px, 0, px - (ci + 1) * TREE_CHUNK), dz = Math.max(cj * TREE_CHUNK - pz, 0, pz - (cj + 1) * TREE_CHUNK);
+    return Math.hypot(dx, dz);
+  };
+  for (let cj = pcj - r; cj <= pcj + r; cj++) for (let ci = pci - r; ci <= pci + r; ci++) {
+    const d = dist(ci, cj);
+    if (d < TREE_R && !chunks.has(ci + ',' + cj)) want.push([d, ci, cj]);
+  }
+  want.sort((a, b) => a[0] - b[0]);
+  for (const [, ci, cj] of want.slice(0, budget)) buildChunk(ci, cj);
+  for (const [key, C] of chunks) {
+    const d = dist(C.ci, C.cj);
+    if (d > TREE_R + TREE_CHUNK) { dropChunk(key); continue; }
+    if (C.firNear) { C.firNear.visible = d < NEAR_LOD; C.firFar.visible = !C.firNear.visible; C.firNear.castShadow = d < 60; }
+    if (C.card) C.card.castShadow = d < 60;
+    if (C.rime) C.rime.castShadow = d < 60;
+  }
 }
 function treeHit(x, z) {
   const ci = Math.floor(x / TREE_CELL), cj = Math.floor(z / TREE_CELL);
@@ -557,6 +875,141 @@ function treeHit(x, z) {
     }
   }
   return false;
+}
+
+// ---------- Villages: OSM building footprints extruded to their height, snow on every roof ----------
+// Small rectangular chalets get gabled roofs; hotels and apartment blocks stay flat-topped. Two merged meshes.
+const LANDMARKS = [];
+if (LANDW.buildings.length) {
+  const wallPos = [], wallUv = [], wallCol = [], roofPos = [];
+  const WALLS = [0x5b4636, 0x6e5240, 0x8e8a83, 0xb9b2a6, 0x3e4247, 0xd7d2c8, 0x6d3b2f, 0x4a5560];
+  const c = new THREE.Color();
+  const quad = (a, b, y0, y1, u0, u1) => {
+    wallPos.push(a.x, y0, a.z, b.x, y0, b.z, b.x, y1, b.z, a.x, y0, a.z, b.x, y1, b.z, a.x, y1, a.z);
+    const v0 = 0, v1 = (y1 - y0) / 3.1;
+    wallUv.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1);
+    for (let i = 0; i < 6; i++) wallCol.push(c.r, c.g, c.b);
+  };
+  // Roof triangles always wound to face up, so they're single-sided and a camera inside a building sees out.
+  const tri = (arr, a, b, d) => {
+    const ny = (b.z - a.z) * (d.x - a.x) - (b.x - a.x) * (d.z - a.z);
+    if (ny < 0) arr.push(a.x, a.y, a.z, d.x, d.y, d.z, b.x, b.y, b.z); else arr.push(a.x, a.y, a.z, b.x, b.y, b.z, d.x, d.y, d.z);
+  };
+  // Lift terminals get their own structures; skip OSM footprints on top of them.
+  const ends = LIFTS.flatMap(L => [L.pts[0], L.pts.at(-1)]);
+  for (const B of LANDW.buildings) {
+    let pts = B.pts;
+    if (pts.length < 3) continue;
+    if (ends.some(e => pts.some(p => Math.hypot(p.x - e.x, p.z - e.z) < 30) || Math.hypot(pts[0].x - e.x, pts[0].z - e.z) < 30)) continue;
+    // Counter-clockwise seen from above (x east, z south), so walls face out.
+    let area = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; area += p.x * q.z - q.x * p.z; }
+    if (area > 0) pts = [...pts].reverse();
+    area = Math.abs(area) / 2;
+    let gmin = Infinity, gmax = -Infinity;
+    for (const p of pts) { const h = height(p.x, p.z); gmin = Math.min(gmin, h); gmax = Math.max(gmax, h); }
+    const y0 = gmin - 1, top = gmax + B.h;
+    const hs = hash2(pts[0].x * 7, pts[0].z * 3);
+    c.setHex(B.h > 11 ? [0x8e8a83, 0xd7d2c8, 0x3e4247, 0x5b4636][(hs * 4) | 0] : WALLS[(hs * WALLS.length) | 0]);
+    let u = 0;
+    const gable = pts.length === 4 && area < 600 && B.roof !== 'flat' && B.h < 12;
+    if (gable) {
+      // Ridge along the long axis; gable ends are wall-coloured triangles.
+      const e0 = Math.hypot(pts[1].x - pts[0].x, pts[1].z - pts[0].z), e1 = Math.hypot(pts[2].x - pts[1].x, pts[2].z - pts[1].z);
+      const [a, b, d, e] = e0 >= e1 ? pts : [pts[1], pts[2], pts[3], pts[0]];
+      const rise = Math.min(4.5, Math.min(e0, e1) * 0.4);
+      const r1 = { x: (b.x + d.x) / 2, y: top + rise, z: (b.z + d.z) / 2 }, r2 = { x: (e.x + a.x) / 2, y: top + rise, z: (e.z + a.z) / 2 };
+      for (const [p, q] of [[a, b], [b, d], [d, e], [e, a]]) { const l = Math.hypot(q.x - p.x, q.z - p.z); quad(p, q, y0, top, u / 3.2, (u + l) / 3.2); u += l; }
+      const T = p => ({ x: p.x, y: top, z: p.z });
+      // Gable triangles on the short sides.
+      for (const [p, q, r] of [[b, d, r1], [e, a, r2]]) {
+        wallPos.push(p.x, top, p.z, q.x, top, q.z, r.x, r.y, r.z);
+        wallUv.push(0, 0, 1, 0, 0.5, 0.5); for (let i = 0; i < 3; i++) wallCol.push(c.r, c.g, c.b);
+      }
+      // Roof slopes, with a little eave overhang.
+      const ov = (p, from) => { const dx = p.x - from.x, dz = p.z - from.z, l = Math.hypot(dx, dz) || 1; return { x: p.x + dx / l * 0.5, y: top - 0.25, z: p.z + dz / l * 0.5 }; };
+      const mid = { x: (r1.x + r2.x) / 2, z: (r1.z + r2.z) / 2 };
+      const A2 = ov(T(a), mid), B2 = ov(T(b), mid), D2 = ov(T(d), mid), E2 = ov(T(e), mid);
+      tri(roofPos, A2, B2, r1); tri(roofPos, A2, r1, r2);
+      tri(roofPos, D2, E2, r2); tri(roofPos, D2, r2, r1);
+    } else {
+      for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length], l = Math.hypot(q.x - p.x, q.z - p.z); quad(p, q, y0, top, u / 3.2, (u + l) / 3.2); u += l; }
+      const tris = THREE.ShapeUtils.triangulateShape(pts.map(p => new THREE.Vector2(p.x, -p.z)), []);
+      for (const [i, j, k] of tris) tri(roofPos, { ...pts[i], y: top + 0.35 }, { ...pts[j], y: top + 0.35 }, { ...pts[k], y: top + 0.35 });
+      // Parapet line of snow: lift the roof slab a touch above the walls.
+    }
+    if (B.name && area > 700) {
+      let cx = 0, cz = 0; for (const p of pts) { cx += p.x; cz += p.z; }
+      LANDMARKS.push({ name: B.name, x: cx / pts.length, z: cz / pts.length, area });
+    }
+  }
+  // Facade: a window per 3.2 × 3.1 m bay, tinted by the vertex colour.
+  const fc = document.createElement('canvas'); fc.width = fc.height = 64;
+  const fg = fc.getContext('2d');
+  fg.fillStyle = '#fff'; fg.fillRect(0, 0, 64, 64);
+  fg.fillStyle = '#d9d9d9'; fg.fillRect(0, 60, 64, 4);
+  fg.fillStyle = '#26303a'; fg.fillRect(14, 14, 36, 30);
+  fg.fillStyle = '#3b4a58'; fg.fillRect(16, 16, 15, 26); fg.fillRect(33, 16, 15, 26);
+  const ft = new THREE.CanvasTexture(fc); ft.wrapS = ft.wrapT = THREE.RepeatWrapping; ft.colorSpace = THREE.SRGBColorSpace; ft.anisotropy = 4;
+  const wg = new THREE.BufferGeometry();
+  wg.setAttribute('position', new THREE.Float32BufferAttribute(wallPos, 3));
+  wg.setAttribute('uv', new THREE.Float32BufferAttribute(wallUv, 2));
+  wg.setAttribute('color', new THREE.Float32BufferAttribute(wallCol, 3));
+  wg.computeVertexNormals();
+  const walls = new THREE.Mesh(wg, new THREE.MeshLambertMaterial({ vertexColors: true, map: ft }));
+  const rg = new THREE.BufferGeometry();
+  rg.setAttribute('position', new THREE.Float32BufferAttribute(roofPos, 3));
+  rg.computeVertexNormals();
+  const roofs = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ color: 0xf1f5f9 }));
+  walls.castShadow = roofs.castShadow = true; walls.receiveShadow = roofs.receiveShadow = true;
+  scene.add(walls, roofs);
+  LANDMARKS.sort((a, b) => b.area - a.area);
+  console.log(`buildings: ${LANDW.buildings.length}, ${(wallPos.length + roofPos.length) / 9} triangles`);
+}
+
+// ---------- Ski-area boundary: orange-and-black poles with a rope, where the boundary meets open mountain ----------
+if (HAS_SKI) {
+  const poles = [], rope = [];
+  // Walk the outline of the ski-area mask; a pole every ~22 m, roped to its nearest neighbours.
+  const cell = new Map(), CELLM = 22, n = new THREE.Vector3();
+  for (let j = 1; j < LH - 1; j++) for (let i = 1; i < LW - 1; i++) {
+    const k = j * LW + i;
+    if (!skiM[k] || (skiM[k - 1] && skiM[k + 1] && skiM[k - LW] && skiM[k + LW])) continue;
+    const x = (i + 0.5) / LPX - WIDTH / 2, z = (j + 0.5) / LPX - DEPTH / 2;
+    if (Math.abs(x) > WIDTH / 2 - 40 || Math.abs(z) > DEPTH / 2 - 40) continue;
+    // Not across the village, roads, car parks or rivers: the rope only runs where the resort meets open mountain.
+    if (roadM[k] > 40 || openM[k] > 120 || waterM[k] > 60 || hardM[k] > 120) continue;
+    const ci = Math.floor(x / CELLM), cj = Math.floor(z / CELLM);
+    let near = false;
+    for (let dj = -1; dj <= 1 && !near; dj++) for (let di = -1; di <= 1; di++) {
+      const list = cell.get((ci + di) + ',' + (cj + dj));
+      if (list && list.some(p => Math.hypot(p[0] - x, p[2] - z) < CELLM * 0.8)) { near = true; break; }
+    }
+    if (near) continue;
+    const pole = [x, height(x, z), z];
+    poles.push(pole);
+    const key = ci + ',' + cj; if (!cell.has(key)) cell.set(key, []); cell.get(key).push(pole);
+  }
+  for (const p of poles) {
+    const ci = Math.floor(p[0] / CELLM), cj = Math.floor(p[2] / CELLM), cand = [];
+    for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) for (const q of cell.get((ci + di) + ',' + (cj + dj)) || []) {
+      const d = Math.hypot(q[0] - p[0], q[2] - p[2]);
+      if (q !== p && d < 34) cand.push([d, q]);
+    }
+    cand.sort((a, b) => a[0] - b[0]);
+    for (const [, q] of cand.slice(0, 2)) if (p[0] < q[0] || (p[0] === q[0] && p[2] < q[2]) || cand.length < 2) rope.push(p[0], p[1] + 1.0, p[2], q[0], q[1] + 1.0, q[2]);
+  }
+  if (poles.length) {
+    const pc = document.createElement('canvas'); pc.width = 2; pc.height = 8;
+    const pg = pc.getContext('2d'); for (let i = 0; i < 8; i++) { pg.fillStyle = i % 2 ? '#15171a' : '#ff6a1a'; pg.fillRect(0, i, 2, 1); }
+    const pt = new THREE.CanvasTexture(pc); pt.magFilter = THREE.NearestFilter; pt.colorSpace = THREE.SRGBColorSpace;
+    const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.035, 0.035, 1.7, 5).translate(0, 0.85, 0), new THREE.MeshLambertMaterial({ map: pt }), poles.length);
+    const m4 = new THREE.Matrix4();
+    poles.forEach(([x, y, z], i) => im.setMatrixAt(i, m4.makeTranslation(x, y - 0.1, z)));
+    im.computeBoundingSphere(); scene.add(im);
+    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rope, 3));
+    scene.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({ color: 0xff7a2a })));
+  }
+  console.log(`boundary: ${poles.length} poles`);
 }
 
 // ---------- Rider ----------
@@ -649,90 +1102,265 @@ function joint(a, c, l1, l2, bend, out) {
   return out.copy(a).addScaledVector(_ax, along).addScaledVector(_bd, h);
 }
 
-// ---------- Lifts: towers, cables, stations and moving chairs ----------
-const CHAIR_SPACING = 28, LIFT_SPEED = 5;   // metres between chairs; detachable chairs run about 5 m/s
+// ---------- Lifts: towers, cables, terminals and moving chairs / gondola cabins ----------
+// Speeds follow the lift type. Fixed-grip chairs load at line speed (about 2 m/s). Detachable quads, hooded
+// six-packs and gondolas run about 5 m/s and slow to walking pace in the terminals, so carriers bunch up there.
+// OSM ride times (aerialway:duration) refine the line speed when they're plausible for the type.
 const SURFACE_LIFT = /t-bar|j-bar|platter|drag_lift|magic_carpet|rope_tow/;
-const CABLE_SIDE = 2.6;                      // half the gap between up and down cables
+const CABLE_SIDE = 2.6;                      // half the gap between up and down cables (bullwheel radius)
+const STATION_V = 0.85;                      // detachable grips in the terminal, m/s
+const LIFT_TYPES = {                         // line speed m/s [default, min, max], seconds between carriers
+  fixed: { v: [2.0, 1.5, 2.6], gap: 7, label: 'fixed-grip chair' },
+  detach: { v: [5.0, 4.0, 5.5], gap: 7, label: 'detachable chair' },
+  gondola: { v: [5.5, 4.5, 6.0], gap: 10, label: 'gondola' },
+  surface: { v: [2.8, 2.0, 3.5], gap: 0, label: 'surface lift' },
+  carpet: { v: [0.7, 0.5, 1.0], gap: 0, label: 'magic carpet' },
+};
 function liftPoint(L, s, side = 0, out = new THREE.Vector3()) {
   s = Math.max(0, Math.min(L.total, s));
-  let i = 1; while (i < L.len.length - 1 && L.len[i] < s) i++;
-  const a = L.path[i - 1], b = L.path[i], t = (s - L.len[i - 1]) / (L.len[i] - L.len[i - 1] || 1);
+  let lo = 1, hi = L.len.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (L.len[m] < s) lo = m + 1; else hi = m; }
+  const i = lo, a = L.path[i - 1], b = L.path[i], t = (s - L.len[i - 1]) / (L.len[i] - L.len[i - 1] || 1);
   const dx = b.x - a.x, dz = b.z - a.z, dl = Math.hypot(dx, dz) || 1;
   return out.set(a.x + dx * t - dz / dl * side, a.y + (b.y - a.y) * t, a.z + dz * t + dx / dl * side);
 }
+// Speed along the cable at distance s from the bottom terminal.
+function lineSpeed(L, s) {
+  if (!L.detach) return L.v;
+  const d = Math.min(s, L.total - s);
+  return d < 12 ? STATION_V : d < 34 ? STATION_V + (L.v - STATION_V) * THREE.MathUtils.smoothstep(d, 12, 34) : L.v;
+}
+// Inverse of the travel-time table: distance along the line after t seconds.
+function sAtTime(L, t) {
+  const T = L.T; if (t <= 0) return 0; if (t >= T.at(-1)) return L.total;
+  let lo = 0, hi = T.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= t) lo = m; else hi = m; }
+  return Math.min(L.total, lo + (t - T[lo]) / (T[hi] - T[lo] || 1));
+}
+const _lp = new THREE.Vector3(), _ld = new THREE.Vector3(), _lpp = new THREE.Vector3();
+// Carrier at cycle time tau: position (cable grip) and horizontal heading. Up side, top bullwheel, down side, bottom bullwheel.
+function carrierPose(L, tau, pos, dir) {
+  const Tl = L.Tline, Tt = L.Tturn, R = CABLE_SIDE;
+  if (tau < Tl) {
+    const s = sAtTime(L, tau); liftPoint(L, s, R, pos); liftPoint(L, s + 1, R, _lp);
+    dir.set(_lp.x - pos.x, 0, _lp.z - pos.z).normalize(); return s;
+  }
+  if (tau < Tl + Tt || tau >= 2 * Tl + Tt) {
+    const top = tau < Tl + Tt, a = (top ? tau - Tl : tau - 2 * Tl - Tt) / Tt * Math.PI;
+    const c = top ? L.path.at(-1) : L.path[0], D = top ? L.dEnd : L.d0;
+    const sgn = top ? 1 : -1;             // top: from +P round through +D; bottom: from -P round through -D
+    const px = -D.z * sgn, pz = D.x * sgn;
+    pos.set(c.x + R * (px * Math.cos(a) + D.x * sgn * Math.sin(a)), c.y, c.z + R * (pz * Math.cos(a) + D.z * sgn * Math.sin(a)));
+    dir.set(-px * Math.sin(a) + D.x * sgn * Math.cos(a), 0, -pz * Math.sin(a) + D.z * sgn * Math.cos(a)).normalize();
+    return top ? L.total : 0;
+  }
+  const s = L.total - sAtTime(L, tau - Tl - Tt); liftPoint(L, s, -R, pos); liftPoint(L, s - 1, -R, _lp);
+  dir.set(_lp.x - pos.x, 0, _lp.z - pos.z).normalize(); return s;
+}
 const chairMeshes = [];
+let liftTime = 0;
 if (LIFTS.length) {
-  const towers = [], cable = [], stations = [];
+  const towers = [], cable = [], chairTerms = [], gondTerms = [], huts = [], belts = [];
   for (const L of LIFTS) {
     L.surface = SURFACE_LIFT.test(L.type);
-    L.cabin = /gondola|cable_car|mixed_lift/.test(L.type);
-    L.towerH = L.surface ? 2.5 : L.cabin ? 16 : 11;
-    // Densify the line, put a tower every ~90 m and run the cable between tower tops.
-    const path = [];
+    L.gondola = /gondola|cable_car/.test(L.type);
+    L.occ = parseInt(L.raw.o) || (L.gondola ? 8 : L.type === 'mixed_lift' ? 6 : 2);
+    L.bubble = L.raw.b === 'yes';
+    L.detach = L.gondola || (!L.surface && L.raw.dt !== 'no' && (L.raw.dt === 'yes' || L.occ >= 4 || L.bubble));
+    L.kind = L.type === 'magic_carpet' ? 'carpet' : L.surface ? 'surface' : L.gondola ? 'gondola' : L.detach ? 'detach' : 'fixed';
+    L.cabin = L.gondola;                     // kept for older callers
+    const spec = LIFT_TYPES[L.kind];
+    L.towerH = L.surface ? 2.5 : L.gondola ? 16 : 10.5;
+    L.stationH = L.surface ? 1.2 : L.gondola ? 3.55 : 2.72;   // cable height in the terminal: seats ~0.55 m off the snow
+    const clear = L.surface ? 0 : L.gondola ? 8 : 5.5;
+    // Resample the line every ~15 m; supports at the terminals, the end of each loading platform, and towers every ~90 m.
+    const raw = [];
     for (let i = 0; i < L.pts.length - 1; i++) {
-      const a = L.pts[i], b = L.pts[i + 1], n = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.z - a.z) / 90));
-      for (let k = 0; k < n; k++) path.push({ x: a.x + (b.x - a.x) * k / n, z: a.z + (b.z - a.z) * k / n });
+      const a = L.pts[i], b = L.pts[i + 1], n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 15));
+      for (let k = 0; k < n; k++) raw.push({ x: a.x + (b.x - a.x) * k / n, z: a.z + (b.z - a.z) * k / n });
     }
-    path.push(L.pts.at(-1));
-    L.path = path.map(p => ({ x: p.x, z: p.z, y: height(p.x, p.z) + L.towerH }));
+    raw.push({ ...L.pts.at(-1) });
+    const sx = [0]; for (let i = 1; i < raw.length; i++) sx.push(sx[i - 1] + Math.hypot(raw[i].x - raw[i - 1].x, raw[i].z - raw[i - 1].z));
+    const span = sx.at(-1), g = raw.map(p => height(p.x, p.z)), sup = new Map();
+    const iA = raw.findIndex((_, i) => sx[i] >= Math.min(14, span / 3)), iB = raw.length - 1 - [...sx].reverse().findIndex(v => v <= span - Math.min(14, span / 3));
+    for (const i of [0, iA, iB, raw.length - 1]) sup.set(i, g[i] + L.stationH);
+    if (!L.surface) for (let i = iA + 6; i < iB - 3; i += 6) sup.set(i, g[i] + L.towerH);
+    const y = new Array(raw.length);
+    for (let it = 0; it < 40; it++) {
+      const keys = [...sup.keys()].sort((a, b) => a - b);
+      for (let k = 0; k < keys.length - 1; k++) {
+        const a = keys[k], b = keys[k + 1];
+        for (let i = a; i <= b; i++) y[i] = sup.get(a) + (sup.get(b) - sup.get(a)) * (sx[i] - sx[a]) / (sx[b] - sx[a] || 1);
+      }
+      let worst = -1, wv = 0;
+      for (let i = iA + 1; i < iB; i++) { const lack = g[i] + clear - y[i]; if (!sup.has(i) && lack > wv) { wv = lack; worst = i; } }
+      if (worst < 0) break;
+      sup.set(worst, g[worst] + Math.max(L.towerH, clear + 2));
+    }
+    L.path = raw.map((p, i) => ({ x: p.x, z: p.z, y: y[i] }));
     L.len = [0];
     for (let i = 1; i < L.path.length; i++) { const a = L.path[i - 1], b = L.path[i]; L.len.push(L.len[i - 1] + Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z)); }
     L.total = L.len.at(-1);
+    const dirAt = (a, b) => new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
+    L.d0 = dirAt(L.path[0], L.path[1]); L.dEnd = dirAt(L.path.at(-2), L.path.at(-1));
+    // Line speed: type default, nudged toward the OSM ride time when it's in the plausible band.
+    const [v0, vmin, vmax] = spec.v;
+    const mins = parseFloat(String(L.raw.du || '').replace(',', '.'));
+    const slow = L.detach ? 2 * 22 / STATION_V - 2 * 22 / v0 : 0;   // seconds lost in the terminals
+    const vd = mins > 0 ? L.total / Math.max(30, mins * 60 - slow) : 0;
+    L.v = vd > v0 * 0.7 && vd < v0 * 1.4 ? Math.min(vmax, Math.max(vmin, vd)) : v0;
+    L.T = [0];
+    for (let s = 1; s <= Math.ceil(L.total); s++) L.T.push(L.T[s - 1] + 1 / lineSpeed(L, Math.min(L.total, s - 0.5)));
+    L.Tline = L.T[Math.min(L.T.length - 1, Math.ceil(L.total))] - (Math.ceil(L.total) - L.total) / lineSpeed(L, L.total);
+    L.Tturn = Math.PI * CABLE_SIDE / lineSpeed(L, 0);
+    L.cycle = 2 * (L.Tline + L.Tturn);
+    L.n = spec.gap ? Math.max(2, Math.round(L.cycle / spec.gap)) : 0;
+    L.gap = L.n ? L.cycle / L.n : 0;
+    L.spec = spec;
+    L.rideTime = L.Tline;
+    // Structures
     L.path.forEach((p, i) => {
+      if (i === 0 || i === L.path.length - 1 || !sup.has(i) || i === iA || i === iB) return;
       const q = L.path[Math.min(i + 1, L.path.length - 1)], r = L.path[Math.max(i - 1, 0)];
-      const yaw = Math.atan2(-(q.x - r.x), -(q.z - r.z));
-      if (i === 0 || i === L.path.length - 1) stations.push([p.x, p.y - L.towerH, p.z, yaw, L.surface ? 0.5 : 1]);
-      else towers.push([p.x, p.y - L.towerH, p.z, yaw, L.towerH]);
+      towers.push([p.x, height(p.x, p.z), p.z, Math.atan2(-(q.x - r.x), -(q.z - r.z)), p.y - height(p.x, p.z), L.kind]);
     });
-    for (const side of [-CABLE_SIDE, CABLE_SIDE]) for (let i = 0; i < L.path.length - 1; i++) {
+    for (const [c, D, end] of [[L.path[0], L.d0, 0], [L.path.at(-1), L.dEnd, 1]]) {
+      const yaw = Math.atan2(D.x, D.z), gnd = height(c.x, c.z);
+      if (L.surface) { huts.push([c.x - D.z * 4, height(c.x - D.z * 4, c.z + D.x * 4), c.z + D.x * 4, yaw, 0.7]); continue; }
+      // Bullwheel at the end of the line; the terminal body sits over it, reaching back toward the line.
+      const back = end ? -1 : 1;
+      if (L.gondola) gondTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
+      else {
+        chairTerms.push([c.x + D.x * back * 1.2, gnd, c.z + D.z * back * 1.2, yaw, c.y]);
+        const hx = c.x + D.x * back * 12 + D.z * (CABLE_SIDE + 5), hz = c.z + D.z * back * 12 - D.x * (CABLE_SIDE + 5);
+        huts.push([hx, height(hx, hz), hz, yaw, 1]);
+      }
+    }
+    if (L.type === 'magic_carpet') belts.push(L);
+    else for (const side of L.surface ? [CABLE_SIDE] : [-CABLE_SIDE, CABLE_SIDE]) for (let i = 0; i < L.path.length - 1; i++) {
       const a = liftPoint(L, L.len[i], side), b = liftPoint(L, L.len[i + 1], side);
       cable.push(a.x, a.y, a.z, b.x, b.y, b.z);
     }
   }
-  const steel = new THREE.MeshStandardMaterial({ color: 0x59636e, roughness: 0.5, metalness: 0.6 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x5d6873, roughness: 0.5, metalness: 0.6 });
+  const gondSteel = new THREE.MeshStandardMaterial({ color: 0xd8dde2, roughness: 0.45, metalness: 0.5 });
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), s = new THREE.Vector3();
-  const place = (geo, mat, list, f) => {
+  const place = (geo, mat, list, f, shadow = true) => {
+    if (!list.length) return;
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     list.forEach((it, i) => { f(it); im.setMatrixAt(i, m4.compose(v, q, s)); });
-    im.castShadow = true; im.computeBoundingSphere(); scene.add(im);
+    im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
   };
-  place(new THREE.CylinderGeometry(0.28, 0.4, 1, 6).translate(0, 0.5, 0), steel, towers, ([x, y, z, yaw, h]) => { v.set(x, y, z); q.setFromEuler(e.set(0, yaw, 0)); s.set(1, h, 1); });
-  place(new THREE.BoxGeometry(CABLE_SIDE * 2 + 1, 0.35, 0.35), steel, towers, ([x, y, z, yaw, h]) => { v.set(x, y + h, z); q.setFromEuler(e.set(0, yaw, 0)); s.set(1, 1, 1); });
-  place(new THREE.BoxGeometry(10, 6, 9).translate(0, 3, 0), new THREE.MeshStandardMaterial({ color: 0x6b5d52, roughness: 0.8 }), stations, ([x, y, z, yaw, k]) => { v.set(x, y - 0.5, z); q.setFromEuler(e.set(0, yaw, 0)); s.set(k, k, k); });
-  const cableGeo = new THREE.BufferGeometry(); cableGeo.setAttribute('position', new THREE.Float32BufferAttribute(cable, 3));
-  scene.add(new THREE.LineSegments(cableGeo, new THREE.LineBasicMaterial({ color: 0x2a2f36 })));
+  const yawQ = yaw => q.setFromEuler(e.set(0, yaw, 0));
+  // Towers: slim grey tubes for chairs, heavier white tubes and wide crossarms for gondolas.
+  const chairT = towers.filter(t => t[5] !== 'gondola'), gondT = towers.filter(t => t[5] === 'gondola');
+  place(new THREE.CylinderGeometry(0.26, 0.38, 1, 8).translate(0, 0.5, 0), steel, chairT, ([x, y, z, yaw, h]) => { v.set(x, y - 0.5, z); yawQ(yaw); s.set(1, h + 0.5, 1); });
+  place(new THREE.BoxGeometry(CABLE_SIDE * 2 + 1.2, 0.3, 0.3), steel, chairT, ([x, y, z, yaw, h]) => { v.set(x, y + h + 0.1, z); yawQ(yaw); s.set(1, 1, 1); });
+  place(new THREE.BoxGeometry(0.5, 0.25, 2.6), steel, chairT.flatMap(t => [[...t, -1], [...t, 1]]), ([x, y, z, yaw, h, , sd]) => { v.set(x + Math.cos(yaw) * CABLE_SIDE * sd, y + h + 0.05, z - Math.sin(yaw) * CABLE_SIDE * sd); yawQ(yaw); s.set(1, 1, 1); });   // sheave trains
+  place(new THREE.CylinderGeometry(0.45, 0.7, 1, 8).translate(0, 0.5, 0), gondSteel, gondT, ([x, y, z, yaw, h]) => { v.set(x, y - 0.5, z); yawQ(yaw); s.set(1, h + 0.5, 1); });
+  place(new THREE.BoxGeometry(CABLE_SIDE * 2 + 2.4, 0.6, 0.7), gondSteel, gondT, ([x, y, z, yaw, h]) => { v.set(x, y + h + 0.3, z); yawQ(yaw); s.set(1, 1, 1); });
+  // Chair terminals: open steel bullwheel housing on a column, chairs pass underneath at seat height.
+  place(new THREE.BoxGeometry(CABLE_SIDE * 2 + 2.2, 1.0, 5).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x8a96a2, roughness: 0.5, metalness: 0.4 }), chairTerms, ([x, y, z, yaw, cy]) => { v.set(x, cy + 0.6, z); yawQ(yaw); s.set(1, 1, 1); });
+  place(new THREE.BoxGeometry(CABLE_SIDE * 2 + 2.4, 0.25, 5.2).translate(0, 0.12, 0), new THREE.MeshLambertMaterial({ color: 0xf2f6fa }), chairTerms, ([x, y, z, yaw, cy]) => { v.set(x, cy + 1.6, z); yawQ(yaw); s.set(1, 1, 1); });   // snow on top
+  place(new THREE.CylinderGeometry(0.5, 0.65, 1, 8).translate(0, 0.5, 0), steel, chairTerms, ([x, y, z, yaw, cy]) => { v.set(x, y - 0.5, z); yawQ(yaw); s.set(1, cy - y + 1, 1); });
+  // Gondola terminals: a long roofed hall over the bullwheel, open along the sides so you can see cabins load,
+  // with a solid machine room at the bullwheel end.
+  const hallW = CABLE_SIDE * 2 + 9, hallL = 26;
+  place(new THREE.BoxGeometry(hallW + 1, 0.6, hallL + 1).translate(0, 0.3, 0), new THREE.MeshLambertMaterial({ color: 0xf2f6fa }), gondTerms, ([x, y, z, yaw, cy]) => { v.set(x, cy + 3.6, z); yawQ(yaw); s.set(1, 1, 1); });
+  place(new THREE.BoxGeometry(hallW, 0.8, hallL).translate(0, 0.4, 0), new THREE.MeshStandardMaterial({ color: 0x6f5e4e, roughness: 0.8 }), gondTerms, ([x, y, z, yaw, cy]) => { v.set(x, cy + 2.8, z); yawQ(yaw); s.set(1, 1, 1); });
+  const pillars = gondTerms.flatMap(t => [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0]].map(([a, b]) => [...t, a, b]));
+  place(new THREE.BoxGeometry(0.5, 1, 0.5).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x7c6a58, roughness: 0.8 }), pillars, ([x, y, z, yaw, cy, , a, b]) => {
+    const ox = a * (hallW / 2 - 0.3), oz = b * (hallL / 2 - 0.3);
+    v.set(x + Math.cos(yaw) * ox + Math.sin(yaw) * oz, y - 1, z - Math.sin(yaw) * ox + Math.cos(yaw) * oz); yawQ(yaw); s.set(1, cy - y + 4.8, 1);
+  });
+  place(new THREE.BoxGeometry(hallW, 1, 5).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x7c6a58, roughness: 0.8 }), gondTerms, ([x, y, z, yaw, cy, back]) => {
+    // Machine room around the bullwheel: the hall centre sits 9 m in from the terminal point, so 10.5 m back out.
+    v.set(x - Math.sin(yaw) * back * 10.5, y - 1, z - Math.cos(yaw) * back * 10.5); yawQ(yaw); s.set(1, cy - y + 4.8, 1);
+  });
+  // Operator huts by the loading ramps and at drag-lift ends.
+  place(new THREE.BoxGeometry(3, 2.8, 3.2).translate(0, 1.4, 0), new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 0.8 }), huts, ([x, y, z, yaw, k]) => { v.set(x, y - 0.3, z); yawQ(yaw); s.set(k, k, k); });
+  place(new THREE.BoxGeometry(3.5, 0.4, 3.7).translate(0, 0.2, 0), new THREE.MeshLambertMaterial({ color: 0xf2f6fa }), huts, ([x, y, z, yaw, k]) => { v.set(x, y - 0.3 + 2.8 * k, z); yawQ(yaw); s.set(k, k, k); });
+  if (cable.length) {
+    const cableGeo = new THREE.BufferGeometry(); cableGeo.setAttribute('position', new THREE.Float32BufferAttribute(cable, 3));
+    scene.add(new THREE.LineSegments(cableGeo, new THREE.LineBasicMaterial({ color: 0x23282e })));
+  }
+  for (const L of belts) {   // magic carpet: a dark belt on the snow
+    const pos = [];
+    for (let i = 0; i < L.path.length - 1; i++) for (const t of [0, 1]) {
+      const p = L.path[i + t], D = L.d0;
+      for (const sd of [-0.6, 0.6]) pos.push(p.x - D.z * sd, height(p.x - D.z * sd, p.z + D.x * sd) + 0.12, p.z + D.x * sd);
+    }
+    const idx = []; for (let i = 0; i < L.path.length - 1; i++) { const o = i * 4; idx.push(o, o + 2, o + 1, o + 1, o + 2, o + 3); }
+    const gb = new THREE.BufferGeometry(); gb.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gb.setIndex(idx); gb.computeVertexNormals();
+    scene.add(new THREE.Mesh(gb, new THREE.MeshLambertMaterial({ color: 0x2a2d31, side: THREE.DoubleSide })));
+  }
 
-  const chairGeo = merge([
-    coloredGeo(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 4).translate(0, -1.1, 0), 0x2a2f36),
-    coloredGeo(new THREE.BoxGeometry(2.3, 0.12, 0.6).translate(0, -2.2, 0.1), 0x24486e),
-    coloredGeo(new THREE.BoxGeometry(2.3, 0.6, 0.08).translate(0, -1.9, -0.2), 0x24486e),
-  ]);
-  const cabinGeo = merge([
-    coloredGeo(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 4).translate(0, -0.6, 0), 0x2a2f36),
-    coloredGeo(new THREE.BoxGeometry(1.9, 2.1, 1.9).translate(0, -2.3, 0), 0xc8452f),
-    coloredGeo(new THREE.BoxGeometry(1.95, 0.7, 1.95).translate(0, -1.9, 0), 0x9fc7e8),
-  ]);
+  // Carriers. Chairs: grip and hanger, seat sized to the seat count, backrest, armrests, raised restraint bar.
+  const chairGeos = new Map(), cabinGeos = new Map();
+  const chairGeo = (occ, seatCol) => {
+    const key = occ + ':' + seatCol;
+    if (chairGeos.has(key)) return chairGeos.get(key);
+    const w = occ * 0.56 + 0.12, frame = 0x30353b;
+    const geo = merge([
+      coloredGeo(new THREE.BoxGeometry(0.22, 0.25, 0.5).translate(0, 0.05, 0), frame),                                   // grip
+      coloredGeo(new THREE.CylinderGeometry(0.045, 0.045, 1.75, 5).translate(0, -0.87, -0.32), frame),                  // hanger
+      coloredGeo(new THREE.BoxGeometry(0.08, 0.08, 0.55).translate(0, -1.75, -0.05), frame),
+      coloredGeo(new THREE.BoxGeometry(w, 0.06, 0.08).translate(0, -1.78, -0.3), frame),
+      coloredGeo(new THREE.BoxGeometry(w, 0.1, 0.56).translate(0, -2.18, 0.08), seatCol),                               // seat
+      coloredGeo(new THREE.BoxGeometry(w, 0.55, 0.08).translate(0, -1.86, -0.24).rotateX(0), seatCol),                  // backrest
+      coloredGeo(new THREE.BoxGeometry(0.05, 0.05, 0.6).translate(-w / 2, -1.95, 0.05), frame),                         // armrests
+      coloredGeo(new THREE.BoxGeometry(0.05, 0.05, 0.6).translate(w / 2, -1.95, 0.05), frame),
+      coloredGeo(new THREE.BoxGeometry(w * 0.92, 0.04, 0.04).translate(0, -1.12, 0.12), frame),                         // restraint, up
+      coloredGeo(new THREE.BoxGeometry(0.04, 0.85, 0.04).translate(-w * 0.44, -1.5, 0.1), frame),
+      coloredGeo(new THREE.BoxGeometry(0.04, 0.85, 0.04).translate(w * 0.44, -1.5, 0.1), frame),
+    ]);
+    chairGeos.set(key, geo); return geo;
+  };
+  const cabinGeo = (occ, col) => {
+    const key = occ + ':' + col;
+    if (cabinGeos.has(key)) return cabinGeos.get(key);
+    const k = occ >= 10 ? 1.2 : occ >= 8 ? 1.1 : 1;
+    // Open-ended shells (plus a floor) so a camera inside the cabin sees out instead of the inside of the caps.
+    const box = (rt, rb, h, y, c, open = true) => coloredGeo(new THREE.CylinderGeometry(rt * k, rb * k, h, 4, 1, open).rotateY(Math.PI / 4).scale(1, 1, 1.15).translate(0, y, 0), c);
+    const floor = coloredGeo(new THREE.PlaneGeometry(1.5 * k, 1.5 * k * 1.15).rotateX(Math.PI / 2).translate(0, -3.5, 0), col);
+    const geo = merge([
+      coloredGeo(new THREE.BoxGeometry(0.25, 0.3, 0.7).translate(0, 0.05, 0), 0x30353b),
+      coloredGeo(new THREE.CylinderGeometry(0.07, 0.07, 1.3, 5).translate(0, -0.65, 0), 0x30353b),
+      box(0.3, 1.25, 0.45, -1.35, 0xe8e8e4),       // roof
+      box(1.25, 1.27, 0.95, -2.05, 0x1f2a33),      // window band
+      box(1.27, 1.05, 1.0, -3.0, col),             // body, tapering to the floor
+      floor,
+    ]);
+    cabinGeos.set(key, geo); return geo;
+  };
   const chairMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const hoodMat = new THREE.MeshStandardMaterial({ color: 0x3a6fa8, transparent: true, opacity: 0.45, roughness: 0.1, metalness: 0.3, depthWrite: false, side: THREE.DoubleSide });
+  const CABIN_COLS = [0xc8452f, 0xe0b23a, 0x2f6fb4, 0xf0f0ec, 0x3d8c5a], SEAT_COLS = [0x24486e, 0x1d1f23, 0x8c2f2a, 0x2c5e43];
   for (const L of LIFTS) {
-    if (L.surface) continue;
-    const n = Math.floor(2 * L.total / CHAIR_SPACING);
-    if (n < 2) continue;
-    const im = new THREE.InstancedMesh(L.cabin ? cabinGeo : chairGeo, chairMat, n);
-    im.frustumCulled = false;
+    if (!L.n) continue;
+    const h = hash2(L.pts[0].x * 3, L.pts[0].z * 7);
+    const geo = L.gondola ? cabinGeo(L.occ, CABIN_COLS[(h * CABIN_COLS.length) | 0]) : chairGeo(Math.min(8, L.occ), SEAT_COLS[(h * SEAT_COLS.length) | 0]);
+    const im = new THREE.InstancedMesh(geo, chairMat, L.n);
+    im.frustumCulled = false; im.castShadow = true;
     scene.add(im);
-    chairMeshes.push({ L, im, n });
+    let hood = null;
+    if (L.bubble && !L.gondola) {
+      const w = Math.min(8, L.occ) * 0.56 + 0.3;
+      hood = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.75, 0.75, w, 12, 1, true, -Math.PI * 0.15, Math.PI * 0.9).rotateZ(Math.PI / 2).translate(0, -1.75, 0.15), hoodMat, L.n);
+      hood.instanceMatrix = im.instanceMatrix; hood.frustumCulled = false; scene.add(hood);
+    }
+    chairMeshes.push({ L, im, n: L.n, hood });
   }
 }
-const _cp = new THREE.Vector3(), _cq = new THREE.Vector3(), _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _one = new THREE.Vector3(1, 1, 1);
-function updateLifts(time) {
+const _cp = new THREE.Vector3(), _cd = new THREE.Vector3(), _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _one = new THREE.Vector3(1, 1, 1);
+function updateLifts(dt) {
+  // Hold Tuck on a lift (or in the queue) to fast-forward every lift together, so your chair stays your chair.
+  const fast = (S.ride || liftQueue) && (keys.has('w') || keys.has('arrowup') || touch.T) ? 8 : 1;
+  liftTime += dt * fast;
   for (const { L, im, n } of chairMeshes) {
-    const loop = 2 * L.total, spacing = loop / n;
     for (let k = 0; k < n; k++) {
-      const u = (k * spacing + time * LIFT_SPEED) % loop;
-      const up = u < L.total, s = up ? u : loop - u, side = up ? CABLE_SIDE : -CABLE_SIDE;
-      liftPoint(L, s, side, _cp); liftPoint(L, s + (up ? 1 : -1), side, _cq);
-      _e.set(0, Math.atan2(_cq.x - _cp.x, _cq.z - _cp.z), 0);
-      im.setMatrixAt(k, _m4.compose(_cp, _q.setFromEuler(_e), _one));
+      carrierPose(L, (liftTime + k * L.gap) % L.cycle, _cp, _cd);
+      im.setMatrixAt(k, _m4.compose(_cp, _q.setFromAxisAngle(worldUp, Math.atan2(_cd.x, _cd.z)), _one));
     }
     im.instanceMatrix.needsUpdate = true;
   }
@@ -745,23 +1373,81 @@ function nearLiftBase() {
   }
   return best;
 }
-function startRide(L) { S.ride = { L, s: 0 }; S.crash = 0; toast(L.name, 1.4); }
+// Boarding: shuffle to the loading line, wait for the next chair or cabin, then ride it.
+let liftQueue = null;
+const LOAD_S = 6;
+function startRide(L) {
+  S.crash = 0; S.v.set(0, 0, 0);
+  const label = `${L.name} · ${L.spec.label} · ${L.v.toFixed(1)} m/s`;
+  if (!L.n) { S.ride = { L, s: 0, dir: L.d0.clone() }; toast(label, 2); return; }
+  const tLoad = L.T[LOAD_S];
+  // Next carrier to reach the loading point at least 2.5 s from now.
+  let wait = ((tLoad - liftTime) % L.gap + L.gap) % L.gap;
+  if (wait < 2.5) wait += L.gap;
+  const k = ((Math.round((tLoad - liftTime - wait) / L.gap) % L.n) + L.n) % L.n;
+  // Chairs: take the outside seat on the up-cable side; cabins: stand in the middle.
+  const seat = L.gondola ? 0 : (Math.min(8, L.occ) - 1) / 2 * 0.56;
+  const spot = liftPoint(L, LOAD_S, CABLE_SIDE + seat);
+  liftQueue = { L, k, until: liftTime + wait, from: S.p.clone(), spot: new THREE.Vector3(spot.x, height(spot.x, spot.z), spot.z), t: 0, seat };
+  toast(label, 2.2);
+}
+function queueStep(dt) {
+  const Q = liftQueue, L = Q.L;
+  Q.t += dt;
+  const u = THREE.MathUtils.smoothstep(Q.t, 0, 1.6);
+  S.p.lerpVectors(Q.from, Q.spot, u); S.p.y = height(S.p.x, S.p.z);
+  // Stand side-on with your back to the oncoming chair, facing up the line.
+  S.f.crossVectors(worldUp, L.d0).normalize(); S.n.set(0, 1, 0); S.v.set(0, 0, 0); S.air = false; S.lastY = S.p.y;
+  if (liftTime >= Q.until) { S.ride = { L, k: Q.k, seat: Q.seat, s: LOAD_S, dir: L.d0.clone() }; liftQueue = null; }
+}
+const _rp = new THREE.Vector3(), _rd = new THREE.Vector3(), _back = new THREE.Vector3();
 function rideStep(dt) {
   const R = S.ride, L = R.L;
-  const fast = keys.has('w') || keys.has('arrowup') || touch.T ? 8 : 1;
-  R.s += dt * LIFT_SPEED * fast;
-  const prev = tmp2.copy(S.p);
-  liftPoint(L, R.s, CABLE_SIDE, S.p);
-  S.p.y = L.surface ? height(S.p.x, S.p.z) : S.p.y - 2.45;
-  S.v.subVectors(S.p, prev).divideScalar(dt);
-  const flat = tmp.set(S.v.x, 0, S.v.z);
-  if (flat.lengthSq() > 0.01) S.f.copy(flat.normalize());
-  S.n.set(0, 1, 0); S.air = false; S.lastY = S.p.y;
-  if (R.s >= L.total) {
-    S.ride = null;
-    const end = L.pts.at(-1);
-    dropIn({ x: end.x + S.f.x * 18, z: end.z + S.f.z * 18, name: `Top of ${L.name}` });
+  if (!L.n) {
+    // Drag lifts and carpets: on your board, pulled along the line.
+    R.s += dt * L.v * ((keys.has('w') || keys.has('arrowup') || touch.T) ? 8 : 1);
+    liftPoint(L, R.s, CABLE_SIDE, S.p); S.p.y = height(S.p.x, S.p.z);
+    liftPoint(L, R.s + 1, CABLE_SIDE, _rp); R.dir.set(_rp.x - S.p.x, 0, _rp.z - S.p.z).normalize();
+    S.f.copy(R.dir); normalAt(S.p.x, S.p.z, S.n); S.v.copy(R.dir).multiplyScalar(L.v);
+  } else {
+    const tau = (liftTime + R.k * L.gap) % L.cycle;
+    R.s = carrierPose(L, tau, _rp, _rd);
+    R.dir.copy(_rd);
+    if (L.gondola) {
+      // Seated inside the cabin, facing down the line out of the window.
+      S.p.copy(_rp).addScaledVector(worldUp, -3.32).addScaledVector(_rd, 0.35);
+      S.n.set(0, 1, 0); S.f.crossVectors(_rd, worldUp).normalize();
+    } else {
+      // On the chair: leaning back into the seat, board hanging off the front foot.
+      _back.crossVectors(worldUp, _rd).normalize();            // across the chair
+      S.n.copy(worldUp).multiplyScalar(Math.cos(0.5)).addScaledVector(_rd, -Math.sin(0.5));
+      S.f.copy(_back);
+      S.p.copy(_rp).addScaledVector(worldUp, -2.13).addScaledVector(_rd, 0.02).addScaledVector(_back, -R.seat).addScaledVector(S.n, -0.74);
+    }
+    S.v.copy(_rd).multiplyScalar(lineSpeed(L, R.s));
   }
+  S.air = false; S.lastY = S.p.y; S.steer = 0;
+  const unload = L.n ? L.total - (L.detach ? 7 : 4) : L.total;
+  if (R.s >= unload || (L.n && (liftTime + R.k * L.gap) % L.cycle >= L.Tline)) unloadLift(L, R.dir);
+}
+function unloadLift(L, dir) {
+  S.ride = null;
+  const end = L.path.at(-1);
+  if (L.gondola) {
+    // Walk out of the top station and strap in on the flat beside it.
+    const D = L.dEnd, x = end.x + D.x * 10 - D.z * (CABLE_SIDE + 9), z = end.z + D.z * 10 + D.x * (CABLE_SIDE + 9);
+    dropIn({ x, z, name: `Top of ${L.name}` });
+    return;
+  }
+  // Stand up and slide off the unload ramp, veering away from the bullwheel and toward the fall line.
+  const out = dir.clone().applyAxisAngle(worldUp, -0.3).add(downhillDir(S.p.x, S.p.z).multiplyScalar(1.5)).normalize();
+  S.p.y = height(S.p.x, S.p.z);
+  normalAt(S.p.x, S.p.z, S.n);
+  S.f.copy(out).addScaledVector(S.n, -out.dot(S.n)).normalize();
+  S.v.copy(S.f).multiplyScalar(L.surface ? 1.5 : 3.2);
+  S.air = false; S.lastY = S.p.y; trail.last = null;
+  lastDrop = { x: S.p.x + out.x * 8, z: S.p.z + out.z * 8, name: `Top of ${L.name}` };
+  toast(`Top of ${L.name}`, 1.4);
 }
 
 // ---------- Board tracks in the snow ----------
@@ -838,8 +1524,8 @@ addEventListener('keydown', e => {
   if (k === ' ') { e.preventDefault(); wantJump = true; }
   if (k === 'c') camMode = (camMode + 1) % CAM_MODES.length, toast(CAM_MODES[camMode], 0.8);
   if (k === 'm') toggleMap();
-  if (k === 'r') { S.ride = null; dropIn(lastDrop); }
-  if (k === 'e' && !S.ride && liftNear) startRide(liftNear);
+  if (k === 'r') { S.ride = null; liftQueue = null; dropIn(lastDrop); }
+  if (k === 'e' && !S.ride && !liftQueue && liftNear) startRide(liftNear);
   if (k >= '1' && k <= String(SPOTS.length)) dropIn(SPOTS[+k - 1]);
   if (k === 'escape' && !mapEl.hidden) toggleMap(false);
 });
@@ -884,9 +1570,9 @@ function dropIn(spot) {
   const n = normalAt(spot.x, spot.z, new THREE.Vector3());
   S.p.set(spot.x, height(spot.x, spot.z), spot.z);
   trail.last = null;
-  const down = new THREE.Vector3(n.x, 0, n.z);
-  if (down.lengthSq() < 1e-6) down.set(1, 0, 0);
-  S.f.copy(down.normalize()); S.f.y = 0;
+  // Face down the fall line, with the board in the slope plane.
+  const down = downhillDir(spot.x, spot.z);
+  S.f.copy(down).addScaledVector(n, -down.dot(n)).normalize();
   S.v.set(0, 0, 0); S.n.copy(n); S.air = false; S.crash = 0; S.lastY = S.p.y;
   camPos.copy(S.p).addScaledVector(S.f, -8).add(new THREE.Vector3(0, 4, 0));
   if (spot.name) toast(spot.name, 1.4);
@@ -896,6 +1582,7 @@ const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), right = new THREE.V
 const HALF_W = WIDTH / 2 - 30, HALF_D = DEPTH / 2 - 30;
 
 function step(dt) {
+  if (liftQueue) { queueStep(dt); wantJump = false; return; }
   if (S.ride) { rideStep(dt); wantJump = false; return; }
   const steerIn = Math.max(-1, Math.min(1, (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0) + touch.steer));
   const tuck = keys.has('w') || keys.has('arrowup') || touch.T;
@@ -1007,7 +1694,8 @@ function land(ground) {
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 function updateCamera(dt) {
   const hv = tmp.set(S.v.x, 0, S.v.z);
-  const dir = hv.lengthSq() > 4 ? hv.normalize() : tmp.set(S.f.x, 0, S.f.z).normalize();
+  // In the lift queue the camera stands off to the side of the line so you can watch your chair come round.
+  const dir = S.ride ? tmp.copy(S.ride.dir) : liftQueue ? tmp.set(liftQueue.L.d0.z, 0, -liftQueue.L.d0.x) : hv.lengthSq() > 4 ? hv.normalize() : tmp.set(S.f.x, 0, S.f.z).normalize();
   const want = tmp2;
   const k = 1 - Math.exp(-dt * (camMode === 2 ? 30 : 4));
   if (camMode === 0) want.copy(S.p).addScaledVector(dir, -7.5).add({ x: 0, y: 3.2, z: 0 });
@@ -1123,6 +1811,9 @@ function drawMap(cv) {
     r *= s; gg *= s; b *= s;
     const c100 = Math.floor(h / 100), cR = Math.floor(H[j * GX + Math.min(GX - 1, i + 1)] / 100), cD = Math.floor(H[Math.min(GY - 1, j + 1) * GX + i] / 100);
     if (c100 !== cR || c100 !== cD) { r *= 0.7; gg *= 0.72; b *= 0.8; }
+    // Woods, the same cover the 3D trees use.
+    const den = DEN[lidx(i * CX - WIDTH / 2, j * CZ - DEPTH / 2)] / 255 || 0;
+    r += (128 * s - r) * den * 0.6; gg += (146 * s - gg) * den * 0.6; b += (132 * s - b) * den * 0.6;
     const o = k * 4;
     img.data[o] = Math.min(255, r); img.data[o + 1] = Math.min(255, gg); img.data[o + 2] = Math.min(255, b); img.data[o + 3] = 255;
   }
@@ -1133,6 +1824,32 @@ function drawMap(cv) {
   const k = cv.width / WIDTH, P = q => [(q.x + WIDTH / 2) * k, (q.z + DEPTH / 2) * k];
   const line = pts => { g.beginPath(); pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo'](...P(q))); };
   g.lineCap = g.lineJoin = 'round';
+  const fillA = (feats, col) => { g.fillStyle = col; for (const rings of feats || []) { g.beginPath(); for (const r of rings) { line(r); g.closePath(); } g.fill('evenodd'); } };
+  fillA(LANDW.areas.town, 'rgba(196,184,170,0.45)');
+  fillA(LANDW.areas.water, '#7fa6c6');
+  g.strokeStyle = '#7fa6c6'; g.lineWidth = Math.max(1, cv.width / 700);
+  for (const l of LANDW.lines.river || []) { line(l); g.stroke(); }
+  for (const [cls, w] of [['track', 0.5], ['road3', 0.7], ['road2', 1], ['road1', 1.6]]) {
+    g.strokeStyle = cls === 'road1' ? '#e9a23b' : '#8f8a84'; g.lineWidth = Math.max(0.6, cv.width / 1100 * w);
+    g.setLineDash(cls === 'track' ? [2, 2] : []);
+    for (const l of LANDW.lines[cls] || []) { line(l); g.stroke(); }
+  }
+  g.setLineDash([]);
+  g.fillStyle = '#5c544d';
+  for (const b of LANDW.buildings) { line(b.pts); g.closePath(); g.fill(); }
+  if (HAS_SKI) {
+    // Out of bounds dims a little; the boundary itself is orange, like the ropes on the hill.
+    const sc = document.createElement('canvas'); sc.width = LW; sc.height = LH;
+    const sg = sc.getContext('2d'), si = sg.createImageData(LW, LH);
+    const e = Math.max(1, Math.round(LW / cv.width * 1.5)), eL = e * LW;   // ~1.5 map pixels wide
+    for (let j = e; j < LH - e; j++) for (let i = e; i < LW - e; i++) {
+      const k = j * LW + i, o = k * 4, edge = skiM[k] && !(skiM[k - e] && skiM[k + e] && skiM[k - eL] && skiM[k + eL]);
+      if (edge) { si.data[o] = 255; si.data[o + 1] = 106; si.data[o + 2] = 26; si.data[o + 3] = 255; }
+      else if (!skiM[k]) { si.data[o] = 25; si.data[o + 1] = 38; si.data[o + 2] = 55; si.data[o + 3] = 60; }
+    }
+    sg.putImageData(si, 0, 0);
+    g.drawImage(sc, 0, 0, cv.width, cv.height);
+  }
   for (const p of PISTES) {
     line(p.pts);
     const c = diffOf(p.diff).color;
@@ -1140,10 +1857,13 @@ function drawMap(cv) {
     else { g.strokeStyle = c; g.lineWidth = Math.max(1.5, cv.width / 520); g.setLineDash(p.diff === 'freeride' ? [4, 3] : []); g.stroke(); }
   }
   g.setLineDash([]);
+  // Gondolas: heavy red line with square stations. Chairs: thin black line, round stations. Drag lifts: dashed.
   for (const L of LIFTS) {
-    line(L.pts); g.strokeStyle = '#1b1f24'; g.lineWidth = Math.max(1, cv.width / 900); g.stroke();
-    g.fillStyle = '#1b1f24';
-    for (const q of [L.pts[0], L.pts.at(-1)]) { g.beginPath(); g.arc(...P(q), Math.max(1.5, cv.width / 500), 0, Math.PI * 2); g.fill(); }
+    const gond = /gondola|cable_car/.test(L.type), surf = SURFACE_LIFT.test(L.type), col = gond ? '#b8321f' : '#1b1f24';
+    line(L.pts); g.strokeStyle = col; g.lineWidth = Math.max(1, cv.width / (gond ? 420 : 900)); g.setLineDash(surf ? [3, 2] : []); g.stroke(); g.setLineDash([]);
+    g.fillStyle = col;
+    const r = Math.max(1.5, cv.width / (gond ? 330 : 500));
+    for (const q of [L.pts[0], L.pts.at(-1)]) { g.beginPath(); if (gond) g.rect(P(q)[0] - r, P(q)[1] - r, 2 * r, 2 * r); else g.arc(...P(q), r, 0, Math.PI * 2); g.fill(); }
   }
 }
 const mini = document.getElementById('minimap'), big = document.getElementById('bigmap');
@@ -1153,9 +1873,13 @@ miniBase.getContext('2d').drawImage(mini, 0, 0);
 
 const mapEl = document.getElementById('map'), labelsEl = document.getElementById('labels'), meEl = document.getElementById('me');
 const frac = (x, z) => ({ u: (x + WIDTH / 2) / WIDTH, v: (z + DEPTH / 2) / DEPTH });
-for (const r of [{ name: `Annupuri ${Math.round(H[peakK])} m`, ...PEAK, peak: true }, ...RESORTS]) {
+// Villages from OSM place names (skipping street-block addresses), plus the biggest named buildings.
+const PLACES = LANDW.labels.filter(l => l.kind === 'place' && /^[\x20-\x7e]+$/.test(l.name) && !/chome|-jo|^Yotei/i.test(l.name) && Math.abs(l.x) < WIDTH / 2 - 200 && Math.abs(l.z) < DEPTH / 2 - 200)
+  .filter(l => !RESORTS.some(r => r.name.includes(l.name) && Math.hypot(r.x - l.x, r.z - l.z) < 2000));
+for (const r of [{ name: `Annupuri ${Math.round(H[peakK])} m`, ...PEAK, peak: true }, ...RESORTS,
+  ...PLACES.map(p => ({ ...p, cls: 'place' })), ...LANDMARKS.filter(b => /^[\x20-\x7e]+$/.test(b.name)).slice(0, 8).map(b => ({ ...b, cls: 'bldg' }))]) {
   const { u, v } = frac(r.x, r.z), el = document.createElement('div');
-  el.className = 'label' + (r.peak ? ' peak' : ''); el.textContent = r.name;
+  el.className = 'label' + (r.peak ? ' peak' : '') + (r.cls ? ' ' + r.cls : ''); el.textContent = r.name;
   el.style.left = `${u * 100}%`; el.style.top = `${v * 100}%`;
   labelsEl.appendChild(el);
 }
@@ -1187,12 +1911,20 @@ function drawMini() {
 // ---------- HUD ----------
 const $ = id => document.getElementById(id);
 const hud = { spd: $('spd'), alt: $('alt'), slope: $('slope'), vert: $('vert'), top: $('top'), zone: $('zone'), toast: $('toast'), prompt: $('prompt') };
-$('prompt').addEventListener('click', () => { if (liftNear && !S.ride) startRide(liftNear); });
+$('prompt').addEventListener('click', () => { if (liftNear && !S.ride && !liftQueue) startRide(liftNear); });
 let toastT = 0;
 function toast(text, secs) { hud.toast.textContent = text; hud.toast.classList.add('on'); toastT = secs; }
 function zoneName() {
   const dx = S.p.x - PEAK.x, dz = S.p.z - PEAK.z, d = Math.hypot(dx, dz);
   if (d < 350) return 'Mt. Niseko Annupuri summit';
+  if (!inResort(S.p.x, S.p.z)) {
+    // Below the resorts you're in a village; above or beside them, out of bounds.
+    let best = null, bd = 900;
+    for (const p of PLACES) { const dd = Math.hypot(p.x - S.p.x, p.z - S.p.z); if (dd < bd) { bd = dd; best = p; } }
+    const town = maskAt(openM, S.p.x, S.p.z) > 0.5 || maskAt(roadM, S.p.x, S.p.z) > 0.3;
+    if (best && (town || S.p.y < 400)) return best.name;
+    if (HAS_SKI) return 'Out of bounds · backcountry';
+  }
   if (d > 6000) return 'Niseko backcountry';
   // Which face of the mountain: compare bearing from the summit with each resort's bearing.
   const a = Math.atan2(dz, dx);
@@ -1215,12 +1947,17 @@ function updateHud(dt) {
   hud.vert.textContent = Math.round(S.vert).toLocaleString();
   hud.top.textContent = Math.round(S.top);
   const piste = !S.ride && pisteAt(S.p.x, S.p.z);
-  if (S.ride) hud.zone.textContent = `Riding ${S.ride.L.name}`;
+  const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  if (liftQueue) hud.zone.textContent = `${liftQueue.L.gondola ? 'Cabin' : 'Chair'} in ${Math.max(0, Math.ceil(liftQueue.until - liftTime))} s · ${liftQueue.L.name}`;
+  else if (S.ride) {
+    const R = S.ride, L = R.L, left = L.n ? L.Tline - (liftTime + R.k * L.gap) % L.cycle : (L.total - R.s) / L.v;
+    hud.zone.textContent = `${L.name} · ${fmt(Math.max(0, left))} to the top`;
+  }
   else if (piste && piste.name) hud.zone.innerHTML = `<span class="dot" style="background:${diffOf(piste.diff).color}"></span>${piste.name.replace(/[<&>]/g, '')} · ${diffOf(piste.diff).label}`;
   else hud.zone.textContent = zoneName();
-  liftNear = !S.ride && S.v.length() < 12 ? nearLiftBase() : null;
+  liftNear = !S.ride && !liftQueue && S.v.length() < 12 ? nearLiftBase() : null;
   hud.prompt.hidden = !liftNear;
-  if (liftNear) hud.prompt.textContent = `${matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Press E'} to ride ${liftNear.name}`;
+  if (liftNear) hud.prompt.textContent = `${matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Press E'} to ride ${liftNear.name} (${liftNear.gondola ? 'gondola' : liftNear.n ? 'chair' : 'lift'})`;
   drawMini();
 }
 
@@ -1251,6 +1988,7 @@ addEventListener('resize', () => {
 });
 
 dropIn(SPOTS[0]);
+updateTrees(0, 99);
 let running = false, last = performance.now(), acc = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -1263,7 +2001,8 @@ function frame(now) {
   sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p);
   sky.position.copy(camera.position);
   updateParticles(dt);
-  updateLifts(now / 1000);
+  updateLifts(running && mapEl.hidden ? dt : 0);
+  updateTrees(dt);
   updateHud(dt);
   updateAudio();
   if (!window.__noRender) renderer.render(scene, camera);
@@ -1273,9 +2012,11 @@ requestAnimationFrame(frame);
 
 $('loading').hidden = true;
 $('credits').textContent = `Elevation: ${meta.source}, ${Math.round(CX)} m grid over ${(WIDTH / 1000).toFixed(1)} × ${(DEPTH / 1000).toFixed(1)} km. ` +
-  (OSM ? `${PISTES.length} runs and ${LIFTS.length} lifts © OpenStreetMap contributors (ODbL), fetched ${OSM.fetched || ''}. Ride a lift from its base station; hold Tuck to fast-forward.` : 'Resort labels are approximate.');
+  (OSM ? `${PISTES.length} runs and ${LIFTS.length} lifts${LAND ? `, ${LANDW.buildings.length.toLocaleString()} buildings, roads, rivers and woods` : ''} © OpenStreetMap contributors (ODbL), fetched ${OSM.fetched || ''}. Ride a lift from its base station at its real speed; hold Tuck to fast-forward.` : 'Resort labels are approximate.');
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
 window.__ski = { S, PEAK_GEO, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+// Test hooks: advance lifts and physics without the render loop.
+window.__sim = { renderer, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
 </script>
