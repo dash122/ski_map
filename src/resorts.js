@@ -54,6 +54,22 @@ export const RESORTS = {
     // Volcano on the horizon: Mt. Naeba, south-west across the Uonuma valley.
     volcano: { lon: 138.6903, lat: 36.8460 },
   },
+  teine: {
+    id: 'teine', label: '札幌手稻 Sapporo Teine', data: 'data/teine/',
+    title: '札幌手稻滑雪', brand: '札幌手稻', mountain: '手稻山',
+    code: 'CTS', name: '札幌手稻', en: 'Sapporo Teine', region: '北海道 · 手稻山', thumb: 'thumbs/teine.webp',
+    sub: '在札幌手稻山的真實地形上滑雪：山頂的 Highland 區俯瞰石狩灣，山下是 1972 年冬奧的 Olympia 區。',
+    summit: 'Teine', summitZone: '手稻山頂', backcountry: '手稻山野雪區',
+    // Mt. Teine (OSM peak, 1023 m); the Highland zone runs off its summit.
+    peak: { lon: 141.1932, lat: 43.0766 },
+    // Approximate base areas from the OSM lift terminals (labels only, not survey data).
+    bases: [
+      { name: 'Olympia', lon: 141.2075, lat: 43.1055 },
+      { name: 'Highland', lon: 141.2060, lat: 43.0830 },
+    ],
+    // Snow-capped volcano on the horizon: Mt. Yotei, south-west beyond the Jozankei hills.
+    volcano: { lon: 140.811, lat: 42.826 },
+  },
   cypress: {
     id: 'cypress', label: '賽普勒斯山 Cypress Mountain', data: 'data/cypress/',
     title: '賽普勒斯山滑雪', brand: '賽普勒斯山', mountain: '賽普勒斯山',
@@ -68,6 +84,24 @@ export const RESORTS = {
     ],
     // Snow-capped volcano on the horizon: Mt. Garibaldi, north across Howe Sound.
     volcano: { lon: -123.0043, lat: 49.8503 },
+  },
+  chaserrugg: {
+    id: 'chaserrugg', label: 'Chäserrugg 托根堡', data: 'data/chaserrugg/',
+    title: 'Chäserrugg 滑雪', brand: 'Chäserrugg', mountain: 'Chäserrugg',
+    code: 'ZRH', name: 'Chäserrugg', en: 'Toggenburg', region: '瑞士 · 聖加侖州', thumb: 'thumbs/chaserrugg.webp',
+    sub: '在瑞士托根堡 Chäserrugg 的真實地形上滑雪，從 Unterwasser 搭纜車直上丘爾菲爾斯滕（Churfirsten）山脊。',
+    summit: 'Chäserrugg', summitZone: 'Chäserrugg 山頂', backcountry: 'Chäserrugg 野雪區',
+    // The Churfirsten ridge runs west along the box; the ski summit is Chäserrugg itself (2262 m).
+    peak: { lon: 9.3128, lat: 47.1548 },
+    // Approximate base areas from the OSM lift terminals (labels only, not survey data).
+    bases: [
+      { name: 'Unterwasser', lon: 9.3127, lat: 47.1930 },
+      { name: 'Iltios', lon: 9.3123, lat: 47.1790 },
+      { name: 'Stöfeli', lon: 9.3150, lat: 47.1700 },
+      { name: 'Oberdorf', lon: 9.3470, lat: 47.1910 },
+    ],
+    // Säntis, the Alpstein massif's high point, to the north (not a volcano, but the horizon's snow-capped peak).
+    volcano: { lon: 9.3432, lat: 47.2494 },
   },
 };
 

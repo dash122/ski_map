@@ -20,16 +20,22 @@ Every drop-in starts at rest. Press W (or the touch tuck button), steer, or jump
 | C | Cycle cameras (chase, low, helmet, drone) |
 | R | Back to your last drop point |
 | 1–5 | Top of each resort's highest lift, then the summit |
+| Esc / P | Pause: resume, restart, or back to the home screen to pick another resort |
+| G | Swap regular / goofy stance |
 
 On touch screens, on-screen buttons replace the keys. Tap the walking button to carry the board and walk uphill or downhill. W/S move forward/back and A/D turn. The camera faces the direction of travel, including when walking backward. Drag the scene to change heading. On touch screens, use the forward/back buttons and the pad to turn. Switch modes on the ground; boarding a lift or dropping in puts the board back on.
 
 ## Resorts
 
-Pick the mountain and your kit on the home screen, or deep-link past it with `?resort=niseko`, `?resort=appi` or `?resort=gala`. A loading bar names each step (terrain, lifts, villages…) while the resort builds. Card thumbnails in `public/thumbs/` are bluebird-daylight screenshots of the game framing each resort's signature view, rendered by `tools/render_thumbs.mjs` (Niseko overlooks Mt. Yotei, Appi faces Mt. Iwate, Gala looks down its steep upper slopes toward the Shinkansen station):
+Pick the mountain and your kit on the home screen, or deep-link past it with `?resort=niseko`, `?resort=appi`, `?resort=gala` or `?resort=cypress`. A loading bar names each step (terrain, lifts, villages…) while the resort builds. Card thumbnails in `public/thumbs/` are bluebird-daylight screenshots of the game framing each resort's signature view, rendered by `tools/render_thumbs.mjs` (Niseko overlooks Mt. Yotei, Appi faces Mt. Iwate, Gala looks down its steep upper slopes toward the Shinkansen station):
 
 - **Niseko United** (default): Mt. Niseko Annupuri, Hokkaido. Data in `public/data/`.
 - **Appi Kogen**: Mt. Maemori, Iwate, with Mt. Iwate on the horizon. Data in `public/data/appi/`.
 - **Gala Yuzawa**: Mt. Takanokura, Niigata, with its gondola rising straight from the Shinkansen station and Mt. Naeba on the horizon. Data in `public/data/gala/`. Its OSM data was built from OpenStreetMap API 0.6 map tiles while Overpass was down; the monthly workflow refreshes it from Overpass.
+
+- **Cypress Mountain**: West Vancouver, BC, with Mt. Garibaldi on the horizon. Data in `public/data/cypress/`, baked by the workflows from AWS terrain tiles (GSI is Japan-only) and OpenStreetMap.
+
+The minimap turns with you (heading up), zooms 450 / 900 / 1800 m with the + and − buttons, draws runs at their corridor width with downhill chevrons, and points to the next lift. Pick a skill level (beginner, intermediate, advanced) on the home screen: it sets cruising and tucked speeds and how much a turn costs. At night the lift towers and terminals carry lamps that light the snow.
 
 All use the same page and logic; `src/resorts.js` holds each resort's names, base areas and data folder, and `tools/resorts.json` holds the map boxes the data tools bake. Set `RESORT=appi` when running a tool by hand, e.g. `RESORT=appi python3 tools/fetch_dem_gsi.py public/data/appi/dem.json`.
 

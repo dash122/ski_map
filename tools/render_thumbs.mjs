@@ -10,6 +10,8 @@ const VIEWS = {
   niseko: { from: [140.6622, 42.8715], at: [140.811, 42.826, 1300] }, // Top of King #4 above the trees, overlooking Mt. Yotei
   appi: { from: [140.9586, 39.9768], at: [141.0007, 39.8528, 1500] }, // Maemori summit slopes toward Mt. Iwate
   cypress: { from: [-123.2062, 49.3972], at: [-123.0043, 49.8503, 1600] }, // Top of Eagle Express looking north-east to Mt. Garibaldi
+  chaserrugg: { from: [9.3150, 47.1590], at: [9.3432, 47.2494, 2400] }, // Chäserrugg summit ridge looking north to the Säntis
+  teine: { from: [141.1960, 43.0790], at: [141.33, 43.17, 0] }, // Highland summit slopes looking down to Ishikari Bay
   gala: { from: [138.7712, 36.9466], at: [138.7996, 36.9503, 350] }, // Steep upper slopes below the Coach summit, facing the station
 };
 const base = process.env.URL || 'http://localhost:4173/';

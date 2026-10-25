@@ -31,7 +31,7 @@ jobs:
               env = {**os.environ, 'RESORT': rid}
               script = 'tools/fetch_dem.py' if c.get('dem') == 'aws' else 'tools/fetch_dem_gsi.py'
               subprocess.run(['python3', script, c['out'] + '/dem.json'], check=True, env=env)
-              if c.get('dem') == 'aws' and not os.path.exists(c['out'] + '/far.json'):
+              if not os.path.exists(c['out'] + '/far.json'):
                   subprocess.run(['python3', 'tools/fetch_far.py', c['out'] + '/far.json'], check=True, env=env)
           PY
       - name: Commit
