@@ -425,7 +425,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { courseSegments, courseWidth, narrowCourseWidth } from './src/course-edges.js';
+import { courseSegments, courseWidth, isConnectorName, measureCourseWidth } from './src/course-edges.js';
 import { ridingResistance, SKILLS } from './src/riding-speed.js';
 import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
 import { createRenderQuality } from './src/render-quality.js';
@@ -539,6 +539,44 @@ const SPOTS = [{ name: `${RESORT.summit} summit`, ...flatNear(PEAK.x + 30, PEAK.
   name: `Above ${r.name}`, x: PEAK.x + (r.x - PEAK.x) * 0.13, z: PEAK.z + (r.z - PEAK.z) * 0.13,
 })));
 
+// ---------- Land cover from OpenStreetMap (optional: data/land.json, built by tools/build_land.py) ----------
+// Rasterised once into masks the trees, terrain shader and trail map share. Without the file, forests fall back to noise.
+let LAND = null;
+try { const r = await load.fetch(DATA + 'land.json', '下載建築、道路與樹林', 40); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
+const LOW_END = matchMedia('(pointer: coarse)').matches;
+const LW = LOW_END ? 1024 : 2048, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
+const LANDW = { areas: {}, lines: {}, buildings: [], labels: [], pois: [] };
+if (LAND) {
+  const [ow, on] = LAND.origin, Q = LAND.q;
+  const dec = c => { const out = []; let x = 0, y = 0; for (let i = 0; i < c.length; i += 2) { x += c[i]; y += c[i + 1]; out.push(toWorld(ow + x / Q, on - y / Q)); } return out; };
+  for (const [k, feats] of Object.entries(LAND.areas || {})) LANDW.areas[k] = feats.map(rings => rings.map(dec));
+  for (const [k, ls] of Object.entries(LAND.lines || {})) LANDW.lines[k] = ls.map(dec);
+  LANDW.buildings = (LAND.buildings || []).map(b => ({ h: b.h, name: b.n || '', roof: b.r || '', pts: dec(b.c) }));
+  LANDW.labels = (LAND.labels || []).map(l => ({ name: l.n, kind: l.k, ele: l.e, ...dec(l.c)[0] }));
+  LANDW.pois = (LAND.pois || []).map(p => ({ name: p.n, kind: p.k, ...dec(p.c)[0] }));
+  namePoiBuildings(LANDW.buildings, LANDW.pois);
+}
+const lmask = (() => {
+  const c = document.createElement('canvas'); c.width = LW; c.height = LH;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  const P = q => [(q.x + WIDTH / 2) * LPX, (q.z + DEPTH / 2) * LPX];
+  const path = (pts, close) => { pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo'](...P(q))); if (close) g.closePath(); };
+  const api = {
+    fill(feats, a = 1) { g.globalAlpha = a; for (const rings of feats || []) { g.beginPath(); for (const r of rings) path(r, true); g.fill('evenodd'); } g.globalAlpha = 1; },
+    stroke(lines, m, a = 1) { g.globalAlpha = a; g.lineWidth = Math.max(1, m * LPX); for (const l of lines || []) { g.beginPath(); path(l); g.stroke(); } g.globalAlpha = 1; },
+    poly(pts, m = 0) { g.beginPath(); path(pts, true); g.fill(); if (m) { g.lineWidth = m * LPX; g.stroke(); } },
+  };
+  return draw => {
+    g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, LW, LH);
+    g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
+    draw(api);
+    const d = g.getImageData(0, 0, LW, LH).data, out = new Uint8Array(LW * LH);
+    for (let i = 0; i < out.length; i++) out[i] = d[i * 4];
+    return out;
+  };
+})();
+const A = LANDW.areas, Ln = LANDW.lines;
+
 // ---------- OpenStreetMap pistes and lifts (optional: data/osm.json, built by tools/build_osm.py) ----------
 let OSM = null;
 try { const r = await load.fetch(DATA + 'osm.json', '下載雪道與纜車', 34); if (r.ok) OSM = await r.json(); } catch { OSM = null; }
@@ -556,12 +594,26 @@ let pisteData = null;
 const PISTES = [], LIFTS = [], COURSE_SEGMENTS = [];
 const SEG_CELL = 60, segGrid = new Map();
 const worldPts = flat => { const out = []; for (let i = 0; i < flat.length; i += 2) out.push(toWorld(flat[i], flat[i + 1])); return out; };
+// Mapped woods (OSM forest and scrub), for measuring how wide each run is cut through the trees.
+const woodsM = LAND ? lmask(m => { m.fill(A.forest); m.fill(A.scrub); }) : null;
+const woodAt = (x, z) => {
+  const i = Math.floor((x + WIDTH / 2) * LPX), j = Math.floor((z + DEPTH / 2) * LPX);
+  return i >= 0 && j >= 0 && i < LW && j < LH && woodsM[j * LW + i] > 127;
+};
+const WIDTH_SOURCE = { osm: 0, woods: 0, name: 0, default: 0, area: 0 };
 if (OSM) {
   const g = pisteCanvas.getContext('2d'), sx = MASK_W / WIDTH, sz = MASK_H / DEPTH;
   g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
   for (const p of OSM.pistes || []) {
     const pts = worldPts(p.c); if (pts.length < 2) continue;
-    const piste = { name: p.n || '', diff: p.d || '', area: !!p.a, pts, w: p.w ?? (p.a ? undefined : narrowCourseWidth(p.n, pts, height)) };
+    // Width, best source first: an OSM width tag, then the corridor measured between mapped woods, then the
+    // difficulty default. Connectors and descent tracks (by name) are a lane of 11 m, or the measured gap if
+    // narrower, capped at 16 m: mapped woods beside them are traced loosely and often take in a road or run.
+    const measured = !p.a && !p.w && woodsM ? measureCourseWidth(pts, woodAt) : undefined;
+    const named = !p.a && !p.w && isConnectorName(p.n) ? Math.min(16, measured ?? 11) : undefined;
+    const widthSource = p.a ? 'area' : p.w ? 'osm' : named ? 'name' : measured ? 'woods' : 'default';
+    WIDTH_SOURCE[widthSource]++;
+    const piste = { name: p.n || '', diff: p.d || '', area: !!p.a, pts, w: p.w ?? named ?? measured, widthSource };
     PISTES.push(piste);
     g.beginPath();
     pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo']((q.x + WIDTH / 2) * sx, (q.z + DEPTH / 2) * sz));
@@ -588,6 +640,7 @@ if (OSM) {
     }
   }
   pisteData = g.getImageData(0, 0, MASK_W, MASK_H).data;
+  console.log('run widths by source', JSON.stringify(WIDTH_SOURCE));
   for (const l of OSM.lifts || []) {
     let pts = worldPts(l.c); if (pts.length < 2) continue;
     if (height(pts[0].x, pts[0].z) > height(pts.at(-1).x, pts.at(-1).z)) pts = pts.reverse(); // ride uphill
@@ -659,46 +712,9 @@ function pisteEdge(x, z) {
 }
 let edgeNow = null;
 
-// ---------- Land cover from OpenStreetMap (optional: data/land.json, built by tools/build_land.py) ----------
-// Rasterised once into masks the trees, terrain shader and trail map share. Without the file, forests fall back to noise.
-let LAND = null;
-try { const r = await load.fetch(DATA + 'land.json', '下載建築、道路與樹林', 40); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
-const LOW_END = matchMedia('(pointer: coarse)').matches;
-const LW = LOW_END ? 1024 : 2048, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
-const LANDW = { areas: {}, lines: {}, buildings: [], labels: [], pois: [] };
-if (LAND) {
-  const [ow, on] = LAND.origin, Q = LAND.q;
-  const dec = c => { const out = []; let x = 0, y = 0; for (let i = 0; i < c.length; i += 2) { x += c[i]; y += c[i + 1]; out.push(toWorld(ow + x / Q, on - y / Q)); } return out; };
-  for (const [k, feats] of Object.entries(LAND.areas || {})) LANDW.areas[k] = feats.map(rings => rings.map(dec));
-  for (const [k, ls] of Object.entries(LAND.lines || {})) LANDW.lines[k] = ls.map(dec);
-  LANDW.buildings = (LAND.buildings || []).map(b => ({ h: b.h, name: b.n || '', roof: b.r || '', pts: dec(b.c) }));
-  LANDW.labels = (LAND.labels || []).map(l => ({ name: l.n, kind: l.k, ele: l.e, ...dec(l.c)[0] }));
-  LANDW.pois = (LAND.pois || []).map(p => ({ name: p.n, kind: p.k, ...dec(p.c)[0] }));
-  namePoiBuildings(LANDW.buildings, LANDW.pois);
-}
 const TREE_R = LOW_END ? 750 : 1700, TREE_CHUNK = LOW_END ? 200 : 400;   // smaller mobile chunks bound streaming work
 const HAS_SKI = PISTES.length > 0;
 const ROAD_W = { road1: 9, road2: 7, road3: 5, track: 3.5 };
-const lmask = (() => {
-  const c = document.createElement('canvas'); c.width = LW; c.height = LH;
-  const g = c.getContext('2d', { willReadFrequently: true });
-  const P = q => [(q.x + WIDTH / 2) * LPX, (q.z + DEPTH / 2) * LPX];
-  const path = (pts, close) => { pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo'](...P(q))); if (close) g.closePath(); };
-  const api = {
-    fill(feats, a = 1) { g.globalAlpha = a; for (const rings of feats || []) { g.beginPath(); for (const r of rings) path(r, true); g.fill('evenodd'); } g.globalAlpha = 1; },
-    stroke(lines, m, a = 1) { g.globalAlpha = a; g.lineWidth = Math.max(1, m * LPX); for (const l of lines || []) { g.beginPath(); path(l); g.stroke(); } g.globalAlpha = 1; },
-    poly(pts, m = 0) { g.beginPath(); path(pts, true); g.fill(); if (m) { g.lineWidth = m * LPX; g.stroke(); } },
-  };
-  return draw => {
-    g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, LW, LH);
-    g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
-    draw(api);
-    const d = g.getImageData(0, 0, LW, LH).data, out = new Uint8Array(LW * LH);
-    for (let i = 0; i < out.length; i++) out[i] = d[i * 4];
-    return out;
-  };
-})();
-const A = LANDW.areas, Ln = LANDW.lines;
 // Woodland shoulders share the piste exclusion mask, so trees stay outside runs.
 const courseShoulderM = lmask(m => {
   for (const { a, b, width } of COURSE_SEGMENTS) m.stroke([[a, b]], width + 40);
@@ -3251,7 +3267,7 @@ $('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} �
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { saveRecord(RESORT.id, { runs: record(RESORT.id).runs + 1 }); $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
-window.__ski = { weather, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;
 window.__liftQueues = liftQueues;
