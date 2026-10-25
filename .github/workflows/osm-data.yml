@@ -10,6 +10,7 @@ on:
       - tools/niseko_land.overpassql
       - tools/build_osm.py
       - tools/build_land.py
+      - tools/fetch_infrastructure.mjs
       - .github/workflows/osm-data.yml
 
 permissions:
@@ -20,6 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Refresh mapped lighting
+        continue-on-error: true # Preserve existing lamps if Overpass is unavailable.
+        run: node tools/fetch_infrastructure.mjs
       - name: Query Overpass
         run: |
           mkdir -p tools/data

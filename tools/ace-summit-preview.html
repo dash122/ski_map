@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Ace summit building preview</title>
+<style>body{margin:0;background:#b6cbdc;font:14px sans-serif}p{position:absolute;top:12px;left:20px;color:#17222c}canvas{display:block}</style>
+<p>NEST813 / Ace Gondola — drag to orbit, scroll to zoom</p>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createAceSummit } from '../src/ace-summit.js';
+const renderer = new THREE.WebGLRenderer({antialias:true}); renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(devicePixelRatio); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; document.body.append(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xb6cbdc);
+scene.add(new THREE.HemisphereLight(0xe4efff,0x7b7266,2));
+const sun=new THREE.DirectionalLight(0xfff0d5,3);sun.position.set(35,60,30);sun.castShadow=true;sun.shadow.camera.left=-60;sun.shadow.camera.right=60;sun.shadow.camera.top=60;sun.shadow.camera.bottom=-60;sun.shadow.mapSize.set(2048,2048);scene.add(sun);
+const data=await fetch('/data/ace-summit.json').then(r=>r.json());const g=data.osm.geometry.slice(0,-1);
+const pts=g.map(p=>({x:(p.lon-g[0].lon)*81500,z:(g[0].lat-p.lat)*111100}));
+const model=createAceSummit({scene,pts,height:()=>0});const bounds=new THREE.Box3().setFromObject(model),center=bounds.getCenter(new THREE.Vector3());
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshStandardMaterial({color:0xe7edf3,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-0.04;ground.receiveShadow=true;scene.add(ground);
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,500);camera.position.copy(center).add(new THREE.Vector3(47,19,42));
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.copy(center);controls.update();
+addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()});
+renderer.setAnimationLoop(()=>renderer.render(scene,camera));
+</script></html>

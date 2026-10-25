@@ -1,0 +1,1 @@
+{"source":"OpenStreetMap query pending","fetched":null,"status":"unavailable","reason":"Public Overpass endpoints rejected or timed out during implementation. Run node --use-system-ca tools/fetch_infrastructure.mjs to populate verified positions.","lamps":[]}

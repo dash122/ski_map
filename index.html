@@ -36,14 +36,14 @@ canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block
 .stat .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mist); margin-top: 3px; }
 .stat:nth-child(n+3) { display: none; }
 #mini { top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); padding: 4px; }
-#mini canvas { display: block; width: 112px; height: 90px; border-radius: 3px; }
-#tools { top: calc(110px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); display: flex; gap: 6px; pointer-events: auto; }
+#mini canvas { display: block; width: 140px; height: 112px; border-radius: 3px; }
+#tools { top: calc(132px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); display: flex; gap: 6px; pointer-events: auto; }
 #keys { display: none; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 10px 12px; font-size: 12px; color: var(--mist); line-height: 1.7; }
 kbd { font-family: var(--display); font-weight: 600; color: var(--snow); background: rgba(255,255,255,0.12); border-radius: 3px; padding: 0 5px; }
 #toast { top: 30%; left: 50%; transform: translateX(-50%); font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); text-shadow: 0 2px 18px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.25s; width: max-content; max-width: 88vw; text-align: center; text-wrap: balance; line-height: 1.05; }
 #toast.on { opacity: 1; }
 #prompt { bottom: calc(170px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); pointer-events: auto; background: var(--signal); color: var(--ink); border: 0; }
-#liftSpeed { top: calc(148px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); padding: 7px 9px; display: flex; gap: 8px; align-items: center; pointer-events: auto; font-size: 12px; }
+#liftSpeed { top: calc(170px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); padding: 7px 9px; display: flex; gap: 8px; align-items: center; pointer-events: auto; font-size: 12px; }
 #liftSpeed select { font: inherit; color: var(--snow); background: var(--ink); border: 1px solid var(--mist); border-radius: 4px; padding: 4px; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(255,255,255,0.6); vertical-align: 0; }
 
@@ -75,6 +75,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #map .label.peak { background: var(--signal); }
 #map .label.place { background: none; color: var(--ink); font-size: 13px; font-style: italic; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
 #map .label.bldg { background: rgba(92,84,77,0.85); color: var(--snow); font-size: 11px; letter-spacing: 0.02em; text-transform: none; }
+#map .label.bldg.dining { background: #873c2f; }
 #map .me { position: absolute; width: 14px; height: 14px; transform: translate(-50%, -50%) scale(calc(1 / var(--map-scale, 1))); border-radius: 50%; background: var(--signal); border: 2px solid var(--snow); pointer-events: none; }
 #map .lift-stop { position: absolute; transform: translate(-50%, -50%) scale(calc(1 / var(--map-scale, 1))); z-index: 2; min-width: 28px; min-height: 28px; border-radius: 50%; border: 2px solid var(--snow); background: #1b1f24; color: white; font: 700 13px var(--body); cursor: pointer; box-shadow: 0 2px 8px #0009; }
 #map .lift-stop.gondola { background: #b8321f; }
@@ -88,6 +89,10 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #map .lift-list-items { max-height: min(48vh, 360px); overflow-y: auto; padding: 2px 6px 8px; }
 #map .lift-list-items button { display: block; width: 100%; padding: 8px; margin: 2px 0; border: 0; border-radius: 3px; background: rgba(255,255,255,.08); color: var(--snow); text-align: left; cursor: pointer; font: 12px var(--body); }
 #map .lift-list-items button:hover, #map .lift-list-items button:focus-visible { background: rgba(255,255,255,.22); }
+#map .destination-lists { position: absolute; left: 8px; top: 8px; z-index: 5; width: min(260px, calc(100% - 166px)); display: grid; gap: 6px; }
+#map .destination-lists .lift-list { position: static; width: 100%; }
+#map .trail-start { background: #123966; border-radius: 3px; }
+#map .trail-note { margin: 0; padding: 4px 10px 8px; font-size: 11px; line-height: 1.5; }
 #map .zoom { position: absolute; right: 8px; top: 52px; display: grid; gap: 6px; width: 140px; padding: 8px; border-radius: 4px; background: var(--panel); }
 #map .zoom-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
 #map .zoom-actions { display: flex; gap: 6px; }
@@ -126,13 +131,23 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   .stat.big .v { font-size: 52px; }
   .stat .l { font-size: 11px; }
   #mini { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 6px; }
-  #mini canvas { width: 200px; height: 160px; }
-  #tools { top: calc(190px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
+  #mini canvas { width: 260px; height: 208px; }
+  #tools { top: calc(238px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
   #toast { font-size: 44px; top: 32%; }
   #prompt { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
-  #liftSpeed { top: calc(228px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
+  #liftSpeed { top: calc(276px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) { #toast, #knob { transition: none; } }
+#conditions { top: calc(156px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); pointer-events: auto; width: min(250px, calc(100vw - 24px)); background: #152638; }
+#conditions summary { cursor: pointer; padding: 10px 12px; font-size: 13px; min-height: 24px; align-content: center; }
+#conditions summary::marker { color: var(--signal); }
+#conditions .controls { display: grid; gap: 10px; padding: 0 12px 12px; }
+#conditions label { display: grid; grid-template-columns: 42px 1fr; gap: 8px; align-items: center; font-size: 13px; }
+#conditions select { min-width: 0; min-height: 40px; font: inherit; color: var(--snow); background: var(--ink); border: 1px solid var(--mist); border-radius: 4px; padding: 6px; cursor: pointer; }
+#conditions select:focus-visible, #conditions summary:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+#conditions p { margin: 0; color: #c4d4e3; font-size: 12px; line-height: 1.5; }
+@media (min-width: 900px) { #conditions { top: calc(88px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); } }
+@media (max-height: 500px) { #conditions { top: calc(10px + env(safe-area-inset-top, 0px)); left: 34%; width: 220px; } }
 </style>
 
 <canvas id="gl"></canvas>
@@ -149,13 +164,21 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 <div class="hud panel" id="keys">
   <kbd>A</kbd><kbd>D</kbd> 轉彎 · <kbd>W</kbd> 壓低／平地滑行 · <kbd>S</kbd> 煞車<br>
   <kbd>Space</kbd> 跳躍（A/D 旋轉）· <kbd>C</kbd> 鏡頭 · <kbd>G</kbd> 切換站姿<br>
-  <kbd>M</kbd> 地圖／傳送 · <kbd>R</kbd> 返回起點 · <kbd>E</kbd> 搭乘纜車 · <kbd>1</kbd>–<kbd>5</kbd> 地點
+  <kbd>F</kbd> 步行／穿上雪板 · <kbd>M</kbd> 地圖／傳送 · <kbd>R</kbd> 返回起點 · <kbd>E</kbd> 搭乘纜車 · <kbd>1</kbd>–<kbd>5</kbd> 地點
 </div>
+<details class="hud panel" id="conditions">
+  <summary>時間／天氣 · <span id="conditionsStatus" aria-live="polite">Bluebird</span></summary>
+  <div class="controls">
+    <label for="timeSelect">時間<select id="timeSelect" disabled><option value="day">白天</option><option value="sunset">黃昏</option><option value="night">夜晚</option></select></label>
+    <label for="weatherSelect">天氣<select id="weatherSelect" disabled><option value="clear">晴朗 · Bluebird</option><option value="overcast">陰天</option><option value="snow">降雪 · Snow</option><option value="storm">暴風雪 · Snowstorm</option></select></label>
+    <p id="conditionsHint">自由組合時間與天氣；夜晚自動開啟頭燈。</p>
+  </div>
+</details>
 <div class="hud" id="toast"></div>
 <button class="hud btn" id="prompt" hidden></button>
 <label class="hud panel" id="liftSpeed" hidden>纜車速度 <select id="liftSpeedSelect" aria-label="纜車速度"></select></label>
 
-<div class="hud" id="tools"><button class="btn" id="tM">地圖</button><button class="btn" id="tC">鏡頭</button></div>
+<div class="hud" id="tools"><button class="btn" id="tWalk" aria-pressed="false">步行 · F</button><button class="btn" id="tM">地圖</button><button class="btn" id="tC">鏡頭</button></div>
 <div id="touch">
   <div id="pad" aria-label="左右拖曳轉彎"><span>拖曳轉彎</span><div class="track"><div id="knob"></div></div></div>
   <div class="grp"><button id="tB">煞車</button><button id="tJ">跳躍</button><button id="tT">壓低</button></div>
@@ -170,6 +193,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
       <dt>壓低</dt><dd>按住加速，或在平地滑行</dd>
       <dt>煞車</dt><dd>按住側滑減速</dd>
       <dt>跳躍</dt><dd>起跳後拖曳旋轉</dd>
+      <dt>步行</dt><dd>切換步行後，按鈕前後移動，左側拖曳轉向；拖曳雪地轉動鏡頭</dd>
       <dt>地圖</dt><dd>點選雪道地圖上的位置開始滑行</dd>
     </dl>
     <dl class="desk-only">
@@ -177,6 +201,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
       <dt><kbd>W</kbd></dt><dd>壓低加速，或在平地滑行</dd>
       <dt><kbd>S</kbd></dt><dd>側滑煞車</dd>
       <dt><kbd>Space</kbd></dt><dd>跳躍後按 A 或 D 旋轉</dd>
+      <dt><kbd>F</kbd></dt><dd>步行／穿上雪板；W/S 前後移動，A/D 轉向，鏡頭跟隨行進方向</dd>
       <dt><kbd>M</kbd></dt><dd>雪道地圖；點選位置開始滑行</dd>
     </dl>
     <div class="pick">
@@ -201,8 +226,11 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
       <div id="liftStops"></div>
       <div class="me" id="me"></div>
     </div></div>
-    <details class="lift-list"><summary>纜車列表 <span id="liftCount"></span></summary><div class="lift-list-items" id="liftListItems"></div></details>
-    <div class="cap">拖曳移動地圖 · 點選位置開始滑行 · 點選纜車標記直達入口 · 紅色：吊艙　黑色：吊椅</div>
+    <div class="destination-lists">
+      <details class="lift-list" name="map-destinations"><summary>雪道入口 <span id="trailCount"></span></summary><p class="trail-note">選擇雪道，從上方入口面向下坡出發。藍色「起」標記為入口。沿線標示為地圖推算的虛擬導引。</p><div class="lift-list-items" id="trailListItems"></div></details>
+      <details class="lift-list" name="map-destinations"><summary>纜車列表 <span id="liftCount"></span></summary><div class="lift-list-items" id="liftListItems"></div></details>
+    </div>
+    <div class="cap">拖曳移動地圖 · 雪道入口：從起點出發 · 點選纜車標記直達入口 · 紅色：吊艙　黑色：吊椅</div>
     <div class="zoom"><div class="zoom-head"><span>縮放</span><output id="zoomValue" for="zoomSlider">1×</output></div><input id="zoomSlider" type="range" min="1" max="12" step="0.25" value="1" aria-label="地圖縮放倍率"><div class="zoom-actions"><button class="btn" id="zoomIn" aria-label="放大地圖" title="放大地圖">+</button><button class="btn" id="zoomOut" aria-label="縮小地圖" title="縮小地圖">−</button></div></div>
     <div class="scale-bar" id="scaleBar"><span id="scaleLabel"></span><div class="scale-line" id="scaleLine"></div></div>
     <button class="btn close" id="mapClose">關閉</button>
@@ -214,6 +242,12 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 </script>
 <script type="module">
 import * as THREE from 'three';
+import { courseSegments } from './src/course-edges.js';
+import { ridingResistance } from './src/riding-speed.js';
+import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
+import { createRenderQuality } from './src/render-quality.js';
+import { chunkGeometry, chunkInstances, createNearbyShadows } from './src/spatial-rendering.js';
+import { trailRoutes, alongTrail, createTrailSigns } from './src/trail-signs.js';
 
 // ---------- Terrain data ----------
 const meta = await (await fetch('data/dem.json')).json();
@@ -311,7 +345,7 @@ const diffOf = d => DIFF[d] || { label: '雪道', color: '#5b6b7c' };
 const MASK_W = 2048, MASK_H = Math.round(MASK_W * DEPTH / WIDTH);
 const pisteCanvas = document.createElement('canvas'); pisteCanvas.width = MASK_W; pisteCanvas.height = MASK_H;
 let pisteData = null;
-const PISTES = [], LIFTS = [];
+const PISTES = [], LIFTS = [], COURSE_SEGMENTS = [];
 const SEG_CELL = 60, segGrid = new Map();
 const worldPts = flat => { const out = []; for (let i = 0; i < flat.length; i += 2) out.push(toWorld(flat[i], flat[i + 1])); return out; };
 if (OSM) {
@@ -324,7 +358,15 @@ if (OSM) {
     g.beginPath();
     pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo']((q.x + WIDTH / 2) * sx, (q.z + DEPTH / 2) * sz));
     if (piste.area) { g.closePath(); g.fill(); }
-    else { g.lineWidth = (/novice|easy/.test(piste.diff) ? 44 : 34) * sx; g.stroke(); }
+    else {
+      const sections = courseSegments(pts, piste.diff, p.w);
+      COURSE_SEGMENTS.push(...sections);
+      for (const { a, b, width } of sections) {
+        g.beginPath(); g.moveTo((a.x + WIDTH / 2) * sx, (a.z + DEPTH / 2) * sz);
+        g.lineTo((b.x + WIDTH / 2) * sx, (b.z + DEPTH / 2) * sz);
+        g.lineWidth = width * sx; g.stroke();
+      }
+    }
     // Index segments so the HUD can name the run under the board.
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[i], b = pts[i + 1];
@@ -399,7 +441,7 @@ if (LAND) {
   LANDW.buildings = (LAND.buildings || []).map(b => ({ h: b.h, name: b.n || '', roof: b.r || '', pts: dec(b.c) }));
   LANDW.labels = (LAND.labels || []).map(l => ({ name: l.n, kind: l.k, ele: l.e, ...dec(l.c)[0] }));
 }
-const TREE_R = LOW_END ? 950 : 1700, TREE_CHUNK = 400;   // trees are drawn this far; the terrain shader paints canopy beyond
+const TREE_R = LOW_END ? 750 : 1700, TREE_CHUNK = LOW_END ? 200 : 400;   // smaller mobile chunks bound streaming work
 const HAS_SKI = PISTES.length > 0;
 const ROAD_W = { road1: 9, road2: 7, road3: 5, track: 3.5 };
 const lmask = (() => {
@@ -422,6 +464,11 @@ const lmask = (() => {
   };
 })();
 const A = LANDW.areas, Ln = LANDW.lines;
+// Woodland shoulders share the piste exclusion mask, so trees stay outside runs.
+const courseShoulderM = lmask(m => {
+  for (const { a, b, width } of COURSE_SEGMENTS) m.stroke([[a, b]], width + 22);
+  for (const p of PISTES) if (p.area) m.stroke([[...p.pts, p.pts[0]]], 22);
+});
 const forestM = lmask(m => { m.fill(A.forest); m.fill(A.scrub, 0.45); m.stroke(Ln.treerow, 8); });
 const openM = lmask(m => { m.fill(A.farm); m.fill(A.grass); m.fill(A.town, 0.85); m.fill(A.paved); m.fill(A.rock); m.fill(A.wetland, 0.6); m.fill(A.water); });
 const roadM = lmask(m => { for (const [k, w] of Object.entries(ROAD_W)) m.stroke(Ln[k], w); m.stroke(Ln.rail, 4, 0.8); m.fill(A.paved, 0.75); });
@@ -485,6 +532,8 @@ const DEN = new Uint8Array(LW * LH);
     const proc = THREE.MathUtils.smoothstep(fbm(x / 520, z / 520), 0.38, 0.58);
     const f = forestM[k] / 255, o = openM[k] / 255;
     let d = LAND ? Math.max(f, proc * (1 - o) * 0.85) : proc;
+    // Reinforce wooded edges below the treeline, respecting mapped open land.
+    if (h < tl - 70) d = Math.max(d, courseShoulderM[k] / 255 * (1 - o) * 0.9);
     // Upper slopes thin to stunted birch and rime-crusted firs, then open snow.
     d *= h < tl ? 1 : 0.22 * (1 - (h - tl) / 160);
     if (h > tl - 150) d = Math.max(d, 0.1 * (1 - o));
@@ -499,7 +548,8 @@ const DEN = new Uint8Array(LW * LH);
 const canvas = document.getElementById('gl');
 const MOBILE = matchMedia('(pointer: coarse)').matches;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
+const renderQuality = createRenderQuality({ mobile: MOBILE, pixelRatio: devicePixelRatio,
+  apply: ratio => renderer.setPixelRatio(ratio) });
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -507,16 +557,19 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
+const TRAIL_ROUTES = trailRoutes(PISTES, height);
+createTrailSigns({ THREE, scene, routes: TRAIL_ROUTES, height, diffOf });
 const FOG = new THREE.Color(0xc9d8e6);
 scene.fog = new THREE.FogExp2(FOG, 0.000055);
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 40000);
+// Keep distant mountains and the sky, but give nearby surfaces more depth precision.
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.8, 40000);
 
 // Sky dome with a winter gradient.
 const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: new THREE.Color(0x2f62a3) }, horizon: { value: FOG }, sunDir: { value: new THREE.Vector3(-0.45, 0.42, 0.78).normalize() } },
+  uniforms: { top: { value: new THREE.Color(0x2f62a3) }, horizon: { value: FOG }, disc: { value: 1 }, cloud: { value: 0.2 }, night: { value: 0 }, sunDir: { value: new THREE.Vector3(-0.45, 0.42, 0.78).normalize() } },
   vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
-  fragmentShader: `uniform vec3 top, horizon, sunDir; varying vec3 vP;
+  fragmentShader: `uniform vec3 top, horizon, sunDir; uniform float disc, cloud, night; varying vec3 vP;
     float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
       return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
@@ -528,21 +581,24 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16), new THREE.Sh
       // High, thin winter cloud: streaky cirrus projected on a flat layer, fading into the horizon haze.
       vec2 q = d.xz / (d.y + 0.1) * vec2(0.7, 1.8);
       float cl = vn(q) * 0.55 + vn(q * 2.1 + 7.) * 0.3 + vn(q * 4.3 + 3.) * 0.15;
-      cl = smoothstep(0.55, 0.95, cl) * smoothstep(0.03, 0.25, d.y) * 0.5;
-      c = mix(c, vec3(0.96, 0.97, 1.0) + vec3(0.12, 0.08, 0.02) * pow(s, 6.), cl);
-      c += vec3(1.0, 0.86, 0.66) * (pow(s, 8.) * 0.25 + smoothstep(0.9993, 0.9997, s) * 3.);   // glow and disc
+      cl = smoothstep(0.55, 0.95, cl) * smoothstep(0.03, 0.25, d.y) * (0.2 + cloud * 1.4);
+      c = mix(c, vec3(0.96, 0.97, 1.0) + vec3(0.12, 0.08, 0.02) * pow(s, 6.), min(1., cl) * (1. - night));
+      c += vec3(1.0, 0.86, 0.66) * (pow(s, 8.) * 0.25 + smoothstep(0.9993, 0.9997, s) * 3.) * disc;
+      float stars = step(0.9985, h21(floor(d.xz / max(0.05, d.y) * 850.))) * smoothstep(0.05, 0.3, d.y);
+      c += vec3(stars * night * (1. - cloud) * 0.7);   // glow and disc
       gl_FragColor = vec4(c, 1.);
     }`,
 }));
 scene.add(sky);
 
-scene.add(new THREE.HemisphereLight(0xcfe3ff, 0xdfe6ee, 0.95));
+const ambient = new THREE.HemisphereLight(0xcfe3ff, 0xdfe6ee, 0.95); scene.add(ambient);
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.9);
 const SUN_DIR = new THREE.Vector3(-0.45, 0.42, 0.78).normalize(); // low winter sun from the south-west
 sun.castShadow = true;
 sun.shadow.mapSize.setScalar(MOBILE ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 400 });
 sun.shadow.bias = -0.0005;
+const nearbyShadows = createNearbyShadows(MOBILE ? 90 : 140);
 scene.add(sun, sun.target);
 
 // Fine snow grain texture so speed reads at close range.
@@ -560,7 +616,7 @@ function snowNormalTexture() {
   }
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(MOBILE ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
   return t;
 }
 function grainTexture() {
@@ -575,7 +631,7 @@ function grainTexture() {
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  t.anisotropy = Math.min(MOBILE ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
   return t;
 }
 
@@ -635,7 +691,10 @@ function grainTexture() {
         float near = 1. - smoothstep(25., 70., dist);
         // Groomed runs: smoother, slightly bluer snow with corduroy running down the fall line.
         vec2 fl = normalize(vWN.xz + vec2(1e-4));
-        float cord = 1. - 0.035 * near * (0.5 + 0.5 * sin(dot(vWXZ, vec2(-fl.y, fl.x)) * 19.));
+        float groove = dot(vWXZ, vec2(-fl.y, fl.x)) * 19.;
+        // Attenuate subpixel grooves rather than letting them flicker as the camera moves.
+        float grooveFade = 1. - smoothstep(0.6, 3.0, fwidth(groove));
+        float cord = 1. - 0.035 * near * (0.5 + 0.5 * sin(groove) * grooveFade);
         diffuseColor.rgb = mix(diffuseColor.rgb, vColor.rgb * vec3(0.94, 0.96, 0.995) * cord, pm * 0.85);
         // Off-piste: wind crust and sastrugi, a few percent of brightness at 3–30 m scales.
         float crust = vn(vWXZ / 3.) * 0.5 + vn(vWXZ / 11.) * 0.3 + vn(vWXZ / 29.) * 0.2;
@@ -690,7 +749,61 @@ try {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeVertexNormals();
-  scene.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 })));
+  const horizonMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+  const yotei = toWorld(140.811, 42.826);
+  // Continuous, domain-warped snow cover avoids visible bands on the coarse DEM.
+  horizonMaterial.onBeforeCompile = sh => {
+    sh.uniforms.yoteiCenter = { value: new THREE.Vector2(yotei.x, yotei.z) };
+    sh.vertexShader = 'varying vec3 vHorizonPosition;\nvarying vec3 vHorizonNormal;\n' + sh.vertexShader
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHorizonPosition = position;\nvHorizonNormal = normal;');
+    sh.fragmentShader = `
+      uniform vec2 yoteiCenter;
+      varying vec3 vHorizonPosition, vHorizonNormal;
+      float horizonHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float horizonNoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(horizonHash(i), horizonHash(i + vec2(1, 0)), f.x),
+          mix(horizonHash(i + vec2(0, 1)), horizonHash(i + vec2(1, 1)), f.x), f.y);
+      }
+      float horizonFbm(vec2 p) {
+        return horizonNoise(p) * 0.57 + horizonNoise(p * 2.07 + 17.3) * 0.28
+          + horizonNoise(p * 4.19 + 41.7) * 0.15;
+      }
+    ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      vec2 p = vHorizonPosition.xz - yoteiCenter;
+      float elevation = vHorizonPosition.y;
+      float mountain = 1.0 - smoothstep(4800.0, 6800.0, length(p));
+      vec2 warp = vec2(horizonFbm(p / 730.0), horizonFbm(p / 730.0 + 83.0)) - 0.5;
+      vec2 warped = p + warp * 260.0;
+      float broad = horizonFbm(warped / 480.0);
+      float detail = horizonFbm(warped / 48.0);
+      // Noise on the cone's direction stretches irregular snowfields downhill.
+      // Unlike angular sine waves, these have no repeated spacing or hard ends.
+      vec2 radial = p / max(length(p), 240.0);
+      float drainage = horizonFbm(radial * 19.0 + warp * 0.7 + elevation / 3200.0);
+      float gully = smoothstep(0.33, 0.72, drainage);
+      float snowline = 1230.0 + (broad - 0.5) * 330.0 - gully * 310.0;
+      float snowCover = smoothstep(snowline - 230.0, snowline + 260.0,
+        elevation + (detail - 0.5) * 105.0);
+      float steep = 1.0 - normalize(vHorizonNormal).y;
+      float exposed = smoothstep(0.19, 0.42, steep) * (1.0 - gully)
+        * (1.0 - smoothstep(1510.0, 1810.0, elevation));
+      snowCover *= 1.0 - exposed * 0.32;
+      // Muted blue-grey woodland reads as distant winter forest, not bare mud.
+      vec3 woods = mix(vec3(0.19, 0.25, 0.29), vec3(0.29, 0.34, 0.37), broad);
+      woods *= 0.94 + detail * 0.12;
+      vec3 rock = vec3(0.39, 0.43, 0.46) * (0.94 + detail * 0.12);
+      vec3 ground = mix(woods, rock, smoothstep(1000.0, 1500.0, elevation));
+      // Fine snow between trees lightens the foothills without isolated white blobs.
+      float woodlandSnow = (1.0 - smoothstep(700.0, 1150.0, elevation))
+        * (0.07 + 0.14 * detail);
+      snowCover = max(snowCover, woodlandSnow);
+      vec3 snowColor = mix(vec3(0.79, 0.86, 0.93), vec3(0.93, 0.96, 0.99),
+        smoothstep(1050.0, 1800.0, elevation)) * (0.97 + detail * 0.03);
+      diffuseColor.rgb = mix(diffuseColor.rgb, mix(ground, snowColor, snowCover), mountain);
+    `);
+  };
+  scene.add(new THREE.Mesh(geo, horizonMaterial));
 } catch (err) { console.warn('horizon terrain unavailable', err); }
 
 // ---------- Trees: Sakhalin fir, Erman's and white birch, larch, rime-crusted firs at the treeline ----------
@@ -725,22 +838,36 @@ function merge(parts) {
   }
   return out;
 }
-// Sakhalin fir (todomatsu): dark, narrow, five snow-loaded tiers. Far LOD: two cones.
-const firGeo = merge([
-  coloredGeo(new THREE.CylinderGeometry(0.12, 0.2, 2.2, 5).translate(0, 1.1, 0), 0x4a3a2c),
-  ...[0, 1, 2, 3, 4].flatMap(i => {
-    const r = 2.0 * (1 - i / 5.6), y = 1.5 + i * 1.35, g = [0x1d3a2c, 0x22412f, 0x274833, 0x2c4f38, 0x31563d][i];
-    return [
-      coloredGeo(new THREE.ConeGeometry(r, 2.1, 8).translate(0, y + 1.05, 0), g),
-      coloredGeo(new THREE.ConeGeometry(r * 0.86, 0.75, 8, 1, true).translate(0, y + 1.0, 0), 0xe8eef4),   // snow on the boughs
-    ];
-  }),
-  coloredGeo(new THREE.ConeGeometry(0.32, 0.9, 6).translate(0, 8.9, 0), 0xf1f5f8),
-]);
-const firFarGeo = merge([
-  coloredGeo(new THREE.ConeGeometry(1.9, 6.5, 6, 1, true).translate(0, 4.3, 0), 0x24432f),
-  coloredGeo(new THREE.ConeGeometry(1.05, 3.2, 6, 1, true).translate(0, 7.3, 0), 0xdfe7ee),
-]);
+// Sakhalin fir: open, asymmetric whorls rather than solid stacked cones.
+// Both LODs retain the same branch arrangement and patchy snow silhouette.
+function winterFirGeometry(distant = false) {
+  const parts = [coloredGeo(new THREE.CylinderGeometry(0.045, 0.17, 8.8, 5)
+    .translate(0, 4.4, 0), 0x514943)];
+  const tiers = distant ? 6 : 9, branches = distant ? 3 : 5;
+  for (let tier = 0; tier < tiers; tier++) {
+    const t = tier / (tiers - 1), y = 1.2 + t * 6.8;
+    for (let b = 0; b < branches; b++) {
+      const seed = hash2(tier * 17 + 3, b * 31 + 9);
+      const angle = b / branches * Math.PI * 2 + tier * 2.399 + seed * 0.45;
+      const length = (2.05 * Math.pow(1 - t, 0.8) + 0.2) * (0.76 + seed * 0.38);
+      const radius = length * (distant ? 0.36 : 0.29);
+      const branch = (r, len, lift, color) => coloredGeo(
+        new THREE.ConeGeometry(r, len, distant ? 4 : 5)
+          .rotateZ(-Math.PI / 2).scale(1, 0.42, 1)
+          .rotateZ(-0.12 + seed * 0.14).translate(len * 0.46, lift, 0)
+          .rotateY(angle).translate(0, y + (seed - 0.5) * 0.34, 0), color);
+      parts.push(branch(radius, length, 0, [0x303d38, 0x394540, 0x424c46][b % 3]));
+      // Snow rests above selected boughs, leaving dark needles and gaps underneath.
+      if (seed > 0.24 || t > 0.7) parts.push(branch(radius * 0.76,
+        length * (0.72 + seed * 0.14), radius * 0.26, seed > 0.6 ? 0xdce5eb : 0xbccbd5));
+    }
+  }
+  parts.push(coloredGeo(new THREE.ConeGeometry(0.19, 1.15, 5)
+    .translate(0, 8.45, 0), 0x9cafaf));
+  return merge(parts);
+}
+const firGeo = winterFirGeometry();
+const firFarGeo = winterFirGeometry(true);
 // Rime-crusted firs near the treeline ("snow monsters"): white lumps with a little green showing.
 const rimeGeo = merge([
   coloredGeo(new THREE.ConeGeometry(1.5, 5.5, 7).translate(0, 2.75, 0), 0xdbe3ea),
@@ -766,24 +893,34 @@ function treeAtlas() {
   // Crown haze first, so distant mips keep a purple-grey silhouette instead of vanishing.
   const haze = (cx, cy, rx, ry, col) => { const gr = g.createRadialGradient(cx, cy, 0, cx, cy, 1); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.translate(cx, cy); g.scale(rx, ry); g.translate(-cx, -cy); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, 1, 0, Math.PI * 2); g.fill(); g.restore(); };
   // 0: Erman's birch (dake-kanba): short crooked pale trunk splitting low into a broad twiggy crown.
+  g.save(); g.beginPath(); g.rect(0, 0, W, Hh); g.clip();
   haze(64, 105, 56, 80, 'rgba(138,122,122,0.5)');
   g.lineCap = 'round';
   branch(64, 256, 60, Math.PI / 2 + 0.15, 7, 7, '#cfc6bc', '#5e4c4a');
   branch(64, 220, 50, Math.PI / 2 - 0.5, 5, 6, '#c9bfb4', '#5e4c4a');
   // 1: Japanese white birch (shirakaba): straight white trunk, narrow oval crown.
+  g.restore(); g.save(); g.beginPath(); g.rect(W, 0, W, Hh); g.clip();
   haze(W + 64, 80, 34, 70, 'rgba(140,124,124,0.5)');
   g.strokeStyle = '#ebe7e1'; g.lineWidth = 6; g.beginPath(); g.moveTo(W + 64, 256); g.lineTo(W + 64, 30); g.stroke();
   for (let y = 250; y > 40; y -= 9) { g.fillStyle = '#2b2725'; g.fillRect(W + 61 + rnd() * 3, y, 3 + rnd() * 2, 1.5); }
   for (let y = 160; y > 30; y -= 12) for (const s of [-1, 1]) branch(W + 64, y, 18 + rnd() * 14, Math.PI / 2 - s * (0.6 + rnd() * 0.4), 2, 4, '#d8d2cb', '#5a4846');
   // 2: Japanese larch (karamatsu) plantation tree: conical, horizontal whorls of orange-brown twigs.
+  g.restore(); g.save(); g.beginPath(); g.rect(2 * W, 0, W, Hh); g.clip();
   haze(2 * W + 64, 120, 30, 110, 'rgba(140,104,76,0.6)');
   g.strokeStyle = '#5a4433'; g.lineWidth = 4; g.beginPath(); g.moveTo(2 * W + 64, 256); g.lineTo(2 * W + 64, 6); g.stroke();
   for (let y = 230; y > 12; y -= 10) {
     const r = (y - 6) / 250 * 46;
     for (const s of [-1, 1]) branch(2 * W + 64, y, r * 0.55, Math.PI / 2 - s * (1.35 + rnd() * 0.2), 1.6, 2, '#5e4a3c', '#77604e');
   }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  g.restore();
+  // Inset each species into its own tile, leaving transparent gutters on all sides.
+  // This also clips branches that previously spilled into the neighbouring species.
+  const padded = document.createElement('canvas'); padded.width = c.width; padded.height = c.height;
+  const pg = padded.getContext('2d'), gutter = 8 * R;
+  for (let i = 0; i < 3; i++) pg.drawImage(c, i * W * R, 0, W * R, Hh * R,
+    i * W * R + gutter, gutter, W * R - 2 * gutter, Hh * R - 2 * gutter);
+  const t = new THREE.CanvasTexture(padded);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 1;
   return t;
 }
 const cardGeo = (() => {
@@ -806,7 +943,7 @@ const cardGeo = (() => {
 const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true });
 const cardMat = new THREE.MeshLambertMaterial({ map: treeAtlas(), alphaTest: 0.35, side: THREE.DoubleSide, alphaToCoverage: !LOW_END });
 cardMat.onBeforeCompile = sh => {
-  sh.vertexShader = 'attribute float aVar;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv.x = (vMapUv.x + aVar) / 3.0;');
+  sh.vertexShader = 'attribute float aVar;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv = mix(vec2(0.0625, 0.03125), vec2(0.9375, 0.96875), vMapUv);\nvMapUv.x = (vMapUv.x + aVar) / 3.0;');
 };
 cardMat.customProgramCacheKey = () => 'treecard';
 
@@ -861,7 +998,14 @@ function buildChunk(ci, cj) {
   const std = ([x, y, z, s, sy, rot]) => { ps.set(x, y, z); q.setFromAxisAngle(up, rot); sc.set(s, sy, s); };
   if (fir.length) {
     C.firNear = inst(firGeo, treeMat, fir, std);
+    const tint = new THREE.Color();
+    fir.forEach((t, i) => {
+      const variation = hash2(t[0] * 7, t[2] * 13);
+      C.firNear.setColorAt(i, tint.setRGB(0.85 + variation * 0.15,
+        0.87 + variation * 0.13, 0.89 + variation * 0.11));
+    });
     C.firFar = new THREE.InstancedMesh(firFarGeo, treeMat, fir.length);
+    C.firFar.instanceColor = C.firNear.instanceColor;
     C.firFar.instanceMatrix = C.firNear.instanceMatrix; C.firFar.boundingSphere = C.firNear.boundingSphere;
     scene.add(C.firFar); C.meshes.push(C.firNear, C.firFar);
   }
@@ -902,7 +1046,11 @@ function updateTrees(dt, budget = 2) {
     if (d < TREE_R && !chunks.has(ci + ',' + cj)) want.push([d, ci, cj]);
   }
   want.sort((a, b) => a[0] - b[0]);
-  for (const [, ci, cj] of want.slice(0, budget)) buildChunk(ci, cj);
+  const started = performance.now();
+  for (const [, ci, cj] of want.slice(0, MOBILE && budget < 99 ? 1 : budget)) {
+    buildChunk(ci, cj);
+    if (budget < 99 && performance.now() - started > 3) break;
+  }
   for (const [key, C] of chunks) {
     const d = dist(C.ci, C.cj);
     if (d > TREE_R + TREE_CHUNK) { dropChunk(key); continue; }
@@ -927,15 +1075,33 @@ function treeHit(x, z) {
 // ---------- Villages: OSM building footprints extruded to their height, snow on every roof ----------
 // Small rectangular chalets get gabled roofs; hotels and apartment blocks stay flat-topped. Two merged meshes.
 const LANDMARKS = [];
+const { hotelProfile, createSignatureHotelDetails } = await import('./src/signature-hotels.js');
+const { restaurantProfile, createRestaurantDetails } = await import('./src/signature-restaurants.js');
+const { createAceSummit } = await import('./src/ace-summit.js');
+let aceSummit = null;
+try {
+  const response = await fetch('data/ace-summit.json');
+  if (response.ok) {
+    const data = await response.json();
+    const pts = data.osm.geometry.slice(0, -1).map(p => toWorld(p.lon, p.lat));
+    const center = pts.reduce((c, p) => ({ x: c.x + p.x / pts.length, z: c.z + p.z / pts.length }), { x: 0, z: 0 });
+    aceSummit = { pts, ...center };
+    createAceSummit({ scene, pts, height });
+    LANDMARKS.push({ name: 'NEST813 · Ace Gondola 2F', ...center, area: 800, restaurant: true, hotel: false });
+  }
+} catch (error) { console.warn('Ace summit mapped model unavailable', error); }
+let buildingLighting = null;
+const { createBuildingLighting } = await import('./src/building-lighting.js');
 if (LANDW.buildings.length) {
-  const wallPos = [], wallUv = [], wallCol = [], roofPos = [];
+  const wallPos = [], wallUv = [], wallCol = [], wallLight = [], entrances = [], roofPos = [];
+  let lightSeed = -1, lightDensity = 0;
   const WALLS = [0x5b4636, 0x6e5240, 0x8e8a83, 0xb9b2a6, 0x3e4247, 0xd7d2c8, 0x6d3b2f, 0x4a5560];
   const c = new THREE.Color();
   const quad = (a, b, y0, y1, u0, u1) => {
     wallPos.push(a.x, y0, a.z, b.x, y0, b.z, b.x, y1, b.z, a.x, y0, a.z, b.x, y1, b.z, a.x, y1, a.z);
     const v0 = 0, v1 = (y1 - y0) / 3.1;
     wallUv.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1);
-    for (let i = 0; i < 6; i++) wallCol.push(c.r, c.g, c.b);
+    for (let i = 0; i < 6; i++) { wallCol.push(c.r, c.g, c.b); wallLight.push(lightSeed, lightDensity); }
   };
   // Roof triangles always wound to face up, so they're single-sided and a camera inside a building sees out.
   const tri = (arr, a, b, d) => {
@@ -954,11 +1120,22 @@ if (LANDW.buildings.length) {
     area = Math.abs(area) / 2;
     let gmin = Infinity, gmax = -Infinity;
     for (const p of pts) { const h = height(p.x, p.z); gmin = Math.min(gmin, h); gmax = Math.max(gmax, h); }
-    const y0 = gmin - 1, top = gmax + B.h;
+    const hotel = hotelProfile(B.name);
+    const restaurant = restaurantProfile(B.name);
+    const y0 = gmin - 1, top = gmax + (hotel?.height ?? B.h);
     const hs = hash2(pts[0].x * 7, pts[0].z * 3);
+    lightSeed = hs; lightDensity = area < 50 ? 0 : B.h > 11 ? 0.72 : 0.48;
+    // Plausible entry lighting on the longest facade; positions are illustrative.
+    if (lightDensity > 0 && hs > 0.15) {
+      let a = pts[0], b = pts[1], longest = 0;
+      for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length], l = Math.hypot(q.x - p.x, q.z - p.z); if (l > longest) { longest = l; a = p; b = q; } }
+      if (longest > 0) { const x = (a.x + b.x) / 2 - (b.z - a.z) / longest * 1.3, z = (a.z + b.z) / 2 + (b.x - a.x) / longest * 1.3; entrances.push(new THREE.Vector3(x, height(x, z) + 2.5, z)); }
+    }
     c.setHex(B.h > 11 ? [0x8e8a83, 0xd7d2c8, 0x3e4247, 0x5b4636][(hs * 4) | 0] : WALLS[(hs * WALLS.length) | 0]);
+    if (hotel) { c.setHex(hotel.color); lightDensity = 0.8; }
+    if (restaurant) { c.setHex(restaurant.color); lightDensity = 0.85; }
     let u = 0;
-    const gable = pts.length === 4 && area < 600 && B.roof !== 'flat' && B.h < 12;
+    const gable = !hotel && pts.length === 4 && area < 600 && B.roof !== 'flat' && B.h < 12;
     if (gable) {
       // Ridge along the long axis; gable ends are wall-coloured triangles.
       const e0 = Math.hypot(pts[1].x - pts[0].x, pts[1].z - pts[0].z), e1 = Math.hypot(pts[2].x - pts[1].x, pts[2].z - pts[1].z);
@@ -970,7 +1147,7 @@ if (LANDW.buildings.length) {
       // Gable triangles on the short sides.
       for (const [p, q, r] of [[b, d, r1], [e, a, r2]]) {
         wallPos.push(p.x, top, p.z, q.x, top, q.z, r.x, r.y, r.z);
-        wallUv.push(0, 0, 1, 0, 0.5, 0.5); for (let i = 0; i < 3; i++) wallCol.push(c.r, c.g, c.b);
+        wallUv.push(0, 0, 1, 0, 0.5, 0.5); for (let i = 0; i < 3; i++) { wallCol.push(c.r, c.g, c.b); wallLight.push(-1, 0); }
       }
       // Roof slopes, with a little eave overhang.
       const ov = (p, from) => { const dx = p.x - from.x, dz = p.z - from.z, l = Math.hypot(dx, dz) || 1; return { x: p.x + dx / l * 0.5, y: top - 0.25, z: p.z + dz / l * 0.5 }; };
@@ -984,9 +1161,11 @@ if (LANDW.buildings.length) {
       for (const [i, j, k] of tris) tri(roofPos, { ...pts[i], y: top + 0.35 }, { ...pts[j], y: top + 0.35 }, { ...pts[k], y: top + 0.35 });
       // Parapet line of snow: lift the roof slab a touch above the walls.
     }
-    if (B.name && area > 700) {
+    if (hotel) createSignatureHotelDetails({ scene, pts, base: gmax, top, profile: hotel });
+    if (restaurant) createRestaurantDetails({ scene, pts, base: gmax, top, profile: restaurant });
+    if (hotel || restaurant || (B.name && area > 700)) {
       let cx = 0, cz = 0; for (const p of pts) { cx += p.x; cz += p.z; }
-      LANDMARKS.push({ name: B.name, x: cx / pts.length, z: cz / pts.length, area });
+      LANDMARKS.push({ name: hotel?.name ?? restaurant?.name ?? B.name, x: cx / pts.length, z: cz / pts.length, area, hotel: !!hotel, restaurant: !!restaurant });
     }
   }
   // Facade: a window per 3.2 × 3.1 m bay, tinted by the vertex colour.
@@ -1001,6 +1180,7 @@ if (LANDW.buildings.length) {
   wg.setAttribute('position', new THREE.Float32BufferAttribute(wallPos, 3));
   wg.setAttribute('uv', new THREE.Float32BufferAttribute(wallUv, 2));
   wg.setAttribute('color', new THREE.Float32BufferAttribute(wallCol, 3));
+  wg.setAttribute('buildingLight', new THREE.Float32BufferAttribute(wallLight, 2));
   wg.computeVertexNormals();
   const walls = new THREE.Mesh(wg, new THREE.MeshLambertMaterial({ vertexColors: true, map: ft }));
   const rg = new THREE.BufferGeometry();
@@ -1008,9 +1188,67 @@ if (LANDW.buildings.length) {
   rg.computeVertexNormals();
   const roofs = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ color: 0xf1f5f9 }));
   walls.castShadow = roofs.castShadow = true; walls.receiveShadow = roofs.receiveShadow = true;
-  scene.add(walls, roofs);
-  LANDMARKS.sort((a, b) => b.area - a.area);
+  for (const source of [walls, roofs]) {
+    for (const geometry of chunkGeometry(source.geometry)) {
+      const mesh = new THREE.Mesh(geometry, source.material);
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.name = 'Village building cell'; scene.add(mesh);
+    }
+    source.geometry.dispose();
+  }
+  buildingLighting = createBuildingLighting({ scene, material: walls.material, entrances });
+  LANDMARKS.sort((a, b) => Number(b.hotel) - Number(a.hotel) || b.area - a.area);
   console.log(`buildings: ${LANDW.buildings.length}, ${(wallPos.length + roofPos.length) / 9} triangles`);
+}
+
+// ---------- Mapped road surfaces and lamps ----------
+// Narrow roads need geometry: the land mask is coarser than a village street.
+const roadSegments = [];
+const roadSurface = new THREE.MeshStandardMaterial({ color: 0x535861, roughness: 0.96, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+const vergeSurface = new THREE.MeshStandardMaterial({ color: 0xe0e8ed, roughness: 1 });
+function roadStrip(points, width, positions, lift) {
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1], b = points[i], length = Math.hypot(b.x - a.x, b.z - a.z);
+    if (!length) continue;
+    const nx = -(b.z - a.z) / length * width / 2, nz = (b.x - a.x) / length * width / 2;
+    const steps = Math.ceil(length / 3);
+    const p = (t, side) => { const x = a.x + (b.x - a.x) * t + nx * side, z = a.z + (b.z - a.z) * t + nz * side; return [x, height(x, z) + lift, z]; };
+    for (let j = 0; j < steps; j++) { const a0 = p(j / steps, -1), a1 = p(j / steps, 1), b0 = p((j + 1) / steps, -1), b1 = p((j + 1) / steps, 1); positions.push(...a0, ...a1, ...b0, ...a1, ...b1, ...b0); }
+  }
+}
+const asphalt = new Uint8Array(64 * 64 * 4);
+for (let i = 0; i < 64 * 64; i++) { const grain = 180 + ((Math.imul(i + 1, 2654435761) >>> 16) % 65); asphalt.set([grain, grain, grain, 255], i * 4); }
+const asphaltTexture = new THREE.DataTexture(asphalt, 64, 64); asphaltTexture.wrapS = asphaltTexture.wrapT = THREE.RepeatWrapping; asphaltTexture.needsUpdate = true; roadSurface.map = asphaltTexture;
+function addRoadMesh(positions, material) {
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const uv = []; for (let i = 0; i < positions.length; i += 3) uv.push(positions[i] / 4, positions[i + 2] / 4);
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
+  const mesh = new THREE.Mesh(g, material); mesh.receiveShadow = true; scene.add(mesh);
+}
+for (const [kind, width] of Object.entries(ROAD_W)) {
+  const surface = [], verge = [];
+  for (const pts of Ln[kind] || []) {
+    roadStrip(pts, width + 2, verge, 0.08);
+    roadStrip(pts, width, surface, 0.13);
+    // Tracks are snow-covered access routes, not road boundaries.
+    if (kind !== 'track') for (let i = 1; i < pts.length; i++) roadSegments.push({ a: pts[i - 1], b: pts[i], radius: width / 2 + 0.8 });
+  }
+  addRoadMesh(verge, vergeSurface); addRoadMesh(surface, kind === 'track' ? vergeSurface : roadSurface);
+}
+const { createRoadBarrier } = await import('./src/road-boundaries.js');
+const roadBarrier = createRoadBarrier(roadSegments);
+let infrastructure = null;
+try { const r = await fetch('data/infrastructure.json'); if (r.ok) infrastructure = await r.json(); } catch (e) { console.warn('Mapped lighting unavailable', e); }
+// Keep positions, source IDs and dimensions accessible for a future culled night-light pass.
+const mappedLighting = new THREE.Group(); mappedLighting.name = 'OSM mapped lighting'; scene.add(mappedLighting);
+for (const lamp of infrastructure?.lamps || []) {
+  const p = toWorld(lamp.lon, lamp.lat), h = lamp.height || (lamp.kind === 'floodlight' ? 14 : 7);
+  const group = new THREE.Group(); group.position.set(p.x, height(p.x, p.z), p.z); group.userData = { ...lamp, height: h, dimensionsEstimated: !lamp.height };
+  const steel = new THREE.MeshStandardMaterial({ color: 0x59616a, roughness: 0.6, metalness: 0.65 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.17, h, 8), steel); pole.position.y = h / 2; group.add(pole);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(lamp.kind === 'floodlight' ? 1.8 : 0.65, 0.22, 0.55), steel); head.position.set(0.35, h, 0); group.add(head);
+  const lens = new THREE.Mesh(new THREE.PlaneGeometry(lamp.kind === 'floodlight' ? 1.5 : 0.5, 0.4), new THREE.MeshStandardMaterial({ color: 0xfff1cc, emissive: 0xffdda0, emissiveIntensity: 0 })); lens.rotation.x = Math.PI / 2; lens.position.set(0.35, h - 0.12, 0); group.add(lens);
+  mappedLighting.add(group);
 }
 
 // ---------- Ski-area boundary: orange-and-black poles with a rope, where the boundary meets open mountain ----------
@@ -1062,6 +1300,8 @@ if (HAS_SKI) {
 // ---------- Rider ----------
 // Kenta, 25, from Sapporo: baggy Burton-style shell kit, helmet and goggles, camber board with highback bindings.
 const rider = new THREE.Group();     // oriented to the board: +X along board (nose), +Y board normal, +Z toe side
+const carriedBoard = new THREE.Group();
+rider.add(carriedBoard);
 const body = new THREE.Group();      // angulates inside the rider frame; limbs are posed every frame
 rider.add(body);
 const stance = new THREE.Group();    // regular or goofy frame for the avatar, inside body
@@ -1095,14 +1335,14 @@ const limbs = {};
   }
   const gtex = new THREE.CanvasTexture(gc); gtex.colorSpace = THREE.SRGBColorSpace;
   gtex.repeat.set(1 / (2 * Lh), 1 / (2 * Wh)); gtex.offset.set(0.5, 0.5);
-  mesh(boardGeo, [M(0xffffff, { map: gtex, roughness: 0.35 }), M(0x111111, { roughness: 0.3 })], rider).position.y = 0.01;
+  mesh(boardGeo, [M(0xffffff, { map: gtex, roughness: 0.35 }), M(0x111111, { roughness: 0.3 })], carriedBoard).position.y = 0.01;
 
   // Bindings with highbacks on the heel side, boots, and pant cuffs stacked over them.
   for (const sx of [-0.27, 0.27]) {
-    mesh(new THREE.BoxGeometry(0.2, 0.03, 0.27), bind, rider).position.set(sx, 0.045, 0);
-    const hb = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.24, 12, 1, true, Math.PI * 0.6, Math.PI * 0.8), bind, rider);
+    mesh(new THREE.BoxGeometry(0.2, 0.03, 0.27), bind, carriedBoard).position.set(sx, 0.045, 0);
+    const hb = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.24, 12, 1, true, Math.PI * 0.6, Math.PI * 0.8), bind, carriedBoard);
     hb.position.set(sx, 0.17, -0.02); hb.rotation.y = Math.PI;
-    mesh(new THREE.BoxGeometry(0.13, 0.04, 0.29), strap, rider).position.set(sx, 0.16, 0.02);     // ankle strap
+    mesh(new THREE.BoxGeometry(0.13, 0.04, 0.29), strap, carriedBoard).position.set(sx, 0.16, 0.02);     // ankle strap
     const boot = mesh(new THREE.CapsuleGeometry(0.075, 0.18, 4, 10).rotateX(Math.PI / 2), bootM);
     boot.scale.set(1, 0.9, 1); boot.position.set(sx, 0.11, 0.03);
   }
@@ -1278,6 +1518,8 @@ if (LIFTS.length) {
       if (L.surface) { huts.push([c.x - D.z * 4, height(c.x - D.z * 4, c.z + D.x * 4), c.z + D.x * 4, yaw, 0.7]); continue; }
       // Bullwheel at the end of the line; the terminal body sits over it, reaching back toward the line.
       const back = end ? -1 : 1;
+      // The mapped summit model includes the terminal and restaurant together.
+      if (L.name === 'Ace Gondola' && end && aceSummit && Math.hypot(c.x - aceSummit.x, c.z - aceSummit.z) < 100) continue;
       if (L.gondola) gondTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
       else {
         chairTerms.push([c.x + D.x * back * 1.2, gnd, c.z + D.z * back * 1.2, yaw, c.y]);
@@ -1298,7 +1540,9 @@ if (LIFTS.length) {
     if (!list.length) return;
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     list.forEach((it, i) => { f(it); im.setMatrixAt(i, m4.compose(v, q, s)); });
-    im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
+    im.castShadow = shadow; im.receiveShadow = true;
+    for (const chunk of chunkInstances(im)) { chunk.name = 'Lift structure cell'; scene.add(chunk); }
+    im.dispose();
   };
   const yawQ = yaw => q.setFromEuler(e.set(0, yaw, 0));
   // Towers: slim grey tubes for chairs, heavier white tubes and wide crossarms for gondolas.
@@ -1390,13 +1634,17 @@ if (LIFTS.length) {
     const h = hash2(L.pts[0].x * 3, L.pts[0].z * 7);
     const geo = L.gondola ? cabinGeo(L.occ, CABIN_COLS[(h * CABIN_COLS.length) | 0]) : chairGeo(Math.min(8, L.occ), SEAT_COLS[(h * SEAT_COLS.length) | 0]);
     const im = new THREE.InstancedMesh(geo, chairMat, L.n);
-    im.frustumCulled = false; im.castShadow = true;
+    // All carrier positions stay within this route envelope, including terminal turns.
+    const bounds = new THREE.Box3().setFromPoints(L.path).expandByScalar(30);
+    im.boundingSphere = bounds.getBoundingSphere(new THREE.Sphere());
+    im.frustumCulled = true; im.castShadow = true;
     scene.add(im);
+    nearbyShadows.add(im);
     let hood = null;
     if (L.bubble && !L.gondola) {
       const w = Math.min(8, L.occ) * 0.56 + 0.3;
       hood = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.75, 0.75, w, 12, 1, true, -Math.PI * 0.15, Math.PI * 0.9).rotateZ(Math.PI / 2).translate(0, -1.75, 0.15), hoodMat, L.n);
-      hood.instanceMatrix = im.instanceMatrix; hood.frustumCulled = false; scene.add(hood);
+      hood.instanceMatrix = im.instanceMatrix; hood.boundingSphere = im.boundingSphere; hood.frustumCulled = true; scene.add(hood);
     }
     chairMeshes.push({ L, im, n: L.n, hood });
   }
@@ -1430,6 +1678,7 @@ function nearLiftBase() {
 let liftQueue = null;
 const LOAD_S = 6;
 function startRide(L) {
+  S.walking = false; syncWalkingControls();
   S.crash = 0; S.v.set(0, 0, 0);
   const label = `${L.name} · ${L.spec.label} · ${L.v.toFixed(1)} m/s`;
   if (!L.n) { S.ride = { L, s: 0, dir: L.d0.clone() }; toast(label, 2); return; }
@@ -1553,6 +1802,9 @@ const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new
 const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ size: 0.16, map: DOT, transparent: true, depthWrite: false, opacity: 0.9 }));
 snow.frustumCulled = false; scene.add(snow);
 
+const { createWeather } = await import('./src/weather.js');
+const weather = createWeather({ scene, renderer, sky, ambient, sun, sunDirection: SUN_DIR, snow, snowGeo, snowCount: SNOW_N, mappedLighting, buildingLighting });
+
 const SPRAY_N = 900;
 const spray = { pos: new Float32Array(SPRAY_N * 3), vel: new Float32Array(SPRAY_N * 3), life: new Float32Array(SPRAY_N), next: 0 };
 const sprayGeo = new THREE.BufferGeometry(); sprayGeo.setAttribute('position', new THREE.BufferAttribute(spray.pos, 3));
@@ -1569,12 +1821,14 @@ function emitSpray(p, dir, amount) {
 
 // ---------- Input ----------
 const keys = new Set();
+document.getElementById('conditions').addEventListener('focusin', () => keys.clear());
 const touch = { steer: 0, B: false, T: false };
 addEventListener('keydown', e => {
-  if (e.repeat) return;
+  if (e.repeat || e.target.closest?.('select, input, button, summary')) return;
   const k = e.key.toLowerCase();
   keys.add(k);
   if (k === ' ') { e.preventDefault(); wantJump = true; }
+  if (k === 'f') toggleWalking();
   if (k === 'c') camMode = (camMode + 1) % CAM_MODES.length, toast(CAM_MODES[camMode], 0.8);
   if (k === 'm') toggleMap();
   if (k === 'g') { setStance(!PICK.goofy); toast(PICK.goofy ? '右腳在前' : '左腳在前', 0.8); }
@@ -1609,25 +1863,109 @@ document.getElementById('tC').addEventListener('click', () => { camMode = (camMo
 document.getElementById('tJ').addEventListener('pointerdown', e => { e.preventDefault(); wantJump = true; });
 document.getElementById('tM').addEventListener('click', () => toggleMap());
 
+document.getElementById('tWalk').addEventListener('click', toggleWalking);
+
 // ---------- Physics state ----------
 const G = 9.81;
 const S = {
   p: new THREE.Vector3(), v: new THREE.Vector3(), f: new THREE.Vector3(1, 0, 0), n: new THREE.Vector3(0, 1, 0),
-  ride: null, air: false, airTime: 0, spin: 0, steer: 0, lean: 0, crash: 0, top: 0, vert: 0, lastY: 0,
+  walking: false, walkPhase: 0, walkBlend: 0, ride: null, air: false, airTime: 0, spin: 0, steer: 0, lean: 0, crash: 0, top: 0, vert: 0, lastY: 0,
 };
 let liftNear = null, wantJump = false, lastDrop = SPOTS[0];
 const CAM_MODES = ['跟隨鏡頭', '低角度鏡頭', '頭盔鏡頭', '空拍鏡頭'];
 let camMode = 0;
 
+function syncWalkingControls() {
+  const button = document.getElementById('tWalk');
+  button.textContent = S.walking ? '穿上雪板 · F' : '步行 · F';
+  button.setAttribute('aria-pressed', String(S.walking));
+  const help = document.getElementById('keys');
+  help.dataset.ridingHelp ??= help.innerHTML;
+  help.innerHTML = S.walking
+    ? '<kbd>W</kbd><kbd>S</kbd> 前後步行 · <kbd>A</kbd><kbd>D</kbd> 轉向 · 鏡頭跟隨行進方向<br><kbd>F</kbd> 穿上雪板 · <kbd>C</kbd> 鏡頭 · <kbd>E</kbd> 搭乘纜車 · <kbd>M</kbd> 地圖'
+    : help.dataset.ridingHelp;
+  document.getElementById('tT').textContent = S.walking ? '前進' : '壓低';
+  document.getElementById('tB').textContent = S.walking ? '後退' : '煞車';
+  document.getElementById('tJ').disabled = S.walking;
+}
+function toggleWalking() {
+  if (S.ride || liftQueue || S.air) { toast('請先回到雪地上', 1.4); return; }
+  S.walking = !S.walking;
+  S.walkBlend = 0;
+  if (S.walking) {
+    camera.getWorldDirection(walkView); walkView.y = 0;
+    if (walkView.lengthSq() < 0.001) walkView.copy(S.f).setY(0);
+    walkView.normalize();
+    S.walkCameraHeading = walkView.clone();
+  }
+  S.v.set(0, 0, 0); S.steer = 0; S.lean = 0; S.crash = 0;
+  S.awaitingPush = true; wantJump = false; trail.last = null;
+  syncWalkingControls();
+  toast(S.walking ? '步行 · W/S 前後移動，A/D 轉向' : '已穿上雪板', 1.6);
+}
+// Input heading is independent of the camera lag; the camera follows actual travel.
+const walkView = new THREE.Vector3(1, 0, 0);
+const walkForward = new THREE.Vector3(), walkTarget = new THREE.Vector3();
+{
+  const canvas = document.getElementById('gl');
+  let drag = null;
+  canvas.addEventListener('pointerdown', e => {
+    if (!S.walking || e.button !== 0) return;
+    drag = { id: e.pointerId, x: e.clientX };
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drag || drag.id !== e.pointerId || !S.walking) return;
+    walkView.applyAxisAngle(worldUp, -(e.clientX - drag.x) * 0.005);
+    S.walkCameraHeading.copy(walkView);
+    drag.x = e.clientX;
+  });
+  const end = e => { if (drag?.id === e.pointerId) drag = null; };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+}
+function walkStep(dt, steer, forward, backward) {
+  wantJump = false; trail.last = null; S.awaitingPush = true; S.steer = 0;
+  S.crash = Math.max(0, S.crash - dt);
+  walkView.applyAxisAngle(worldUp, -steer * 2.2 * dt).normalize();
+  walkForward.copy(walkView);
+  if (steer && !forward && !backward) S.walkCameraHeading = walkView.clone();
+  normalAt(S.p.x, S.p.z, S.n);
+  const direction = Number(forward) - Number(backward);
+  walkTarget.copy(walkForward).multiplyScalar(direction);
+  if (walkTarget.lengthSq() > 1) walkTarget.normalize();
+  if (walkTarget.lengthSq() > 0.001) {
+    const yaw = Math.atan2(S.f.z, S.f.x), targetYaw = Math.atan2(walkTarget.z, walkTarget.x);
+    const delta = Math.atan2(Math.sin(targetYaw - yaw), Math.cos(targetYaw - yaw));
+    const heading = yaw + delta * (1 - Math.exp(-12 * dt));
+    S.f.set(Math.cos(heading), 0, Math.sin(heading));
+  }
+  walkTarget.multiplyScalar(6 * Math.max(0.35, S.n.y));
+  S.v.lerp(walkTarget, 1 - Math.exp(-14 * dt));
+  const x = S.p.x, z = S.p.z;
+  S.p.addScaledVector(S.v, dt);
+  S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
+  S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
+  if (roadBarrier.blocks(x, z, S.p.x, S.p.z) || treeHit(S.p.x, S.p.z)) { S.p.x = x; S.p.z = z; }
+  visitors.collide(S, dt, { x, z });
+  S.p.y = height(S.p.x, S.p.z);
+  S.v.set((S.p.x - x) / dt, 0, (S.p.z - z) / dt);
+  if (direction) S.walkCameraHeading = walkTarget.clone().normalize();
+  S.walkPhase += S.v.length() * dt * 5.5;
+  S.lastY = S.p.y;
+}
 function dropIn(spot) {
+  if (roadBarrier.contains(spot.x, spot.z)) { toast('道路範圍不能滑行，請選擇雪道', 1.8); return; }
+  S.walking = false; syncWalkingControls();
   lastDrop = spot;
   const n = normalAt(spot.x, spot.z, new THREE.Vector3());
   S.p.set(spot.x, height(spot.x, spot.z), spot.z);
   trail.last = null;
   // Face down the fall line, with the board in the slope plane.
-  const down = downhillDir(spot.x, spot.z);
+  const down = spot.direction ? new THREE.Vector3(spot.direction.x, 0, spot.direction.z) : downhillDir(spot.x, spot.z);
   S.f.copy(down).addScaledVector(n, -down.dot(n)).normalize();
   S.v.set(0, 0, 0); S.n.copy(n); S.air = false; S.crash = 0; S.lastY = S.p.y;
+  S.awaitingPush = true;
   resetCamera();
   if (spot.name) toast(spot.name, 1.4);
 }
@@ -1641,6 +1979,12 @@ function step(dt) {
   const steerIn = Math.max(-1, Math.min(1, (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0) + touch.steer));
   const tuck = keys.has('w') || keys.has('arrowup') || touch.T;
   const brake = keys.has('s') || keys.has('arrowdown') || touch.B;
+  if (S.walking) { walkStep(dt, steerIn, tuck, brake); return; }
+  if (S.awaitingPush) {
+    S.v.set(0, 0, 0);
+    if (!tuck && !steerIn && !wantJump) return;
+    S.awaitingPush = false;
+  }
   S.steer += (steerIn - S.steer) * Math.min(1, dt * 7);
   const speed = S.v.length();
 
@@ -1670,21 +2014,18 @@ function step(dt) {
     const keepLat = Math.exp(-grip * dt);
     const lost = vl * vl * (1 - keepLat * keepLat);
     vl *= keepLat;
-    const ret = brake ? 0.2 : 0.72;
+    const ret = brake ? 0.08 : 0.35;
     vf = Math.sign(vf || 1) * Math.sqrt(vf * vf + lost * ret);
     S.v.copy(S.f).multiplyScalar(vf).addScaledVector(right, vl);
 
     // Snow friction + aero drag (+ skid brake).
     const sp = S.v.length();
     if (sp > 0.01) {
-      const mu = 0.045 * Math.max(0, -gDotN);
-      const drag = (tuck ? 0.0022 : 0.0042) * sp * sp;
-      const skid = brake ? 5.5 : 0;
-      const dec = Math.min(sp, (mu + drag + skid) * dt);
+      const dec = Math.min(sp, ridingResistance(sp, Math.max(0, -gDotN), { tuck, brake, steer: S.steer }) * dt);
       S.v.multiplyScalar((sp - dec) / sp);
     }
     // Skate / hike on flats and gentle climbs.
-    if (tuck && control && vf < 7) S.v.addScaledVector(S.f, 2.4 * dt);
+    if (tuck && !brake && control && vf < 2.5 && n.y > 0.97) S.v.addScaledVector(S.f, 1.6 * dt);
 
     if (Math.abs(vl) > 1.8 || (brake && sp > 3)) emitSpray(S.p, right.clone().multiplyScalar(-Math.sign(vl || 1)), Math.min(6, Math.abs(vl) * 0.6 + (brake ? 3 : 0)));
 
@@ -1704,9 +2045,16 @@ function step(dt) {
   wantJump = false;
 
   // Integrate and resolve against the ground.
+  const previousX = S.p.x, previousZ = S.p.z;
   S.p.addScaledVector(S.v, dt);
+  // Swept horizontal test also blocks jumping over roads and high-speed tunnelling.
+  if (roadBarrier.blocks(previousX, previousZ, S.p.x, S.p.z)) {
+    S.p.x = previousX; S.p.z = previousZ; S.v.x = S.v.z = 0;
+    if (!S.roadNotice || performance.now() > S.roadNotice) { toast('道路邊界 · 不能繼續滑行', 1.8); S.roadNotice = performance.now() + 2500; }
+  }
   S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
   S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
+  visitors.collide(S, dt, { x: previousX, z: previousZ });
   const ground = height(S.p.x, S.p.z);
   if (S.air) {
     if (S.p.y <= ground) land(ground);
@@ -1760,20 +2108,26 @@ function updateCamera(dt) {
   const hv = tmp.set(S.v.x, 0, S.v.z);
   // In the lift queue the camera stands off to the side of the line so you can watch your chair come round.
   const dir = S.ride ? tmp.copy(S.ride.dir) : liftQueue ? tmp.set(liftQueue.L.d0.z, 0, -liftQueue.L.d0.x) : hv.lengthSq() > 4 ? hv.normalize() : tmp.set(S.f.x, 0, S.f.z).normalize();
-  camDir.lerp(dir, damp(camMode === 2 ? 8 : 3)).normalize();
+  if (S.walking) {
+    dir.set(S.v.x, 0, S.v.z);
+    if (dir.lengthSq() > 0.01) dir.normalize();
+    else dir.copy(S.walkCameraHeading || walkView);
+  }
+  if (S.walking) camDir.copy(dir);
+  else camDir.lerp(dir, damp(camMode === 2 ? 8 : 3)).normalize();
   camAt.lerp(S.p, damp(camMode === 2 ? 30 : 14));
-  camUp.lerp(S.n, damp(6)).normalize();
+  camUp.lerp(S.walking ? worldUp : S.n, damp(6)).normalize();
   const want = tmp2;
   if (camMode === 0) want.copy(camAt).addScaledVector(camDir, -7.5).add({ x: 0, y: 3.2, z: 0 });
   else if (camMode === 1) want.copy(camAt).addScaledVector(camDir, -4).add({ x: 0, y: 1.1, z: 0 });
   else if (camMode === 2) want.copy(camAt).addScaledVector(camUp, 1.6).addScaledVector(camDir, 0.25);
-  else want.copy(camAt).addScaledVector(camDir, -38).add({ x: 18, y: 26, z: 0 });
-  camPos.lerp(want, damp(camMode === 2 ? 40 : 5));
+  else want.copy(camAt).addScaledVector(camDir, -38).add({ x: S.walking ? 0 : 18, y: 26, z: 0 });
+  camPos.lerp(want, S.walking ? 1 - Math.exp(-14 * dt) : damp(camMode === 2 ? 40 : 5));
   const floor = height(camPos.x, camPos.z) + (camMode === 2 ? 0.3 : 0.8);
   if (camPos.y < floor) camPos.y += (floor - camPos.y) * damp(20);
   camera.position.copy(camPos);
   const look = tmp2.copy(camAt).addScaledVector(camDir, camMode === 2 ? 12 : 3).add({ x: 0, y: camMode === 2 ? 0.4 : 1.0, z: 0 });
-  camLook.lerp(look, damp(camMode === 2 ? 20 : 8));
+  camLook.lerp(look, S.walking ? 1 - Math.exp(-18 * dt) : damp(camMode === 2 ? 20 : 8));
   camera.lookAt(camLook);
   // Speed feel: a wider lens at pace, eased in.
   const sp = S.v.length();
@@ -1898,9 +2252,9 @@ function rotateBoneWorld(bone, q) {           // apply a world-space rotation to
   bone.quaternion.premultiply(_pqi.multiply(q).multiply(_pq));
   bone.updateMatrixWorld(true);
 }
-function aimBone(bone, child, targetLocal) {  // turn bone so `child` points at a stance-local target
+function aimBone(bone, child, targetLocal, frame = stance) {  // turn bone so `child` points at a stance-local target
   bone.getWorldPosition(_aw); child.getWorldPosition(_bw);
-  stance.localToWorld(_tw.copy(targetLocal));
+  frame.localToWorld(_tw.copy(targetLocal));
   _qa.setFromUnitVectors(_bw.sub(_aw).normalize(), _tw.sub(_aw).normalize());
   rotateBoneWorld(bone, _qa);
 }
@@ -1908,10 +2262,11 @@ const AP = {}; for (const k of ['hip', 'hipL', 'hipR', 'knee', 'foot', 'toe', 'c
 // The avatar is posed in the stance frame: regular as written (left foot toward the nose at +X,
 // facing the toe edge at +Z); goofy turns that frame half a turn, so the right foot leads and the
 // rider faces the other edge. sg flips steering into that frame. Everyone sits the same way on a chair.
-function poseAvatar(c, tuck, seated) {
+function poseAvatar(c, tuck, seated, rig = AV, frame = stance, avatarRoot = rider, state = S, goofy = PICK.goofy, time = performance.now(), walking = false) {
+  const AV = rig, stance = frame, rider = avatarRoot, S = state, PICK = { goofy };
   const B = AV.B, sg = PICK.goofy && !seated ? -1 : 1, steer = S.steer * sg;
   const fwd = (1 - c) * 0.5 + Math.max(0, steer) * 0.12;
-  stance.rotation.y = sg > 0 ? 0 : Math.PI;
+  stance.rotation.y = walking ? Math.PI / 2 : sg > 0 ? 0 : Math.PI;
   rider.updateMatrixWorld(true);
   for (const [b, q] of AV.rest) b.quaternion.copy(q);
   B.Hips.position.copy(AV.hipsRest);
@@ -1924,30 +2279,37 @@ function poseAvatar(c, tuck, seated) {
   B.Hips.updateMatrixWorld(true);
   // Chest leans over the toe edge as the rider crouches or carves toeside.
   AP.chest.copy(AP.hip).add({ x: 0.02, y: 0.5 - fwd * 0.18, z: 0.06 + fwd * 0.4 });
-  aimBone(B.Spine, B.Neck, AP.chest);
+  aimBone(B.Spine, B.Neck, AP.chest, frame);
   // Legs: left foot at +X, which is the nose when regular and the tail when goofy.
   for (const [s, fx] of [['Left', 0.27], ['Right', -0.27]]) {
     B[s + 'UpLeg'].getWorldPosition(_aw); stance.worldToLocal(AP.hipL.copy(_aw));
-    AP.foot.set(fx, AV.ankle + 0.06, 0.0);
+    AP.foot.set(walking ? fx * 0.42 : fx, AV.ankle + 0.06, 0.0);
+    if (walking) { const stride = Math.sin(time * 0.005 + (fx > 0 ? 0 : Math.PI)) * (S.walkBlend ?? 1); AP.foot.z = stride * 0.25; AP.foot.y += Math.max(0, stride) * 0.1; }
+    if (walking && S.walkBlend !== undefined) {
+      // Plant each boot on its own patch of snow while keeping the torso upright.
+      stance.localToWorld(_tw.copy(AP.foot));
+      AP.foot.y += Math.max(-0.28, Math.min(0.28, height(_tw.x, _tw.z) - S.p.y)) - 0.04;
+    }
     joint(AP.hipL, AP.foot, AV.thigh, AV.shin, KNEE_BEND, AP.knee);
-    aimBone(B[s + 'UpLeg'], B[s + 'Leg'], AP.knee);
-    aimBone(B[s + 'Leg'], B[s + 'Foot'], AP.foot);
-    aimBone(B[s + 'Foot'], B[s + 'ToeBase'], AP.toe.copy(AP.foot).add({ x: fx * 0.15, y: -0.06, z: 0.13 }));
+    aimBone(B[s + 'UpLeg'], B[s + 'Leg'], AP.knee, frame);
+    aimBone(B[s + 'Leg'], B[s + 'Foot'], AP.foot, frame);
+    aimBone(B[s + 'Foot'], B[s + 'ToeBase'], AP.toe.copy(AP.foot).add({ x: fx * 0.15, y: -0.06, z: 0.13 }), frame);
   }
   // Arms out for balance; the lead hand follows the turn.
-  const sway = Math.sin(performance.now() * 0.002) * 0.03;
+  const sway = Math.sin(time * 0.002) * 0.03;
   for (const [s, dir] of [['Left', 1], ['Right', -1]]) {
     B[s + 'Arm'].getWorldPosition(_aw); stance.worldToLocal(AP.sh.copy(_aw));
-    if (seated) AP.hand.copy(AP.sh).add({ x: dir * 0.08, y: -0.4, z: 0.32 });
+    if (walking) AP.hand.copy(AP.sh).add({ x: dir * 0.08, y: -0.48, z: dir > 0 ? Math.sin(time * 0.005) * 0.12 * (S.walkBlend ?? 1) : 0.08 });
+    else if (seated) AP.hand.copy(AP.sh).add({ x: dir * 0.08, y: -0.4, z: 0.32 });
     else AP.hand.copy(AP.sh).add({ x: dir * (dir * sg > 0 ? 0.42 : 0.34), y: -0.32 + (tuck ? 0.1 : 0) + sway * dir, z: 0.12 + steer * 0.18 * dir * sg });
     joint(AP.sh, AP.hand, AV.upper, AV.fore, ELBOW_BEND, AP.elb);
-    aimBone(B[s + 'Arm'], B[s + 'ForeArm'], AP.elb);
-    aimBone(B[s + 'ForeArm'], B[s + 'Hand'], AP.hand);
+    aimBone(B[s + 'Arm'], B[s + 'ForeArm'], AP.elb, frame);
+    aimBone(B[s + 'ForeArm'], B[s + 'Hand'], AP.hand, frame);
   }
   // Look down the board: head (and a little neck) turn toward the nose.
   stance.localToWorld(AP.up.set(0, 1, 0)).sub(stance.localToWorld(_tw.set(0, 0, 0))).normalize();
-  rotateBoneWorld(B.Neck, _qa.setFromAxisAngle(AP.up, 0.5 * sg));
-  rotateBoneWorld(B.Head, _qa.setFromAxisAngle(AP.up, 0.85 * sg));
+  rotateBoneWorld(B.Neck, _qa.setFromAxisAngle(AP.up, walking ? 0 : 0.5 * sg));
+  rotateBoneWorld(B.Head, _qa.setFromAxisAngle(AP.up, walking ? 0 : 0.85 * sg));
 }
 
 // ---------- Rider pose ----------
@@ -1956,23 +2318,33 @@ const P = {}; for (const k of ['footF', 'footB', 'hip', 'hipF', 'hipB', 'knee', 
 const KNEE_BEND = new THREE.Vector3(0, 0.2, 1), ELBOW_BEND = new THREE.Vector3(0, -1, -0.3);
 let crouchS = 1;
 function poseRider(dt) {
-  upv.copy(S.n);
+  carriedBoard.position.set(S.walking ? 0.1 : 0, S.walking ? 1.05 : 0, S.walking ? -0.38 : 0);
+  carriedBoard.rotation.z = S.walking ? 0.45 : 0;
+  body.rotation.y = S.walking && !AV.ready ? Math.PI / 2 : 0;
+  upv.copy(S.walking ? worldUp : S.n);
   const f = tmp.copy(S.f).addScaledVector(upv, -S.f.dot(upv)).normalize();
   side.crossVectors(f, upv);
   basis.makeBasis(f, upv, side);
   rider.quaternion.setFromRotationMatrix(basis);
   rider.position.copy(S.p);
   const speed = S.v.length();
+  S.walkBlend += ((S.walking ? Math.min(1, speed / 1.1) : 0) - S.walkBlend) * (1 - Math.exp(-12 * dt));
   // Angulation into the turn, more with speed.
   const targetLean = S.air ? 0 : S.steer * Math.min(1, speed / 14) * 0.5;
   S.lean += (targetLean - S.lean) * Math.min(1, dt * 8);
   body.rotation.x = S.crash > 0 ? Math.sin(S.crash * 9) * 0.5 : S.lean;
-  const tuck = keys.has('w') || touch.T;
+  const tuck = !S.walking && (keys.has('w') || touch.T);
   const seated = S.ride && !S.ride.L.surface;
-  const target = S.crash > 0 ? 0.6 : seated ? 0.62 : S.air ? 0.72 : tuck ? 0.68 : 0.9 - Math.abs(S.steer) * 0.08;
+  const target = S.walking ? 0.98 : S.crash > 0 ? 0.6 : seated ? 0.62 : S.air ? 0.72 : tuck ? 0.68 : 0.9 - Math.abs(S.steer) * 0.08;
   crouchS += (target - crouchS) * Math.min(1, dt * 8);
   const c = crouchS, fwd = (1 - c) * 0.5 + Math.max(0, S.steer) * 0.12;   // chest drops toward the toe side
   P.footF.set(0.27, 0.16, 0.02); P.footB.set(-0.27, 0.16, 0.02);
+  if (S.walking) {
+    for (const [foot, sign] of [[P.footF, 1], [P.footB, -1]]) {
+      const stride = Math.sin(S.walkPhase) * S.walkBlend * sign;
+      foot.set(sign * 0.12, 0.16 + Math.max(0, stride) * 0.1, stride * 0.25);
+    }
+  }
   P.hip.set(0, 0.42 + 0.62 * c, -0.04 + fwd * 0.2 - Math.max(0, -S.steer) * 0.12);
   P.hipF.copy(P.hip).x += 0.1; P.hipB.copy(P.hip).x -= 0.1;
   for (const s of ['F', 'B']) {
@@ -1988,6 +2360,10 @@ function poseRider(dt) {
   const sway = Math.sin(performance.now() * 0.002) * 0.03;
   P.handF.copy(P.shF).add({ x: 0.4, y: -0.3 + sway + (tuck ? 0.1 : 0), z: 0.12 + S.steer * 0.18 });
   P.handB.copy(P.shB).add({ x: -0.32, y: -0.36 - sway, z: 0.1 - S.steer * 0.12 });
+  if (S.walking) {
+    P.handF.copy(P.shF).add({ x: 0.08, y: -0.48, z: Math.sin(S.walkPhase) * 0.12 * S.walkBlend });
+    P.handB.copy(P.shB).add({ x: -0.08, y: -0.48, z: 0.08 });
+  }
   if (seated) { P.handF.copy(P.shF).add({ x: 0.1, y: -0.35, z: 0.3 }); P.handB.copy(P.shB).add({ x: -0.1, y: -0.35, z: 0.3 }); }
   for (const s of ['F', 'B']) {
     joint(P['sh' + s], P['hand' + s], 0.3, 0.28, ELBOW_BEND, P.elb);
@@ -1997,21 +2373,24 @@ function poseRider(dt) {
   }
   limbs.head.position.copy(P.chest).add({ x: 0.03, y: 0.24, z: 0.03 });
   limbs.head.rotation.set(0, 0, -0.15 + fwd * 0.3);
-  if (AV.ready) poseAvatar(c, tuck, seated);
+  if (AV.ready) poseAvatar(c, tuck, seated, AV, stance, rider, S, PICK.goofy, S.walking ? S.walkPhase * 200 : performance.now(), S.walking);
 }
 
 // ---------- Particles update ----------
 function updateParticles(dt) {
   const arr = snowGeo.attributes.position.array;
-  for (let i = 0; i < SNOW_N; i++) {
+  // Concentrate snowfall near the camera so flakes read clearly without adding terrain haze.
+  const snowRadius = weather.weather === 'storm' ? 32 : weather.weather === 'snow' ? 48 : SNOW_R;
+  for (let i = 0; i < snowGeo.drawRange.count; i++) {
     const o = i * 3;
-    arr[o + 1] -= (1.2 + (i % 7) * 0.12) * dt;
-    arr[o] += Math.sin(i + performance.now() * 0.0005) * 0.3 * dt;
+    arr[o + 1] -= (weather.fallSpeed + (i % 7) * 0.12) * dt;
+    arr[o] += (weather.wind + Math.sin(i + performance.now() * 0.0005) * weather.gust) * dt;
+    arr[o + 2] += weather.wind * 0.3 * dt;
     // Keep flakes in a box around the camera.
     for (let a = 0; a < 3; a++) {
       const c = camera.position.getComponent(a);
-      if (arr[o + a] < c - SNOW_R) arr[o + a] += SNOW_R * 2;
-      else if (arr[o + a] > c + SNOW_R) arr[o + a] -= SNOW_R * 2;
+      const span = snowRadius * 2;
+      arr[o + a] = c + ((arr[o + a] - c + snowRadius) % span + span) % span - snowRadius;
     }
   }
   snowGeo.attributes.position.needsUpdate = true;
@@ -2052,7 +2431,7 @@ function drawMap(cv) {
   off.getContext('2d').putImageData(img, 0, 0);
   g.imageSmoothingQuality = 'high';
   g.drawImage(off, 0, 0, cv.width, cv.height);
-  const k = cv.width / WIDTH, P = q => [(q.x + WIDTH / 2) * k, (q.z + DEPTH / 2) * k];
+  const P = q => mapPoint(q.x, q.z, WIDTH, DEPTH, cv.width, cv.height);
   const line = pts => { g.beginPath(); pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo'](...P(q))); };
   g.lineCap = g.lineJoin = 'round';
   const fillA = (feats, col) => { g.fillStyle = col; for (const rings of feats || []) { g.beginPath(); for (const r of rings) { line(r); g.closePath(); } g.fill('evenodd'); } };
@@ -2067,7 +2446,7 @@ function drawMap(cv) {
   }
   g.setLineDash([]);
   g.fillStyle = '#5c544d';
-  for (const b of LANDW.buildings) { line(b.pts); g.closePath(); g.fill(); }
+  for (const b of LANDW.buildings) { g.fillStyle = restaurantProfile(b.name) ? '#a54332' : hotelProfile(b.name) ? '#b07838' : '#5c544d'; line(b.pts); g.closePath(); g.fill(); }
   if (HAS_SKI) {
     // Out of bounds dims a little; the boundary itself is orange, like the ropes on the hill.
     const sc = document.createElement('canvas'); sc.width = LW; sc.height = LH;
@@ -2099,8 +2478,8 @@ function drawMap(cv) {
 }
 const mini = document.getElementById('minimap'), big = document.getElementById('bigmap');
 drawMap(mini); drawMap(big);
-const miniBase = document.createElement('canvas'); miniBase.width = mini.width; miniBase.height = mini.height;
-miniBase.getContext('2d').drawImage(mini, 0, 0);
+const miniBase = document.createElement('canvas'); miniBase.width = mini.width * 3; miniBase.height = mini.height * 3;
+drawMap(miniBase);
 
 const mapEl = document.getElementById('map'), labelsEl = document.getElementById('labels'), meEl = document.getElementById('me');
 const mapViewport = document.getElementById('mapViewport'), mapContent = document.getElementById('mapContent');
@@ -2111,6 +2490,17 @@ function applyMapTransform() {
   mapY = Math.min(0, Math.max(h * (1 - mapScale), mapY));
   mapContent.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
   mapContent.style.setProperty('--map-scale', mapScale);
+  // Keep the overview readable; entrances hidden by a neighbour remain in the list.
+  const occupied = [...document.querySelectorAll('#liftStops .lift-stop:not(.trail-start)')].map(el => ({
+    x: parseFloat(el.style.left) / 100 * w * mapScale,
+    y: parseFloat(el.style.top) / 100 * h * mapScale,
+  }));
+  for (const el of document.querySelectorAll('#liftStops .trail-start')) {
+    const x = parseFloat(el.style.left) / 100 * w * mapScale;
+    const y = parseFloat(el.style.top) / 100 * h * mapScale;
+    el.hidden = occupied.some(p => Math.abs(p.x - x) < 34 && Math.abs(p.y - y) < 34);
+    if (!el.hidden) occupied.push({ x, y });
+  }
   document.getElementById('zoomIn').disabled = mapScale >= 12;
   document.getElementById('zoomOut').disabled = mapScale <= 1;
   document.getElementById('zoomSlider').value = mapScale;
@@ -2168,12 +2558,13 @@ function endMapDrag(e) {
 }
 mapViewport.addEventListener('pointerup', endMapDrag);
 mapViewport.addEventListener('pointercancel', endMapDrag);
-const frac = (x, z) => ({ u: (x + WIDTH / 2) / WIDTH, v: (z + DEPTH / 2) / DEPTH });
+const frac = (x, z) => mapFraction(x, z, WIDTH, DEPTH);
 // Villages from OSM place names (skipping street-block addresses), plus the biggest named buildings.
 const PLACES = LANDW.labels.filter(l => l.kind === 'place' && /^[\x20-\x7e]+$/.test(l.name) && !/chome|-jo|^Yotei/i.test(l.name) && Math.abs(l.x) < WIDTH / 2 - 200 && Math.abs(l.z) < DEPTH / 2 - 200)
   .filter(l => !RESORTS.some(r => r.name.includes(l.name) && Math.hypot(r.x - l.x, r.z - l.z) < 2000));
 for (const r of [{ name: `Annupuri ${Math.round(H[peakK])} m`, ...PEAK, peak: true }, ...RESORTS,
-  ...PLACES.map(p => ({ ...p, cls: 'place' })), ...LANDMARKS.filter(b => /^[\x20-\x7e]+$/.test(b.name)).slice(0, 8).map(b => ({ ...b, cls: 'bldg' }))]) {
+  ...PLACES.map(p => ({ ...p, cls: 'place' })), ...LANDMARKS.filter(b => b.restaurant || b.hotel).map(b => ({ ...b, cls: b.restaurant ? 'bldg dining' : 'bldg' })),
+  ...LANDMARKS.filter(b => !b.restaurant && !b.hotel && /^[\x20-\x7e]+$/.test(b.name)).slice(0, 1).map(b => ({ ...b, cls: 'bldg' }))]) {
   const { u, v } = frac(r.x, r.z), el = document.createElement('div');
   el.className = 'label' + (r.peak ? ' peak' : '') + (r.cls ? ' ' + r.cls : ''); el.textContent = r.name;
   el.style.left = `${u * 100}%`; el.style.top = `${v * 100}%`;
@@ -2191,6 +2582,26 @@ function travelToStation(point, name) {
   S.ride = null; liftQueue = null;
   dropIn({ x: point.x, z: point.z, name });
   toggleMap(false);
+}
+function startTrail(route) {
+  S.ride = null; liftQueue = null;
+  dropIn({ ...alongTrail(route, 3), name: `${route.name} · 雪道入口` });
+  toggleMap(false);
+}
+document.getElementById('trailCount').textContent = `（${TRAIL_ROUTES.length}）`;
+for (const route of [...TRAIL_ROUTES].sort((a, b) => a.name.localeCompare(b.name))) {
+  const point = alongTrail(route, 0), { u, v } = frac(point.x, point.z);
+  const label = `${route.name} · ${diffOf(route.diff).label} · ${Math.round(route.length)} m`;
+  const marker = document.createElement('button');
+  marker.type = 'button'; marker.className = 'lift-stop trail-start'; marker.textContent = '起';
+  marker.dataset.name = `${label} · 從入口出發`; marker.title = marker.dataset.name;
+  marker.setAttribute('aria-label', `${label}，從雪道入口開始`);
+  marker.style.left = `${u * 100}%`; marker.style.top = `${v * 100}%`;
+  marker.addEventListener('click', e => { e.stopPropagation(); if (!mapDragged) startTrail(route); });
+  document.getElementById('liftStops').appendChild(marker);
+  const item = document.createElement('button'); item.type = 'button';
+  item.textContent = label; item.addEventListener('click', () => startTrail(route));
+  document.getElementById('trailListItems').appendChild(item);
 }
 function addLiftDestination(point, name, kind, markerClass, symbol) {
   const { u, v } = frac(point.x, point.z);
@@ -2234,9 +2645,13 @@ mapEl.addEventListener('click', e => { if (e.target === mapEl) toggleMap(false);
 
 function drawMini() {
   const g = mini.getContext('2d');
-  g.drawImage(miniBase, 0, 0);
-  const { u, v } = frac(S.p.x, S.p.z), x = u * mini.width, y = v * mini.height;
-  const a = Math.atan2(S.f.z, S.f.x);
+  // Show nearby trails at 3×, following the rider and clamping at terrain edges.
+  const { u, v } = frac(S.p.x, S.p.z);
+  const sourceX = Math.max(0, Math.min(miniBase.width - mini.width, u * miniBase.width - mini.width / 2));
+  const sourceY = Math.max(0, Math.min(miniBase.height - mini.height, v * miniBase.height - mini.height / 2));
+  g.drawImage(miniBase, sourceX, sourceY, mini.width, mini.height, 0, 0, mini.width, mini.height);
+  const x = u * miniBase.width - sourceX, y = v * miniBase.height - sourceY;
+  const a = mapHeading(S.f.x, S.f.z, WIDTH, DEPTH, mini.width, mini.height);
   g.save(); g.translate(x, y); g.rotate(a);
   g.fillStyle = '#ff6a3d'; g.strokeStyle = '#f4f8fc'; g.lineWidth = 2.5;
   g.beginPath(); g.moveTo(14, 0); g.lineTo(-8, 8); g.lineTo(-4, 0); g.lineTo(-8, -8); g.closePath(); g.fill(); g.stroke();
@@ -2313,11 +2728,23 @@ function startAudio() {
 function updateAudio() {
   if (!audio) return;
   const sp = S.v.length(), t = audio.ctx.currentTime;
-  audio.gain.gain.setTargetAtTime(Math.min(0.5, 0.04 + sp / 60), t, 0.1);
+  audio.gain.gain.setTargetAtTime(Math.min(0.5, 0.04 + sp / 60 + weather.wind / 90), t, 0.1);
   audio.lp.frequency.setTargetAtTime(300 + sp * 45 + (S.air ? 400 : 0), t, 0.1);
 }
 
 // ---------- Loop ----------
+const { createVisitors } = await import('./src/visitors.js');
+const visitors = await createVisitors({
+  scene, lifts: LIFTS, height, normalAt, carrierPose, lowEnd: LOW_END,
+  registerShadow: mesh => nearbyShadows.add(mesh),
+  getAvatar: () => ({ rig: AV, boardParts: carriedBoard.children }), poseAvatar, cameraPosition: () => camera.position,
+  onBump: () => toast('撞到其他滑雪者了！', 1),
+  clock: () => liftTime,
+  player: (L, k) => (S.ride?.L === L && S.ride.k === k) || (liftQueue?.L === L && liftQueue.k === k),
+  contains: (x, z) => inResort(x, z) && !roadBarrier.contains(x, z) &&
+    (onPiste(x, z) || LIFTS.some(L => [L.path[0], L.path.at(-1)].some(p => Math.hypot(p.x - x, p.z - z) < 48))),
+  blocks: (ax, az, bx, bz) => roadBarrier.blocks(ax, az, bx, bz),
+});
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -2326,8 +2753,15 @@ addEventListener('resize', () => {
 dropIn(SPOTS[0]);
 updateTrees(0, 99);
 let running = false, last = performance.now(), acc = 0;
+// Background tabs must not feed a long pause into physics or the quality controller.
+addEventListener('visibilitychange', () => {
+  last = performance.now(); acc = 0; renderQuality.reset();
+});
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const frameSeconds = (now - last) / 1000;
+  const dt = Math.min(0.05, frameSeconds); last = now;
+  if (document.hidden) { requestAnimationFrame(frame); return; }
+  if (MOBILE && running && mapEl.hidden) renderQuality.sample(frameSeconds);
   if (running && mapEl.hidden) {
     acc += dt;
     while (acc >= 1 / 120) { step(1 / 120); acc -= 1 / 120; }
@@ -2336,8 +2770,12 @@ function frame(now) {
   updateCamera(dt);
   sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p);
   sky.position.copy(camera.position);
+  weather.update(S);
+  buildingLighting?.update(S.p, dt);
   updateParticles(dt);
   updateLifts(running && mapEl.hidden ? dt : 0);
+  visitors.update(running && mapEl.hidden ? dt : 0);
+  nearbyShadows.update(S.p);
   updateTrees(dt);
   updateHud(dt);
   updateAudio();
@@ -2352,7 +2790,8 @@ $('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} �
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
-window.__ski = { S, PEAK_GEO, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+window.__ski = { weather, S, PEAK_GEO, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
+window.__visitors = visitors;
 window.__sim = { renderer, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
 </script>

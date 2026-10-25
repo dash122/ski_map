@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { createRoadBarrier } from '../src/road-boundaries.js';
+const r = createRoadBarrier([{ a: { x: -150, z: 0 }, b: { x: 150, z: 0 }, radius: 4 }]);
+assert(r.contains(0, 3)); assert(!r.contains(0, 5));
+assert(r.blocks(0, -80, 0, 80), 'high-speed road crossing');
+assert(r.blocks(-200, 0, 200, 0), 'collinear crossing');
+assert(r.blocks(154, -10, 154, 10), 'rounded endpoint contact');
+assert(!r.blocks(0, -8, 80, -8), 'parallel movement');
+assert(!r.blocks(0, 2, 0, 8), 'escape after lift unloading');
+assert(r.blocks(0, 2, 0, -8), 'cannot escape across opposite side');
+assert(!createRoadBarrier([]).blocks(0, 0, 10, 10));
+console.log('Road boundary checks passed');

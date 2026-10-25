@@ -1,0 +1,47 @@
+{
+  "source": "public/data/land.json · OSM footprint at Ace Gondola summit endpoint",
+  "osm": {
+    "type": "way",
+    "geometry": [
+      {
+        "lon": 140.67994000000002,
+        "lat": 42.86802
+      },
+      {
+        "lon": 140.68036,
+        "lat": 42.86789
+      },
+      {
+        "lon": 140.68021000000002,
+        "lat": 42.86764
+      },
+      {
+        "lon": 140.67979,
+        "lat": 42.86777
+      },
+      {
+        "lon": 140.67994000000002,
+        "lat": 42.86802
+      }
+    ],
+    "tags": {
+      "building": "yes"
+    },
+    "encodedFootprint": [
+      6494,
+      3698,
+      42,
+      13,
+      -15,
+      25,
+      -42,
+      -13
+    ]
+  },
+  "restaurant": {
+    "name": "NEST813",
+    "levels": 2,
+    "source": "https://www.grand-hirafu.jp/en/news/9671/"
+  },
+  "limitations": "Footprint decoded from bundled OSM land data, selected against the Ace Gondola endpoint; original way ID and architectural tags were discarded by the land converter. Height (9.2 m), facade details and materials are estimates. Restaurant on 2F confirmed by resort. Live refresh unavailable."
+}

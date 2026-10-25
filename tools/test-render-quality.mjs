@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { createRenderQuality } from '../src/render-quality.js';
+
+const changes = [];
+const quality = createRenderQuality({ mobile: true, pixelRatio: 3, apply: r => changes.push(r) });
+const run = (seconds, dt) => { for (let i = 0; i < Math.ceil(seconds / dt); i++) quality.sample(dt); };
+assert.equal(quality.ratio, 1);
+run(12, 1 / 30);
+assert.equal(quality.ratio, 0.75, 'sustained overload reaches the mobile floor');
+const beforeRecovery = changes.length;
+run(4, 1 / 60);
+assert.equal(changes.length, beforeRecovery, 'recovery needs sustained headroom');
+run(40, 1 / 60);
+assert.equal(quality.ratio, 1.25, 'recovery stops at the mobile cap');
+quality.reset();
+run(1, 1 / 30);
+quality.sample(30);
+run(1, 1 / 30);
+assert.equal(quality.ratio, 1.25, 'tab pauses discard the partial sampling window');
+run(3, 1 / 30);
+assert(quality.ratio < 1.25);
+const desktop = createRenderQuality({ mobile: false, pixelRatio: 3, apply() {} });
+assert.equal(desktop.ratio, 2);
+const lowDpi = createRenderQuality({ mobile: true, pixelRatio: 0.5, apply() {} });
+for (let i = 0; i < 1000; i++) lowDpi.sample(1 / 30);
+assert(lowDpi.ratio <= 0.5, 'never exceed the native resolution');
+console.log('Render quality: overload, recovery, bounds and tab-pause checks passed.');

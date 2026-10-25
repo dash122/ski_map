@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { createBuildingLighting } from '../src/building-lighting.js';
+const scene = new THREE.Scene(), material = new THREE.MeshLambertMaterial();
+const entrances = Array.from({ length: 100 }, (_, i) => new THREE.Vector3(i * 20, 4, 0));
+const lighting = createBuildingLighting({ scene, material, entrances });
+lighting.setTime('night'); lighting.update(new THREE.Vector3(100, 0, 0));
+assert.equal(scene.children.length, 6, 'bounded light pool regardless of village size');
+assert(scene.children.every(light => light.intensity > 0));
+assert.equal(scene.children[0].position.x, 100, 'nearest entrance gets priority');
+lighting.update(new THREE.Vector3(10000, 0, 0), 1);
+assert(scene.children.every(light => light.intensity === 0), 'no distant lighting cost');
+lighting.setTime('sunset'); lighting.update(new THREE.Vector3(0, 0, 0));
+assert.equal(scene.children[0].intensity, 4.8);
+lighting.setTime('day');
+assert(scene.children.every(light => light.intensity === 0), 'day disables light spill immediately');
+console.log('Building lighting: bounded pool, nearest entrances, sunset intensity and daytime shutdown pass.');

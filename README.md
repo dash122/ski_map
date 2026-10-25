@@ -6,19 +6,22 @@ Start at the top of the highest lift, carve down Grand Hirafu, Hanazono, Niseko 
 
 ## Controls
 
+Every drop-in starts at rest. Press W (or the touch tuck button), steer, or jump to push off. Gravity builds speed gradually; carving and braking manage it. Upright riding is tuned for controlled cruising, while tucking permits faster descents. NPCs start from zero, pause before setting off, accelerate according to the slope, and brake for stations.
+
 | Key | Action |
 | --- | --- |
 | A / D | Carve left / right (spin while airborne) |
 | W | Tuck for speed, skate on the flats, fast-forward a lift queue or ride |
 | S | Skid to brake |
 | Space | Ollie |
+| F | Take off / put on board; W/S walk forward/back, A/D turn |
 | E | Ride the lift you're standing at |
 | M | Trail map; click anywhere to drop in there |
 | C | Cycle cameras (chase, low, helmet, drone) |
 | R | Back to your last drop point |
 | 1–5 | Top of each resort's highest lift, then the summit |
 
-On touch screens, on-screen buttons replace the keys.
+On touch screens, on-screen buttons replace the keys. Tap the walking button to carry the board and walk uphill or downhill. W/S move forward/back and A/D turn. The camera faces the direction of travel, including when walking backward. Drag the scene to change heading. On touch screens, use the forward/back buttons and the pad to turn. Switch modes on the ground; boarding a lift or dropping in puts the board back on.
 
 ## Run it
 
@@ -51,6 +54,10 @@ At a base station, ride the lift (E or tap the prompt), step up to the loading l
 
 Runs are graded the way Japanese trail maps do it: green for beginner, red for intermediate, black for advanced and expert, dashed orange for off-piste.
 
+The mountain also has up to 378 autonomous snowboarders (162 on lower-powered devices), with eighteen riders per safe lift route (nine on lower-powered devices) and starting positions spread along each run. They follow terrain-checked pistes, wait at stations, ride actual uphill lift carriers, and repeat their runs with varied speeds and pauses. They carry their boards on short uphill/flat station approaches. Routes stay within the resort boundary and avoid roads; lifts without a safe return route do not spawn visitors. Nearby visitors use the player's detailed skinned rider, fabric textures, gear, board and bone posing with varied outfits. A pool of independent skeletons shares geometry and textures; distant visitors use lightweight instanced models. Bumping a visitor slows and deflects the player, transfers momentum along the visitor's safe route, and briefly staggers the visitor. Hard impacts also unbalance the player. Swept contact checks catch fast collisions and ignore riders on elevated lift carriers.
+
+Run `node tools/test-visitors.mjs` for navigation checks. Set `VISITOR_BROWSER_TEST=1` (with Playwright installed, or `PLAYWRIGHT_PATH` pointing to its module) after `npm run build` to test 90 simulated minutes against the real map, including downhill elevation checks, boundaries, and completed lift/run cycles.
+
 ## Rider model
 
 `public/models/rider.glb` is a skinned humanoid that the page poses bone by bone (legs, hips, spine, arms and head) for carving, tucking, jumping and riding lifts.
@@ -71,3 +78,23 @@ npm run build:rider -- path/to/character.glb public/models/rider.glb
 ## License and data
 
 Code: MIT. Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL). Elevation: AWS Terrain Tiles (SRTM and other public sources).
+
+## Roads and mapped lighting
+
+Roads use the existing OSM centreline geometry, draped at 3 m intervals with a procedural asphalt grain and snow verges. Vehicle roads are hard riding boundaries, including while airborne; snow-covered access tracks remain passable. Widths are estimates by OSM road class (9 / 7 / 5 m), not surveyed carriageway widths. The trail map uses the same centreline data. Road clicks cannot create a drop point inside a carriageway.
+
+`public/data/infrastructure.json` contains only individually mapped lamp nodes, with OSM IDs, source links, original tags and optional mapped heights. Run `node --use-system-ca tools/fetch_infrastructure.mjs` to refresh it, or pass a saved Overpass JSON response as its first argument. The monthly OSM workflow also refreshes it. A failed request preserves existing data; an empty successful response means there are no matching mapped nodes, not that no lights exist in reality.
+
+**Current lighting coverage:** the initial Overpass requests were rejected or timed out, so the checked-in lighting dataset explicitly records `status: unavailable` and contains no poles. No pole positions have been invented. The renderer supports mapped street lamps and floodlight masts, with estimated dimensions when height is absent, and stores metadata for future night lighting. Night mode uses a rider headlamp; mapped resort illumination awaits verified pole data. Resort night-ski maps indicate lit runs, not surveyed pole locations; those cannot establish exact mast coordinates.
+
+Boundary regression checks: `node tools/test-road-boundaries.mjs`.
+
+## Time and weather
+
+Open **時間／天氣** in the upper-left HUD. Choose day, sunset or night independently of clear (Bluebird), overcast, snow or snowstorm. Changes apply immediately and are remembered on this browser. Night enables a rider headlamp; storms increase snowfall and wind and shorten visibility. These controls simulate conditions, rather than reporting live resort weather. Tests: `node tools/test-weather.mjs`.
+
+Building windows now glow at night with stable, varied room occupancy and warm interior tones; hotels have more lit rooms than small chalets. Sunset uses dimmer lighting and daytime switches it off. Up to six nearby exterior entrance lights illuminate walls and snow. Occupancy and entrance positions are illustrative, based on mapped building footprints rather than surveyed fixtures. Checks: `node tools/test-building-lighting.mjs`.
+
+Signature dining buildings use the existing named OSM footprints for The Barn, Ebisutei, Fuji Sushi, Ichimura Soba, Rin and Ezo Seafoods Fresh. `src/signature-restaurants.js` adds timber framing, glass storefronts, snow-covered entrance canopies, noren and lanterns where appropriate, and readable 3D signs. Red map footprints and dining labels identify them alongside the hotel landmarks. These are illustrative architectural treatments, not surveyed replicas; entrances use the longest mapped facade and may differ from the real entrance. Venue reference links are recorded with each profile. Ezo Seafoods Fresh is labeled as its current takeaway business, rather than its former dine-in restaurant.
+
+Course edges preserve mapped OSM piste polygons. Centreline-only trails use gently varying estimated widths around 32 m for beginners, 27 m for intermediates and 23 m for advanced runs. Woodland shoulders reinforce corridors below the treeline, excluding mapped open land and infrastructure. These are illustrative estimates, not surveyed trail edges.
