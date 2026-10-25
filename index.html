@@ -342,7 +342,7 @@ const DIFF = {
   freeride: { label: '非雪道', color: '#ff8a00' },
 };
 const diffOf = d => DIFF[d] || { label: '雪道', color: '#5b6b7c' };
-const MASK_W = 2048, MASK_H = Math.round(MASK_W * DEPTH / WIDTH);
+const MASK_W = matchMedia('(pointer: coarse)').matches ? 1024 : 2048, MASK_H = Math.round(MASK_W * DEPTH / WIDTH);
 const pisteCanvas = document.createElement('canvas'); pisteCanvas.width = MASK_W; pisteCanvas.height = MASK_H;
 let pisteData = null;
 const PISTES = [], LIFTS = [], COURSE_SEGMENTS = [];
@@ -548,13 +548,15 @@ const DEN = new Uint8Array(LW * LH);
 const canvas = document.getElementById('gl');
 const MOBILE = matchMedia('(pointer: coarse)').matches;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+// iOS kills the tab when GPU memory runs out; let the context restore instead of a blank canvas.
+canvas.addEventListener('webglcontextlost', e => e.preventDefault());
 const renderQuality = createRenderQuality({ mobile: MOBILE, pixelRatio: devicePixelRatio,
   apply: ratio => renderer.setPixelRatio(ratio) });
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const TRAIL_ROUTES = trailRoutes(PISTES, height);
