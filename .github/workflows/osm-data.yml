@@ -30,6 +30,8 @@ jobs:
         run: |
           RESORT=niseko node tools/fetch_infrastructure.mjs
           RESORT=appi node tools/fetch_infrastructure.mjs
+          mkdir -p public/data/gala
+          RESORT=gala node tools/fetch_infrastructure.mjs
       - name: Query Overpass and build osm.json and land.json for each resort
         run: |
           mkdir -p tools/data
@@ -41,7 +43,7 @@ jobs:
             done
             return 1
           }
-          for resort in niseko appi; do
+          for resort in niseko appi gala; do
             out=$(python3 -c "import json; print(json.load(open('tools/resorts.json'))['$resort']['out'])")
             mkdir -p "$out"
             fetch tools/ski.overpassql "tools/data/osm_$resort.json" "$resort"

@@ -35,6 +35,25 @@ export const RESORTS = {
     // Snow-capped volcano on the horizon: Mt. Iwate.
     volcano: { lon: 141.0007, lat: 39.8528 },
   },
+  gala: {
+    id: 'gala', label: 'GALA湯澤 Gala Yuzawa', data: 'data/gala/',
+    title: 'GALA湯澤滑雪', brand: 'GALA湯澤', mountain: '高津倉山',
+    code: 'KIJ', name: 'GALA湯澤', en: 'Gala Yuzawa', region: '新潟縣 · 高津倉山', thumb: 'thumbs/gala.webp',
+    sub: '在新潟縣湯澤町高津倉山的真實地形上滑雪，從新幹線車站直接搭纜車上山。',
+    summit: 'Takanokura', summitZone: 'GALA湯澤高津倉山頂', backcountry: 'GALA湯澤野雪區',
+    // Higher ridges east of Yuzawa share the box; the ski summit is Mt. Takanokura (OSM peak, 1181 m).
+    peak: { lon: 138.7695, lat: 36.9438 },
+    // Approximate base areas from the OSM lift terminals (labels only, not survey data).
+    bases: [
+      { name: 'Gala Yuzawa Station', lon: 138.7996, lat: 36.9503 },
+      { name: 'Cheers', lon: 138.7836, lat: 36.9518 },
+      { name: 'Kita Area', lon: 138.7776, lat: 36.9563 },
+      { name: 'Minami Area', lon: 138.7790, lat: 36.9400 },
+      { name: 'Ishiuchi Maruyama', lon: 138.7950, lat: 36.9700 },
+    ],
+    // Volcano on the horizon: Mt. Naeba, south-west across the Uonuma valley.
+    volcano: { lon: 138.6903, lat: 36.8460 },
+  },
 };
 
 export function currentResort(search = globalThis.location?.search ?? '') {

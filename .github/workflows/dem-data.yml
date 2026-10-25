@@ -25,11 +25,13 @@ jobs:
           python3 tools/fetch_dem_gsi.py public/data/dem.json
           mkdir -p public/data/appi
           RESORT=appi python3 tools/fetch_dem_gsi.py public/data/appi/dem.json
+          mkdir -p public/data/gala
+          RESORT=gala python3 tools/fetch_dem_gsi.py public/data/gala/dem.json
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data/dem.json public/data/appi/dem.json
+          git add public/data/dem.json public/data/appi/dem.json public/data/gala/dem.json
           if ! git diff --cached --quiet; then
             git commit -m "Update elevation from GSI 10 m DEM"
             git pull --rebase origin "$GITHUB_REF_NAME"
