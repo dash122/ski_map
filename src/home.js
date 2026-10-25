@@ -1,5 +1,5 @@
 // Home screen: pick an outfit and a resort, like choosing a level. Resolves with the chosen resort.
-import { RESORTS } from './resorts.js';
+import { RESORTS, CONTINENTS, COUNTRIES } from './resorts.js';
 import { RIDERS, pref, record } from './riders.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -35,7 +35,20 @@ export function chooseResort() {
 
   const last = pref.get('lastResort');
   return new Promise(resolve => {
-    for (const r of Object.values(RESORTS)) {
+    // Grouped like a trail-map index: continent heading, a divider per country, cards ordered by area.
+    const order = Object.keys(CONTINENTS), sorted = Object.values(RESORTS).sort((a, b) =>
+      order.indexOf(a.continent) - order.indexOf(b.continent) || a.country.localeCompare(b.country) || a.area.localeCompare(b.area, 'zh-Hant'));
+    let continent = null, country = null;
+    for (const r of sorted) {
+      if (r.continent !== continent) {
+        continent = r.continent; country = null;
+        list.append(el('h3', 'continent', `${CONTINENTS[continent][0]} <span>${CONTINENTS[continent][1]}</span>`));
+      }
+      if (r.country !== country) {
+        country = r.country;
+        const n = sorted.filter(s => s.country === country).length;
+        list.append(el('div', 'country', `<b>${COUNTRIES[country][0]}</b><span>${COUNTRIES[country][1]}</span><i>${n} 座雪場</i>`));
+      }
       const rec = record(r.id);
       const stat = rec.runs ? `最高 ${Math.round(rec.top)} km/h · 滑行 ${rec.runs} 次` : '全新雪場';
       const b = el('button', 'resort',

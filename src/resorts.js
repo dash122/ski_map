@@ -2,7 +2,7 @@
 // Data folders are built by the tools in tools/ from the boxes in tools/resorts.json.
 export const RESORTS = {
   niseko: {
-    id: 'niseko', label: '二世古 Niseko United', data: 'data/',
+    id: 'niseko', continent: 'asia', country: 'JP', area: '北海道', label: '二世古 Niseko United', data: 'data/',
     title: '二世古滑雪', brand: '二世古', mountain: '二世古安努普利山',
     // Home-screen card: nearest airport code, names and a thumbnail rendered from the game itself.
     code: 'CTS', name: '二世古', en: 'Niseko', region: '北海道 · 安努普利山', thumb: 'thumbs/niseko.webp',
@@ -19,7 +19,7 @@ export const RESORTS = {
     volcano: { lon: 140.811, lat: 42.826 },
   },
   appi: {
-    id: 'appi', label: '安比高原 Appi Kogen', data: 'data/appi/',
+    id: 'appi', continent: 'asia', country: 'JP', area: '東北', label: '安比高原 Appi Kogen', data: 'data/appi/',
     title: '安比高原滑雪', brand: '安比高原', mountain: '前森山',
     code: 'HNA', name: '安比高原', en: 'Appi Kogen', region: '岩手縣 · 前森山', thumb: 'thumbs/appi.webp',
     sub: '在岩手縣安比高原前森山的真實地形上滑雪。',
@@ -36,7 +36,7 @@ export const RESORTS = {
     volcano: { lon: 141.0007, lat: 39.8528 },
   },
   gala: {
-    id: 'gala', label: 'GALA湯澤 Gala Yuzawa', data: 'data/gala/',
+    id: 'gala', continent: 'asia', country: 'JP', area: '新潟', label: 'GALA湯澤 Gala Yuzawa', data: 'data/gala/',
     title: 'GALA湯澤滑雪', brand: 'GALA湯澤', mountain: '高津倉山',
     code: 'KIJ', name: 'GALA湯澤', en: 'Gala Yuzawa', region: '新潟縣 · 高津倉山', thumb: 'thumbs/gala.webp',
     sub: '在新潟縣湯澤町高津倉山的真實地形上滑雪，從新幹線車站直接搭纜車上山。',
@@ -55,7 +55,7 @@ export const RESORTS = {
     volcano: { lon: 138.6903, lat: 36.8460 },
   },
   rusutsu: {
-    id: 'rusutsu', label: '留壽都 Rusutsu', data: 'data/rusutsu/',
+    id: 'rusutsu', continent: 'asia', country: 'JP', area: '北海道', label: '留壽都 Rusutsu', data: 'data/rusutsu/',
     title: '留壽都滑雪', brand: '留壽都', mountain: '貫氣別山',
     code: 'CTS', name: '留壽都', en: 'Rusutsu', region: '北海道 · 貫氣別山', thumb: 'thumbs/rusutsu.webp',
     sub: '在北海道留壽都的真實地形上滑雪：West、East 與 Isola 三座山以纜車相連，對面就是羊蹄山。',
@@ -72,7 +72,7 @@ export const RESORTS = {
     volcano: { lon: 140.811, lat: 42.826 },
   },
   teine: {
-    id: 'teine', label: '札幌手稻 Sapporo Teine', data: 'data/teine/',
+    id: 'teine', continent: 'asia', country: 'JP', area: '北海道', label: '札幌手稻 Sapporo Teine', data: 'data/teine/',
     title: '札幌手稻滑雪', brand: '札幌手稻', mountain: '手稻山',
     code: 'CTS', name: '札幌手稻', en: 'Sapporo Teine', region: '北海道 · 手稻山', thumb: 'thumbs/teine.webp',
     sub: '在札幌手稻山的真實地形上滑雪：山頂的 Highland 區俯瞰石狩灣，山下是 1972 年冬奧的 Olympia 區。',
@@ -88,7 +88,7 @@ export const RESORTS = {
     volcano: { lon: 140.811, lat: 42.826 },
   },
   cypress: {
-    id: 'cypress', label: '賽普勒斯山 Cypress Mountain', data: 'data/cypress/',
+    id: 'cypress', continent: 'north-america', country: 'CA', area: '卑詩省', label: '賽普勒斯山 Cypress Mountain', data: 'data/cypress/',
     title: '賽普勒斯山滑雪', brand: '賽普勒斯山', mountain: '賽普勒斯山',
     code: 'YVR', name: '賽普勒斯山', en: 'Cypress Mountain', region: '卑詩省 · 西溫哥華', thumb: 'thumbs/cypress.webp',
     sub: '在加拿大卑詩省西溫哥華賽普勒斯山的真實地形上滑雪，面向溫哥華灣與北岸山脈。',
@@ -103,7 +103,7 @@ export const RESORTS = {
     volcano: { lon: -123.0043, lat: 49.8503 },
   },
   chaserrugg: {
-    id: 'chaserrugg', label: 'Chäserrugg 托根堡', data: 'data/chaserrugg/',
+    id: 'chaserrugg', continent: 'europe', country: 'CH', area: '聖加侖州', label: 'Chäserrugg 托根堡', data: 'data/chaserrugg/',
     title: 'Chäserrugg 滑雪', brand: 'Chäserrugg', mountain: 'Chäserrugg',
     code: 'ZRH', name: 'Chäserrugg', en: 'Toggenburg', region: '瑞士 · 聖加侖州', thumb: 'thumbs/chaserrugg.webp',
     sub: '在瑞士托根堡 Chäserrugg 的真實地形上滑雪，從 Unterwasser 搭纜車直上丘爾菲爾斯滕（Churfirsten）山脊。',
@@ -121,6 +121,10 @@ export const RESORTS = {
     volcano: { lon: 9.3432, lat: 47.2494 },
   },
 };
+
+// Home-screen grouping: continents in this order, then countries, then areas.
+export const CONTINENTS = { asia: ['亞洲', 'Asia'], 'north-america': ['北美洲', 'North America'], europe: ['歐洲', 'Europe'] };
+export const COUNTRIES = { JP: ['日本', 'Japan'], CA: ['加拿大', 'Canada'], CH: ['瑞士', 'Switzerland'] };
 
 export function currentResort(search = globalThis.location?.search ?? '') {
   return RESORTS[new URLSearchParams(search).get('resort')] ?? RESORTS.niseko;

@@ -101,6 +101,11 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 .stance button[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.14); }
 #homeSkill { grid-template-columns: repeat(3, 1fr); }
 .resorts { display: grid; gap: 12px; }
+.resorts .continent { margin: 14px 0 0; font-size: 22px; font-weight: 700; letter-spacing: 0.08em; }
+.resorts .continent:first-child { margin-top: 0; }
+.resorts .continent span, .resorts .country span { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--mist); margin-left: 8px; }
+.resorts .country { display: flex; align-items: baseline; gap: 0; padding: 6px 0 4px; border-bottom: 1px solid rgba(255,255,255,0.18); font-size: 16px; }
+.resorts .country i { margin-left: auto; font-style: normal; font-size: 13px; color: var(--mist); }
 .resort { position: relative; display: grid; justify-items: start; align-content: center; min-height: 150px; padding: 18px 20px 14px; text-align: left; background: #172435; border: 2px solid rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; isolation: isolate; transition: transform 0.15s, border-color 0.15s; }
 .resort:hover, .resort:focus-visible { border-color: rgba(255,255,255,0.5); transform: translateY(-1px); }
 .resort:active { transform: scale(0.985); }
