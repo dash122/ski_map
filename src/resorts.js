@@ -4,6 +4,8 @@ export const RESORTS = {
   niseko: {
     id: 'niseko', label: '二世古 Niseko United', data: 'data/',
     title: '二世古滑雪', brand: '二世古', mountain: '二世古安努普利山',
+    // Home-screen card: nearest airport code, names and a thumbnail rendered from the game itself.
+    code: 'CTS', name: '二世古', en: 'Niseko', region: '北海道 · 安努普利山', thumb: 'thumbs/niseko.webp',
     sub: '在北海道二世古安努普利山的真實地形上滑雪。',
     summit: 'Annupuri', summitZone: '二世古安努普利山頂', backcountry: '二世古野雪區',
     // Approximate base areas of the four resorts (labels only, not survey data).
@@ -19,6 +21,7 @@ export const RESORTS = {
   appi: {
     id: 'appi', label: '安比高原 Appi Kogen', data: 'data/appi/',
     title: '安比高原滑雪', brand: '安比高原', mountain: '前森山',
+    code: 'HNA', name: '安比高原', en: 'Appi Kogen', region: '岩手縣 · 前森山', thumb: 'thumbs/appi.webp',
     sub: '在岩手縣安比高原前森山的真實地形上滑雪。',
     summit: 'Maemori', summitZone: '安比高原前森山頂', backcountry: '安比高原野雪區',
     // Higher peaks of the Hachimantai range sit inside the box; the ski summit is Mt. Maemori.
