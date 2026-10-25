@@ -784,10 +784,12 @@ try {
     if (sea) col.set([0.19, 0.27, 0.36], k * 3);
     else col.set([0.94 - forest * 2.2, 0.955 - forest * 1.8, 0.99 - forest * 1.6], k * 3);
   }
-  const idx = new Uint32Array((fgx - 1) * (fgy - 1) * 6);
+  // Phones skip every other horizon vertex: it sits kilometres away, so the detail is invisible.
+  const FS = MOBILE ? 2 : 1, idx = new Uint32Array(Math.ceil((fgx - 1) / FS) * Math.ceil((fgy - 1) / FS) * 6);
   let p = 0;
-  for (let j = 0; j < fgy - 1; j++) for (let i = 0; i < fgx - 1; i++) {
-    const a = j * fgx + i, b = a + 1, c = a + fgx, d = c + 1;
+  for (let j = 0; j < fgy - 1; j += FS) for (let i = 0; i < fgx - 1; i += FS) {
+    const si = Math.min(FS, fgx - 1 - i), sj = Math.min(FS, fgy - 1 - j);
+    const a = j * fgx + i, b = a + si, c = a + sj * fgx, d = c + si;
     idx[p++] = a; idx[p++] = c; idx[p++] = b; idx[p++] = b; idx[p++] = c; idx[p++] = d;
   }
   const geo = new THREE.BufferGeometry();
@@ -987,7 +989,7 @@ const cardGeo = (() => {
   return g;
 })();
 const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-const cardMat = new THREE.MeshLambertMaterial({ map: treeAtlas(), alphaTest: 0.35, side: THREE.DoubleSide, alphaToCoverage: !LOW_END });
+const cardMat = new THREE.MeshLambertMaterial({ map: treeAtlas(), alphaTest: 0.35, side: THREE.DoubleSide, alphaToCoverage: true });
 cardMat.onBeforeCompile = sh => {
   sh.vertexShader = 'attribute float aVar;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv = mix(vec2(0.0625, 0.03125), vec2(0.9375, 0.96875), vMapUv);\nvMapUv.x = (vMapUv.x + aVar) / 3.0;');
 };

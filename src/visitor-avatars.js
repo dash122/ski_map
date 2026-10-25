@@ -23,7 +23,7 @@ export function createVisitorAvatars({ root, getAvatar, poseAvatar, cameraPositi
       });
       kits.push(materials);
     }
-    for (let i = 0; i < (lowEnd ? 8 : 18); i++) {
+    for (let i = 0; i < (lowEnd ? 4 : 18); i++) {
       const avatar = new THREE.Group(), frame = new THREE.Group(), board = new THREE.Group();
       const model = clone(source.rig.model);
       const bindings = [];
@@ -45,7 +45,7 @@ export function createVisitorAvatars({ root, getAvatar, poseAvatar, cameraPositi
     selected.clear();
     if (!pool.length && !initialize()) return;
     const camera = cameraPosition();
-    const near = people.map((p, i) => ({ i, d: p.p.distanceToSquared(camera) })).filter(p => p.d < 240 ** 2).sort((a, b) => a.d - b.d).slice(0, pool.length);
+    const near = people.map((p, i) => ({ i, d: p.p.distanceToSquared(camera) })).filter(p => p.d < (lowEnd ? 140 : 240) ** 2).sort((a, b) => a.d - b.d).slice(0, pool.length);
     for (const p of near) selected.add(p.i);
     for (const slot of pool) slot.avatar.visible = false;
   }
