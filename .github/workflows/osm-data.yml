@@ -28,10 +28,10 @@ jobs:
       - name: Refresh mapped lighting
         continue-on-error: true # Preserve existing lamps if Overpass is unavailable.
         run: |
-          RESORT=niseko node tools/fetch_infrastructure.mjs
-          RESORT=appi node tools/fetch_infrastructure.mjs
-          mkdir -p public/data/gala
-          RESORT=gala node tools/fetch_infrastructure.mjs
+          for resort in $(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('tools/resorts.json'))).join(' '))"); do
+            mkdir -p "$(node -e "console.log(JSON.parse(require('fs').readFileSync('tools/resorts.json'))['$resort'].out)")"
+            RESORT=$resort node tools/fetch_infrastructure.mjs || true
+          done
       - name: Query Overpass and build osm.json and land.json for each resort
         run: |
           mkdir -p tools/data
@@ -43,7 +43,7 @@ jobs:
             done
             return 1
           }
-          for resort in niseko appi gala; do
+          for resort in $(python3 -c "import json; print(' '.join(json.load(open('tools/resorts.json'))))"); do
             out=$(python3 -c "import json; print(json.load(open('tools/resorts.json'))['$resort']['out'])")
             mkdir -p "$out"
             fetch tools/ski.overpassql "tools/data/osm_$resort.json" "$resort"

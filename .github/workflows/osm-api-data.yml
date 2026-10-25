@@ -1,0 +1,52 @@
+name: Fetch OSM data from the main API
+
+# For when the public Overpass servers are slow or down: tools/fetch_osm_api.mjs reads the same data from
+# api.openstreetmap.org in small tiles, then the usual builders write osm.json and land.json.
+on:
+  workflow_dispatch:
+    inputs:
+      resorts:
+        description: Resort ids from tools/resorts.json, space separated
+        required: true
+        default: cypress teine chaserrugg
+  # Also runs when this file or the fetcher changes (manual runs need the workflow on the default branch).
+  push:
+    paths:
+      - tools/fetch_osm_api.mjs
+      - .github/workflows/osm-api-data.yml
+
+permissions:
+  contents: write
+
+jobs:
+  osm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch and build each resort
+        env:
+          RESORTS: ${{ inputs.resorts || 'cypress teine chaserrugg' }}
+        run: |
+          mkdir -p tools/data
+          for resort in $RESORTS; do
+            out=$(python3 -c "import json; print(json.load(open('tools/resorts.json'))['$resort']['out'])")
+            mkdir -p "$out"
+            RESORT=$resort node tools/fetch_osm_api.mjs "tools/data/osm_$resort.json" "$RUNNER_TEMP/osm_land_$resort.json"
+            python3 tools/build_osm.py "tools/data/osm_$resort.json" "$out/osm.json"
+            RESORT=$resort python3 tools/build_land.py "$RUNNER_TEMP/osm_land_$resort.json" "$out/land.json"
+            test -f "$out/infrastructure.json" || echo '{"source":"OpenStreetMap query pending","fetched":null,"status":"unavailable","lamps":[]}' > "$out/infrastructure.json"
+            ls -l "$out"
+          done
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/data public/data
+          if ! git diff --cached --quiet; then
+            git commit -m "Update OSM ski and land data from the OpenStreetMap API"
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            git push
+          fi

@@ -187,7 +187,7 @@ def building_height(tags, area):
 
 def main(src, dst):
     data = json.load(open(src))
-    areas, lines, buildings, labels = {}, {}, [], []
+    areas, lines, buildings, labels, pois = {}, {}, [], [], []
     seen = set()
 
     def add_area(kind, rings, tol):
@@ -205,7 +205,10 @@ def main(src, dst):
         t, tags = el['type'], el.get('tags', {})
         if t == 'node':
             nm = tags.get('name:en') or tags.get('name')
-            if nm:
+            kind = tags.get('amenity') or tags.get('tourism') or tags.get('shop')
+            if nm and kind and in_box((el['lon'], el['lat'])):
+                pois.append({'n': nm, 'k': kind, 'c': enc([(el['lon'], el['lat'])])})   # names footprints, places café stands
+            elif nm:
                 labels.append({'n': nm, 'k': 'peak' if tags.get('natural') == 'peak' else 'place',
                                'e': num(tags.get('ele', '')), 'c': enc([(el['lon'], el['lat'])])})
             continue
@@ -268,9 +271,9 @@ def main(src, dst):
                     labels.append({'n': tags.get('name:en') or tags['name'], 'k': 'resort', 'c': enc([rings[0][0]])})
 
     out = {'fetched': datetime.date.today().isoformat(), 'source': '© OpenStreetMap contributors (ODbL)',
-           'origin': [W, N], 'q': Q, 'areas': areas, 'lines': lines, 'buildings': buildings, 'labels': labels}
+           'origin': [W, N], 'q': Q, 'areas': areas, 'lines': lines, 'buildings': buildings, 'labels': labels, 'pois': pois}
     json.dump(out, open(dst, 'w'), separators=(',', ':'), ensure_ascii=False)
-    print({k: len(v) for k, v in areas.items()}, {k: len(v) for k, v in lines.items()}, len(buildings), 'buildings', len(labels), 'labels ->', dst)
+    print({k: len(v) for k, v in areas.items()}, {k: len(v) for k, v in lines.items()}, len(buildings), 'buildings', len(labels), 'labels', len(pois), 'pois ->', dst)
 
 
 if __name__ == '__main__':

@@ -2,7 +2,9 @@
 
 Run `node tools/benchmark-player-speed.mjs` to execute the current player physics directly from `index.html` at 120 Hz, for 60 seconds from rest on uniform 10°, 20°, and 30° slopes. Rendering, trees, roads, and NPC contact are excluded to isolate movement. Gentle linked turns use sinusoidal steering of amplitude 0.3 and period 6 seconds. This steering pattern is a test input, not a recorded rider trajectory.
 
-Retuned results on 2026-10-25, km/h (averages from seconds 10–60):
+Rider skill (`src/riding-speed.js` `SKILLS`, chosen on the home screen) scales the soft speed targets, turn losses and snow friction. `TABLE=1 node tools/benchmark-player-speed.mjs` prints every skill; the default (intermediate) means below were measured at 20-30 degrees: linked turns 39-44 km/h, straight upright 52-55, tucked 63-66. Advanced: linked turns 51-60, straight 67-71, tucked 83-86. Beginner: linked turns 23-27, straight 36-39. These are gameplay targets from the studies below, not telemetry.
+
+Earlier retuning, km/h (averages from seconds 10–60):
 
 | Slope | Straight upright | Gentle linked turns | Tucked straight |
 | --- | ---: | ---: | ---: |
