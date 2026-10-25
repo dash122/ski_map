@@ -888,7 +888,7 @@ function dropIn(spot) {
   if (down.lengthSq() < 1e-6) down.set(1, 0, 0);
   S.f.copy(down.normalize()); S.f.y = 0;
   S.v.set(0, 0, 0); S.n.copy(n); S.air = false; S.crash = 0; S.lastY = S.p.y;
-  camPos.copy(S.p).addScaledVector(S.f, -8).add(new THREE.Vector3(0, 4, 0));
+  resetCamera();
   if (spot.name) toast(spot.name, 1.4);
 }
 
@@ -1004,31 +1004,39 @@ function land(ground) {
 }
 
 // ---------- Camera ----------
-const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+// Steadiness: 0 is tight and twitchy, 1 the default, 2 slow and cinematic. The camera follows a
+// low-passed copy of the rider's position, heading and slope normal, so terrain bumps, quick edge
+// changes and the physics substeps never reach the view directly.
+const CAM_STEADY = 1;
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), camAt = new THREE.Vector3(), camDir = new THREE.Vector3(0, 0, 1), camUp = new THREE.Vector3(0, 1, 0);
+function resetCamera() {
+  camAt.copy(S.p); camDir.set(S.f.x, 0, S.f.z).normalize(); camUp.copy(S.n);
+  camPos.copy(S.p).addScaledVector(camDir, -8).add({ x: 0, y: 4, z: 0 });
+  camLook.copy(S.p).add({ x: 0, y: 1, z: 0 });
+}
 function updateCamera(dt) {
+  const slow = 1 + CAM_STEADY, damp = rate => 1 - Math.exp(-dt * rate / slow);
   const hv = tmp.set(S.v.x, 0, S.v.z);
   const dir = hv.lengthSq() > 4 ? hv.normalize() : tmp.set(S.f.x, 0, S.f.z).normalize();
+  camDir.lerp(dir, damp(camMode === 2 ? 8 : 3)).normalize();
+  camAt.lerp(S.p, damp(camMode === 2 ? 30 : 14));
+  camUp.lerp(S.n, damp(6)).normalize();
   const want = tmp2;
-  const k = 1 - Math.exp(-dt * (camMode === 2 ? 30 : 4));
-  if (camMode === 0) want.copy(S.p).addScaledVector(dir, -7.5).add({ x: 0, y: 3.2, z: 0 });
-  else if (camMode === 1) want.copy(S.p).addScaledVector(dir, -4).add({ x: 0, y: 1.1, z: 0 });
-  else if (camMode === 2) want.copy(S.p).addScaledVector(S.n, 1.6).addScaledVector(dir, 0.25);
-  else want.copy(S.p).addScaledVector(dir, -38).add({ x: 18, y: 26, z: 0 });
-  camPos.lerp(want, k);
+  if (camMode === 0) want.copy(camAt).addScaledVector(camDir, -7.5).add({ x: 0, y: 3.2, z: 0 });
+  else if (camMode === 1) want.copy(camAt).addScaledVector(camDir, -4).add({ x: 0, y: 1.1, z: 0 });
+  else if (camMode === 2) want.copy(camAt).addScaledVector(camUp, 1.6).addScaledVector(camDir, 0.25);
+  else want.copy(camAt).addScaledVector(camDir, -38).add({ x: 18, y: 26, z: 0 });
+  camPos.lerp(want, damp(camMode === 2 ? 40 : 5));
   const floor = height(camPos.x, camPos.z) + (camMode === 2 ? 0.3 : 0.8);
-  if (camPos.y < floor) camPos.y = floor;
+  if (camPos.y < floor) camPos.y += (floor - camPos.y) * damp(20);
   camera.position.copy(camPos);
-  const look = tmp2.copy(S.p).addScaledVector(dir, camMode === 2 ? 12 : 3).add({ x: 0, y: camMode === 2 ? 0.4 : 1.0, z: 0 });
-  camLook.lerp(look, camMode === 2 ? 1 : 1 - Math.exp(-dt * 10));
+  const look = tmp2.copy(camAt).addScaledVector(camDir, camMode === 2 ? 12 : 3).add({ x: 0, y: camMode === 2 ? 0.4 : 1.0, z: 0 });
+  camLook.lerp(look, damp(camMode === 2 ? 20 : 8));
   camera.lookAt(camLook);
-  // Speed feel: wider lens and a little chatter at pace.
+  // Speed feel: a wider lens at pace, eased in.
   const sp = S.v.length();
   const fov = (camera.aspect < 1 ? 74 : 62) + Math.min(14, Math.max(0, sp - 8) * 0.45);
-  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
-  if (!S.air && !S.ride && sp > 15 && camMode !== 3) {
-    const a = (sp - 15) * 0.0009, t = performance.now() * 0.05;
-    camera.rotation.x += Math.sin(t * 1.3) * a; camera.rotation.z += Math.sin(t * 0.9 + 1) * a;
-  }
+  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * damp(3); camera.updateProjectionMatrix(); }
   rider.visible = camMode !== 2;
 }
 
