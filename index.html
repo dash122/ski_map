@@ -647,6 +647,12 @@ if (OSM) {
     if (l.t !== 'zip_line') LIFTS.push({ name: l.n || 'Lift', type: l.t || '', pts, raw: l });
   }
   // Drop-in spots at the top of the highest lift on each resort's face of the mountain.
+  // On the flat past the unload ramp, like stepping off the chair; past the hall for gondolas and cable cars.
+  const SURFACE_LIFT_TYPES = /t-bar|j-bar|platter|drag_lift|magic_carpet|rope_tow/;
+  const topSpot = L => {
+    const [a, b] = [L.pts.at(-2), L.pts.at(-1)], d = Math.hypot(b.x - a.x, b.z - a.z) || 1, out = /gondola|cable_car/.test(L.type) ? 34 : 16;
+    return { name: `Top of ${L.name}`, top: height(b.x, b.z), ...flatNear(b.x + (b.x - a.x) / d * out, b.z + (b.z - a.z) / d * out, 14) };
+  };
   RESORTS.forEach((r, ri) => {
     const ra = Math.atan2(r.z - PEAK.z, r.x - PEAK.x);
     let best = null, bh = -1;
@@ -656,12 +662,13 @@ if (OSM) {
       const h = height(top.x, top.z);
       if (da < 0.5 && Math.hypot(top.x - r.x, top.z - r.z) < 5000 && h > bh) { bh = h; best = L; }
     }
-    if (best) {
-      // On the flat just past the unload ramp, like stepping off the chair.
-      const [a, b] = [best.pts.at(-2), best.pts.at(-1)], d = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-      SPOTS[ri + 1] = { name: `Top of ${best.name}`, top: height(b.x, b.z), ...flatNear(b.x + (b.x - a.x) / d * 16, b.z + (b.z - a.z) / d * 16, 14) };
-    }
+    if (best) SPOTS[ri + 1] = topSpot(best);
   });
+  // The highest passenger lift always gets a spot, even when no base's bearing picked it; one spot per lift.
+  const ridden = LIFTS.filter(L => !SURFACE_LIFT_TYPES.test(L.type));
+  const highest = ridden.reduce((a, L) => (!a || height(L.pts.at(-1).x, L.pts.at(-1).z) > height(a.pts.at(-1).x, a.pts.at(-1).z) ? L : a), null);
+  if (highest && !SPOTS.some(s => s?.name === `Top of ${highest.name}`)) SPOTS.push(topSpot(highest));
+  for (let i = SPOTS.length - 1; i > 0; i--) if (!SPOTS[i] || SPOTS.findIndex(s => s?.name === SPOTS[i].name) < i) SPOTS.splice(i, 1);
   // Start at the highest lift unload, facing down the fall line; the summit (a hike in real life) moves to the end.
   const tops = SPOTS.slice(1).filter(s => s.top);
   if (tops.length) {
