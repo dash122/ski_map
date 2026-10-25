@@ -394,11 +394,16 @@ for (let i = 0; i < H.length; i++) H[i] = raw[i] * meta.scale;
 const toWorld = (lon, lat) => ({ x: (lon - meta.w) * M_LON - WIDTH / 2, z: (meta.n - lat) * M_LAT - DEPTH / 2 });
 const toGeo = (x, z) => ({ lon: meta.w + (x + WIDTH / 2) / M_LON, lat: meta.n - (z + DEPTH / 2) / M_LAT });
 
+// Phones draw every other grid point; physics samples the same triangles so the rider never sinks into the drawn snow.
+const MESH_ST = matchMedia('(pointer: coarse)').matches && GX > 700 ? 2 : 1;
+const MESH_X = Math.floor((GX - 1) / MESH_ST) + 1, MESH_Z = Math.floor((GY - 1) / MESH_ST) + 1;
 function height(x, z) {
-  let fi = (x + WIDTH / 2) / CX, fj = (z + DEPTH / 2) / CZ;
-  fi = Math.min(GX - 1.001, Math.max(0, fi)); fj = Math.min(GY - 1.001, Math.max(0, fj));
-  const i = fi | 0, j = fj | 0, u = fi - i, v = fj - j, k = j * GX + i;
-  return (H[k] * (1 - u) + H[k + 1] * u) * (1 - v) + (H[k + GX] * (1 - u) + H[k + GX + 1] * u) * v;
+  let fi = (x + WIDTH / 2) / (CX * MESH_ST), fj = (z + DEPTH / 2) / (CZ * MESH_ST);
+  fi = Math.min(MESH_X - 1.001, Math.max(0, fi)); fj = Math.min(MESH_Z - 1.001, Math.max(0, fj));
+  const i = fi | 0, j = fj | 0, u = fi - i, v = fj - j, k = (j * GX + i) * MESH_ST, e = MESH_ST, r = GX * MESH_ST;
+  // Match the mesh's a-c-b / b-c-d split rather than bilinear, which bulges above or below flat triangles.
+  const a = H[k], b = H[k + e], c = H[k + r], d = H[k + r + e];
+  return u + v <= 1 ? a + (b - a) * u + (c - a) * v : d + (c - d) * (1 - u) + (b - d) * (1 - v);
 }
 const _n = new THREE.Vector3();
 function normalAt(x, z, out = _n) {
@@ -665,7 +670,7 @@ const DEN = new Uint8Array(LW * LH);
 // ---------- Renderer & scene ----------
 const canvas = document.getElementById('gl');
 const MOBILE = matchMedia('(pointer: coarse)').matches;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE, powerPreference: 'high-performance' });
 // iOS kills the tab when GPU memory runs out; let the context restore instead of a blank canvas.
 canvas.addEventListener('webglcontextlost', e => e.preventDefault());
 const renderQuality = createRenderQuality({ mobile: MOBILE, pixelRatio: devicePixelRatio,
@@ -674,7 +679,7 @@ renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = MOBILE ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const TRAIL_ROUTES = trailRoutes(PISTES, height);
@@ -757,8 +762,7 @@ function grainTexture() {
 
 // ---------- Terrain mesh ----------
 {
-  // Phones get every other grid point; physics still samples the full grid.
-  const ST = MOBILE && GX > 700 ? 2 : 1, MX = Math.floor((GX - 1) / ST) + 1, MZ = Math.floor((GY - 1) / ST) + 1;
+  const ST = MESH_ST, MX = MESH_X, MZ = MESH_Z;
   const pos = new Float32Array(MX * MZ * 3), col = new Float32Array(MX * MZ * 3), uv = new Float32Array(MX * MZ * 2);
   const n = new THREE.Vector3();
   for (let j = 0; j < MZ; j++) for (let i = 0; i < MX; i++) {

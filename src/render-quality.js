@@ -1,8 +1,9 @@
 // Use sustained frame times, with slower recovery, to avoid resolution oscillation.
 export function createRenderQuality({ mobile, pixelRatio, apply }) {
-  const min = Math.min(pixelRatio, 1);
-  const max = Math.min(pixelRatio, 2);
-  let ratio = Math.min(max, mobile ? 1.5 : max), elapsed = 0, frames = 0, fast = 0;
+  // Phones may go below 1× CSS pixels: a 3× screen at 0.75 still looks sharp and halves fill cost.
+  const min = Math.min(pixelRatio, mobile ? 0.75 : 1);
+  const max = Math.min(pixelRatio, mobile ? 1.5 : 2);
+  let ratio = Math.min(max, mobile ? 1.25 : max), elapsed = 0, frames = 0, fast = 0;
   apply(ratio);
   return {
     get ratio() { return ratio; },
