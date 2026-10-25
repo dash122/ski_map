@@ -2073,7 +2073,7 @@ function step(dt) {
       S.v.multiplyScalar((sp - dec) / sp);
     }
     // Skate / hike on flats and gentle climbs.
-    if (tuck && !brake && control && vf < 2.5 && n.y > 0.97) S.v.addScaledVector(S.f, 1.6 * dt);
+    if (tuck && !brake && control && vf < 6 && n.y > 0.97) S.v.addScaledVector(S.f, 2.4 * dt);
 
     if (Math.abs(vl) > 1.8 || (brake && sp > 3)) emitSpray(S.p, right.clone().multiplyScalar(-Math.sign(vl || 1)), Math.min(6, Math.abs(vl) * 0.6 + (brake ? 3 : 0)));
 
