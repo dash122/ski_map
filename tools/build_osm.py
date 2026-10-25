@@ -34,8 +34,12 @@ def main(src, dst):
         tags = el.get('tags', {})
         if el['type'] == 'way':
             if tags.get('aerialway') in LIFT_TYPES and el.get('geometry'):
-                lifts.append({'n': name_of(tags) or tags['aerialway'].replace('_', ' ').title(),
-                              't': tags['aerialway'], 'c': flat(el['geometry'])})
+                lift = {'n': name_of(tags) or tags['aerialway'].replace('_', ' ').title(),
+                        't': tags['aerialway'], 'c': flat(el['geometry'])}
+                # Seats per chair/cabin, ride time in minutes, weather hood, detachable grip: the page sets speeds from these.
+                for k, key in (('o', 'aerialway:occupancy'), ('du', 'aerialway:duration'), ('b', 'aerialway:bubble'), ('dt', 'aerialway:detachable')):
+                    if tags.get(key): lift[k] = tags[key]
+                lifts.append(lift)
             add_piste(tags, el.get('geometry'), ('w', el['id']))
         elif el['type'] == 'relation' and tags.get('piste:type') == 'downhill':
             # Route relations: give member ways the relation's name and grade.
