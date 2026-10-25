@@ -9,6 +9,11 @@ on:
         description: Resort ids from tools/resorts.json, space separated
         required: true
         default: cypress teine chaserrugg
+  # Also runs when this file or the fetcher changes (manual runs need the workflow on the default branch).
+  push:
+    paths:
+      - tools/fetch_osm_api.mjs
+      - .github/workflows/osm-api-data.yml
 
 permissions:
   contents: write
@@ -23,7 +28,7 @@ jobs:
           node-version: 22
       - name: Fetch and build each resort
         env:
-          RESORTS: ${{ inputs.resorts }}
+          RESORTS: ${{ inputs.resorts || 'cypress teine chaserrugg' }}
         run: |
           mkdir -p tools/data
           for resort in $RESORTS; do
