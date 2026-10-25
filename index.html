@@ -2688,33 +2688,59 @@ document.getElementById('zoomSlider').addEventListener('input', e => {
 });
 mapViewport.addEventListener('wheel', e => {
   e.preventDefault();
-  zoomMap(mapScale * (e.deltaY < 0 ? 1.2 : 1 / 1.2), e.clientX, e.clientY);
+  // Trackpad pinches arrive as ctrl+wheel with small deltas; scale smoothly by the delta.
+  zoomMap(mapScale * Math.exp(-Math.max(-100, Math.min(100, e.deltaY)) * (e.ctrlKey ? 0.01 : 0.002)), e.clientX, e.clientY);
 }, { passive: false });
-let mapPointer = null;
+// One finger (or mouse) pans; two fingers pinch-zoom around their midpoint while also panning.
+const mapPointers = new Map();
+let mapGesture = null, mapFrame = 0;
+function scheduleMapTransform() {
+  if (!mapFrame) mapFrame = requestAnimationFrame(() => { mapFrame = 0; applyMapTransform(); });
+}
+function startMapGesture() {
+  const pts = [...mapPointers.values()], r = mapViewport.getBoundingClientRect();
+  const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length - r.left, cy = pts.reduce((s, p) => s + p.y, 0) / pts.length - r.top;
+  mapGesture = { cx, cy, dist: pts.length > 1 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0, scale: mapScale, originX: mapX, originY: mapY };
+}
 mapViewport.addEventListener('pointerdown', e => {
-  if (e.target.closest('button')) return;
-  mapPointer = { id: e.pointerId, x: e.clientX, y: e.clientY, originX: mapX, originY: mapY };
-  mapDragged = false;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  // A lone press on a marker stays a tap; a second finger joining from anywhere starts a pinch.
+  if (e.target.closest('button') && !mapPointers.size) return;
+  if (!mapPointers.size) mapDragged = false;
+  mapPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (mapPointers.size > 1) { mapDragged = true; for (const id of mapPointers.keys()) if (!mapViewport.hasPointerCapture(id)) try { mapViewport.setPointerCapture(id); } catch {} }
+  startMapGesture();
 });
 mapViewport.addEventListener('pointermove', e => {
-  if (!mapPointer || e.pointerId !== mapPointer.id) return;
-  const dx = e.clientX - mapPointer.x, dy = e.clientY - mapPointer.y;
-  if (Math.hypot(dx, dy) > 5) mapDragged = true;
-  if (mapDragged) {
-    if (!mapViewport.hasPointerCapture(e.pointerId)) mapViewport.setPointerCapture(e.pointerId);
-    mapViewport.classList.add('dragging');
-    mapX = mapPointer.originX + dx; mapY = mapPointer.originY + dy;
-    applyMapTransform();
-  }
+  const p = mapPointers.get(e.pointerId);
+  if (!p || !mapGesture) return;
+  p.x = e.clientX; p.y = e.clientY;
+  const pts = [...mapPointers.values()], r = mapViewport.getBoundingClientRect();
+  const cx = pts.reduce((s, q) => s + q.x, 0) / pts.length - r.left, cy = pts.reduce((s, q) => s + q.y, 0) / pts.length - r.top;
+  if (Math.hypot(cx - mapGesture.cx, cy - mapGesture.cy) > 5) mapDragged = true;
+  if (!mapDragged) return;
+  if (!mapViewport.hasPointerCapture(e.pointerId)) try { mapViewport.setPointerCapture(e.pointerId); } catch {}
+  mapViewport.classList.add('dragging');
+  let next = mapGesture.scale;
+  if (pts.length > 1 && mapGesture.dist > 0) next = Math.min(12, Math.max(1, mapGesture.scale * Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) / mapGesture.dist));
+  // Keep the map point that started under the fingers' midpoint under the current midpoint.
+  const k = next / mapGesture.scale;
+  mapX = cx - (mapGesture.cx - mapGesture.originX) * k;
+  mapY = cy - (mapGesture.cy - mapGesture.originY) * k;
+  mapScale = next;
+  scheduleMapTransform();
 });
 function endMapDrag(e) {
-  if (!mapPointer || e.pointerId !== mapPointer.id) return;
-  mapPointer = null;
+  if (!mapPointers.delete(e.pointerId)) return;
+  if (mapPointers.size) { startMapGesture(); return; }
+  mapGesture = null;
   mapViewport.classList.remove('dragging');
   if (mapDragged) setTimeout(() => { mapDragged = false; }, 0);
 }
 mapViewport.addEventListener('pointerup', endMapDrag);
 mapViewport.addEventListener('pointercancel', endMapDrag);
+// iOS Safari fires its own gesture events for pinches; block them so the page itself never zooms.
+for (const t of ['gesturestart', 'gesturechange']) mapViewport.addEventListener(t, e => e.preventDefault());
 const frac = (x, z) => mapFraction(x, z, WIDTH, DEPTH);
 // Villages from OSM place names (skipping street-block addresses), plus the biggest named buildings.
 const PLACES = LANDW.labels.filter(l => l.kind === 'place' && /^[\x20-\x7e]+$/.test(l.name) && !/chome|-jo|^Yotei/i.test(l.name) && Math.abs(l.x) < WIDTH / 2 - 200 && Math.abs(l.z) < DEPTH / 2 - 200)
