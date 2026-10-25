@@ -148,6 +148,50 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #conditions p { margin: 0; color: #c4d4e3; font-size: 12px; line-height: 1.5; }
 @media (min-width: 900px) { #conditions { top: calc(88px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); } }
 @media (max-height: 500px) { #conditions { top: calc(10px + env(safe-area-inset-top, 0px)); left: 34%; width: 220px; } }
+
+/* Phones: keep the HUD clear of the speed readout and give the map the whole screen. */
+@media (pointer: coarse) {
+  #conditions { width: auto; max-width: calc(100vw - 24px); }
+  #conditions[open] { width: min(250px, calc(100vw - 24px)); }
+  #conditions summary { padding: 8px 10px; }
+  #toast { font-size: 24px; top: 34%; }
+  #intro .card { max-height: calc(100dvh - 32px); box-sizing: border-box; }
+  #map { padding: 0; place-items: stretch; background: var(--ink); }
+  #map .wrap { width: 100%; height: 100dvh; }
+  #map .viewport { border-radius: 0; }
+  #map .zoom { width: auto; padding: 4px; }
+  #map .zoom-head, #map .zoom input { display: none; }
+  #map .zoom-actions { flex-direction: column; }
+  #map .zoom button { width: 44px; height: 44px; }
+  #map .close { min-height: 40px; }
+  #map .lift-list summary { padding: 11px 12px; font-size: 14px; }
+  #map .lift-list-items button { padding: 11px 10px; font-size: 14px; }
+  #map .cap { font-size: 11px; }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+  #conditions { top: calc(176px + env(safe-area-inset-top, 0px)); left: auto; right: max(12px, env(safe-area-inset-right, 0px)); }
+  #map .wrap { display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); box-sizing: border-box; }
+  #map .viewport { flex: none; }
+  #map .close { top: calc(8px + env(safe-area-inset-top, 0px)); }
+  #map .zoom { top: calc(60px + env(safe-area-inset-top, 0px)); }
+  #map .scale-bar { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 80vw - 34px); }
+  #map .destination-lists { position: static; width: auto; margin: 10px 12px 0; min-height: 0; flex: 1; display: flex; flex-direction: column; }
+  #map .lift-list-items { max-height: calc(100dvh - 80vw - 190px); }
+  #map .cap { position: static; margin: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: none; color: var(--mist); padding: 0; }
+}
+@media (pointer: coarse) and (orientation: landscape) {
+  #conditions { top: calc(66px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); }
+  #intro .card { max-width: min(760px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; align-content: start; }
+  #intro h1, #intro .sub, #intro .note { grid-column: 1 / -1; }
+  #intro .pick { grid-column: 2; grid-row: 3; align-self: start; }
+  #intro #loading, #intro #start { grid-column: 2; justify-self: start; }
+  #map .wrap { display: grid; grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; padding-right: env(safe-area-inset-right, 0px); box-sizing: border-box; }
+  #map .viewport { grid-row: 1 / span 2; height: 100dvh; width: auto; margin-left: env(safe-area-inset-left, 0px); }
+  #map .destination-lists { position: static; grid-column: 2; width: auto; margin: 56px 64px 0 10px; align-content: start; min-height: 0; }
+  #map .lift-list-items { max-height: calc(100dvh - 190px); }
+  #map .cap { position: static; grid-column: 2; margin: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px)); background: none; color: var(--mist); padding: 0; }
+  #map .scale-bar { right: auto; left: calc(100dvh * 1.25 - 90px + env(safe-area-inset-left, 0px)); }
+}
 </style>
 
 <canvas id="gl"></canvas>
