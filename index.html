@@ -20,6 +20,8 @@
   --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
+/* touch-action is not inherited: without this, iOS double-tap-zooms on buttons and panels. Rules below that set none still win. */
+*, *::before, *::after { touch-action: manipulation; }
 html, body { height: 100%; margin: 0; touch-action: none; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 body { background: var(--ink); color: var(--snow); font-family: var(--body); overflow: hidden; }
@@ -2740,7 +2742,8 @@ function endMapDrag(e) {
 mapViewport.addEventListener('pointerup', endMapDrag);
 mapViewport.addEventListener('pointercancel', endMapDrag);
 // iOS Safari fires its own gesture events for pinches; block them so the page itself never zooms.
-for (const t of ['gesturestart', 'gesturechange']) mapViewport.addEventListener(t, e => e.preventDefault());
+for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, e => e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 const frac = (x, z) => mapFraction(x, z, WIDTH, DEPTH);
 // Villages from OSM place names (skipping street-block addresses), plus the biggest named buildings.
 const PLACES = LANDW.labels.filter(l => l.kind === 'place' && /^[\x20-\x7e]+$/.test(l.name) && !/chome|-jo|^Yotei/i.test(l.name) && Math.abs(l.x) < WIDTH / 2 - 200 && Math.abs(l.z) < DEPTH / 2 - 200)
