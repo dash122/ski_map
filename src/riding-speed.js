@@ -1,13 +1,23 @@
 // Gameplay tuning in SI units, shared by the player and autonomous riders.
 export const RIDING = Object.freeze({ cruise: 13, tuck: 18, snowFriction: 0.03, aero: 0.012, tuckAero: 0.007 });
 
-export function ridingResistance(speed, normalGravity, { tuck = false, brake = false, steer = 0 } = {}) {
+// Rider skill sets the soft speed the board settles at (m/s), how much a turn costs, and how slick the groomed snow
+// feels under a rider who edges cleanly. Advanced riders carve clean arcs that keep speed; beginners skid.
+// Targets follow measured snowboarder speeds: intermediates cruise about 30-50 km/h, advanced riders 50-80 km/h.
+export const SKILLS = Object.freeze({
+  beginner: { label: '初級', en: 'Beginner', cruise: 9, tuck: 12, turn: 1.3, friction: 0.03, aero: 0.012, tuckAero: 0.008 },
+  intermediate: { label: '中級', en: 'Intermediate', cruise: 14, tuck: 17, turn: 0.75, friction: 0.024, aero: 0.0105, tuckAero: 0.0065 },
+  advanced: { label: '高級', en: 'Advanced', cruise: 19, tuck: 23, turn: 0.5, friction: 0.02, aero: 0.009, tuckAero: 0.0055 },
+});
+
+export function ridingResistance(speed, normalGravity, { tuck = false, brake = false, steer = 0, skill } = {}) {
   // Edge engagement and controlled skidding shed energy throughout a linked turn.
   // Tucking reduces air drag, but does not bypass the cost of turning.
+  const k = SKILLS[skill] ?? { cruise: RIDING.cruise, tuck: RIDING.tuck, turn: 1, friction: RIDING.snowFriction, aero: RIDING.aero, tuckAero: RIDING.tuckAero };
   const turn = Math.min(1, Math.abs(steer));
-  const comfortable = (tuck ? RIDING.tuck : RIDING.cruise) * (1 - Math.min(0.45, turn * 1.2));
-  return RIDING.snowFriction * normalGravity + (tuck ? RIDING.tuckAero : RIDING.aero) * speed * speed +
-    Math.max(0, speed - comfortable) * 1.8 + turn * speed * 0.65 + (brake ? 7.5 : 0);
+  const comfortable = (tuck ? k.tuck : k.cruise) * (1 - Math.min(0.45, turn * 1.2 * k.turn));
+  return k.friction * normalGravity + (tuck ? k.tuckAero : k.aero) * speed * speed +
+    Math.max(0, speed - comfortable) * 1.8 + turn * speed * 0.65 * k.turn + (brake ? 7.5 : 0);
 }
 
 export function visitorTargetSpeed(grade, preferred, walking = false) {

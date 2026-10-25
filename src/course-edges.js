@@ -6,6 +6,18 @@ export function courseWidth(difficulty, x, z, mappedWidth) {
   return base * (1 + 0.09 * Math.sin(x / 135 + z / 190));
 }
 
+// OSM rarely carries a width, and one default corridor made cat tracks like Gala Yuzawa's Gezan (下山) course
+// as wide as a main piste. Connectors and long, gentle return tracks are a narrow lane; everything else keeps
+// the difficulty default. A mapped width tag always wins.
+const NARROW_NAME = /下山|連絡|林道|帰り|ツアー|connector|access|ski[ -]?out|return|cat[ -]?(walk|track)|link|road/i;
+export function narrowCourseWidth(name, points, height) {
+  if (NARROW_NAME.test(name || '')) return 11;
+  let length = 0;
+  for (let i = 1; i < points.length; i++) length += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+  const drop = Math.abs(height(points[0].x, points[0].z) - height(points.at(-1).x, points.at(-1).z));
+  return length > 250 && drop / length < 0.09 ? 13 : undefined;
+}
+
 export function courseSegments(points, difficulty, mappedWidth) {
   const segments = [];
   for (let i = 1; i < points.length; i++) {

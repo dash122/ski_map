@@ -14,12 +14,9 @@ const TIMES = {
   night: { label: '夜晚', top: 0x030817, fog: 0x182a44, sun: 0x9abfff, intensity: 0.35, ambient: 0.22, exposure: 0.85, y: 0.65 },
 };
 
-export function createWeather({ scene, renderer, sky, ambient, sun, sunDirection, snow, snowGeo, snowCount, mappedLighting, buildingLighting }) {
+export function createWeather({ scene, renderer, sky, ambient, sun, sunDirection, snow, snowGeo, snowCount, mappedLighting, buildingLighting, liftLighting }) {
   const timeSelect = document.getElementById('timeSelect'), weatherSelect = document.getElementById('weatherSelect');
   const status = document.getElementById('conditionsStatus'), hint = document.getElementById('conditionsHint');
-  const headlamp = new THREE.SpotLight(0xe0edff, 120, 100, 0.62, 0.8, 1);
-  headlamp.name = 'Rider night headlamp'; headlamp.visible = false;
-  scene.add(headlamp, headlamp.target);
   const state = { time: 'day', weather: 'clear', wind: 0, gust: 0, fallSpeed: 1.5 };
   function set(time, kind) {
     if (!TIMES[time] || !WEATHER[kind]) return false;
@@ -45,12 +42,12 @@ export function createWeather({ scene, renderer, sky, ambient, sun, sunDirection
     snowGeo.setDrawRange(0, Math.floor(snowCount * w.count));
     snow.material.size = kind === 'storm' ? 0.24 : 0.22;
     snow.material.opacity = kind === 'storm' ? 0.95 : 0.92;
-    headlamp.visible = isNight;
     buildingLighting?.setTime(time);
+    liftLighting?.setTime(time);
     mappedLighting.traverse(o => { if (o.material?.emissive) o.material.emissiveIntensity = isNight ? 2 : 0; });
     timeSelect.value = time; weatherSelect.value = kind;
     status.textContent = time === 'day' && kind === 'clear' ? 'Bluebird' : `${t.label} · ${w.label}`;
-    hint.textContent = isNight ? '頭燈已開啟。可自由組合夜晚與降雪／暴風雪。' : kind === 'storm' ? '強風、密集降雪與低能見度。' : '自由組合時間與天氣；夜晚自動開啟頭燈。';
+    hint.textContent = isNight ? '纜車柱燈已亮起：沿纜車線滑行最清楚。可自由組合夜晚與降雪／暴風雪。' : kind === 'storm' ? '強風、密集降雪與低能見度。' : '自由組合時間與天氣；夜晚由纜車柱燈照亮雪道。';
     try { localStorage.setItem('niseko.conditions.v1', JSON.stringify({ time, weather: kind })); } catch { /* Private browsing can disable storage. */ }
     return true;
   }
@@ -63,11 +60,6 @@ export function createWeather({ scene, renderer, sky, ambient, sun, sunDirection
   }
   return Object.assign(state, {
     set,
-    update(player) {
-      if (!headlamp.visible) return;
-      headlamp.position.copy(player.p); headlamp.position.y += 1.65;
-      headlamp.target.position.copy(player.p).addScaledVector(player.f, 24);
-      headlamp.target.position.y = player.p.y - 3;
-    },
+    update() {},
   });
 }

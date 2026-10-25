@@ -27,8 +27,14 @@ def main(src, dst):
         seen.add(wid)
         c = flat(geom)
         closed = len(c) >= 8 and c[:2] == c[-2:]
-        pistes.append({'n': name_of(tags), 'd': tags.get('piste:difficulty', ''),
-                       'a': 1 if closed and tags.get('area') == 'yes' else 0, 'c': c})
+        piste = {'n': name_of(tags), 'd': tags.get('piste:difficulty', ''),
+                 'a': 1 if closed and tags.get('area') == 'yes' else 0, 'c': c}
+        width = tags.get('piste:width') or tags.get('width')
+        try:
+            if width and 2 <= float(width.split()[0]) <= 200: piste['w'] = float(width.split()[0])   # metres; corridor width on the hill
+        except ValueError:
+            pass
+        pistes.append(piste)
 
     for el in data['elements']:
         tags = el.get('tags', {})

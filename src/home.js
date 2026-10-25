@@ -12,14 +12,16 @@ const kitIcon = r => `<svg viewBox="0 0 40 44" aria-hidden="true"><circle cx="20
 export function chooseResort() {
   const home = document.getElementById('home');
   const kits = document.getElementById('homeKits'), list = document.getElementById('homeResorts');
-  const stance = document.querySelectorAll('#homeStance button');
+  const stance = document.querySelectorAll('#homeStance button'), skills = document.querySelectorAll('#homeSkill button');
   home.hidden = false;
 
   let rider = RIDERS.some(r => r.id === pref.get('rider')) ? pref.get('rider') : 'sage';
   let goofy = pref.get('stance') === 'goofy';
+  let skill = ['beginner', 'intermediate', 'advanced'].includes(pref.get('skill')) ? pref.get('skill') : 'intermediate';
   const sync = () => {
     for (const b of kits.children) b.setAttribute('aria-checked', b.dataset.id === rider);
     for (const b of stance) b.setAttribute('aria-checked', (b.dataset.s === 'goofy') === goofy);
+    for (const b of skills) b.setAttribute('aria-checked', b.dataset.k === skill);
   };
   for (const r of RIDERS) {
     const b = el('button', 'kit', `${kitIcon(r)}<b>${r.name}</b><small>${r.en}</small>`);
@@ -28,6 +30,7 @@ export function chooseResort() {
     kits.append(b);
   }
   for (const b of stance) b.addEventListener('click', () => { goofy = b.dataset.s === 'goofy'; pref.set('stance', goofy ? 'goofy' : 'regular'); sync(); });
+  for (const b of skills) b.addEventListener('click', () => { skill = b.dataset.k; pref.set('skill', skill); sync(); });
   sync();
 
   const last = pref.get('lastResort');

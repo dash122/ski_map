@@ -40,7 +40,7 @@ canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block
 .stat:nth-child(n+3) { display: none; }
 #mini { top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); padding: 4px; }
 #mini canvas { display: block; width: 140px; height: 112px; border-radius: 3px; }
-#tools { top: calc(132px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); display: flex; gap: 6px; pointer-events: auto; }
+#tools { top: calc(148px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); display: flex; gap: 6px; pointer-events: auto; }
 #keys { display: none; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 10px 12px; font-size: 12px; color: var(--mist); line-height: 1.7; }
 kbd { font-family: var(--display); font-weight: 600; color: var(--snow); background: rgba(255,255,255,0.12); border-radius: 3px; padding: 0 5px; }
 #toast { top: 30%; left: 50%; transform: translateX(-50%); font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); text-shadow: 0 2px 18px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.25s; width: max-content; max-width: 88vw; text-align: center; text-wrap: balance; line-height: 1.05; }
@@ -59,6 +59,10 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #intro dt { text-align: right; }
 #intro dd { margin: 0; color: var(--mist); }
 .go { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); background: var(--signal); border: 0; border-radius: 4px; padding: 10px 22px; cursor: pointer; }
+#pause .card { width: min(340px, 100%); padding: 20px 22px; }
+#pause h1 { font-family: var(--display); font-weight: 700; font-size: 32px; letter-spacing: 0.1em; margin: 0 0 14px; line-height: 1; }
+.pause-actions { display: grid; gap: 10px; }
+.pause-actions .btn, .pause-actions .go { width: 100%; padding: 12px 14px; font-size: 17px; }
 .go:focus-visible, button:focus-visible { outline: 2px solid var(--snow); outline-offset: 2px; }
 .note { font-size: 12px; color: var(--mist); margin-top: 14px; line-height: 1.5; }
 /* Home screen: a level-select sheet of resort cards (thumbnail fading into the panel), outfits above. */
@@ -80,6 +84,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 .stance button { padding: 9px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12); border-radius: 6px; font-size: 14px; }
 .stance small { color: var(--mist); font-family: var(--display); letter-spacing: 0.12em; text-transform: uppercase; margin-left: 4px; }
 .stance button[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.14); }
+#homeSkill { grid-template-columns: repeat(3, 1fr); }
 .resorts { display: grid; gap: 12px; }
 .resort { position: relative; display: grid; justify-items: start; align-content: center; min-height: 150px; padding: 18px 20px 14px; text-align: left; background: #172435; border: 2px solid rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; isolation: isolate; transition: transform 0.15s, border-color 0.15s; }
 .resort:hover, .resort:focus-visible { border-color: rgba(255,255,255,0.5); transform: translateY(-1px); }
@@ -178,8 +183,8 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   .stat.big .v { font-size: 52px; }
   .stat .l { font-size: 11px; }
   #mini { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 6px; }
-  #mini canvas { width: 260px; height: 208px; }
-  #tools { top: calc(238px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
+  #mini canvas { width: 300px; height: 240px; }
+  #tools { top: calc(270px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
   #toast { font-size: 44px; top: 32%; }
   #prompt { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
   #liftSpeed { top: calc(276px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -241,7 +246,10 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 /* Icon tool buttons: icon + label; key hints only where there's a keyboard. */
 #tools .btn { display: inline-flex; align-items: center; gap: 6px; }
 #tools i { font-style: normal; font-size: 15px; }
-#mini { pointer-events: auto; cursor: pointer; }
+#mini { pointer-events: auto; cursor: pointer; position: fixed; }
+#mini .mz { position: absolute; left: 6px; top: 6px; display: flex; flex-direction: column; gap: 3px; }
+#mini .mz button { width: 22px; height: 22px; padding: 0; border-radius: 4px; border: 1px solid rgba(255,255,255,0.35); background: rgba(13,27,42,0.7); color: var(--snow); font: 700 15px/1 var(--display); cursor: pointer; }
+#mini .mz button:disabled { opacity: 0.35; cursor: default; }
 #conditions summary i { font-style: normal; margin-right: 4px; }
 #conditions summary b { font-weight: inherit; }
 .note summary { cursor: pointer; }
@@ -256,7 +264,8 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   #stats { top: calc(46px + env(safe-area-inset-top, 0px)); padding: 6px 10px 5px; }
   .stat:nth-child(n+2) { display: none; }
   .stat.big .v { font-size: 34px; }
-  #mini canvas { width: 112px; height: 90px; }
+  #mini canvas { width: 150px; height: 120px; }
+  #mini .mz button { width: 30px; height: 30px; font-size: 18px; }
   #tools .btn, #conditions summary { width: 52px; height: 52px; padding: 0; border-radius: 50%; flex-direction: column; justify-content: center; gap: 1px; font-size: 10px; letter-spacing: 0.04em; box-sizing: border-box; }
   #tools i, #conditions summary i { font-size: 18px; margin: 0; line-height: 1; }
   #tools .btn[aria-pressed="true"] { border-color: var(--signal); background: rgba(255,106,61,0.3); }
@@ -275,16 +284,22 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   #touch #tJ { width: 90px; height: 90px; }
 }
 @media (pointer: coarse) and (orientation: portrait) {
-  #tools { top: calc(112px + env(safe-area-inset-top, 0px)); flex-direction: column; gap: 8px; }
-  #conditions { top: calc(292px + env(safe-area-inset-top, 0px)); left: auto; right: max(12px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; align-items: flex-end; }
+  #tools { top: calc(150px + env(safe-area-inset-top, 0px)); flex-direction: column; gap: 8px; }
+  #conditions { top: calc(112px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); right: auto; display: flex; flex-direction: column; align-items: flex-start; }
   #liftSpeed { top: calc(354px + env(safe-area-inset-top, 0px)); }
 }
 @media (pointer: coarse) and (orientation: landscape) {
-  #tools { top: calc(108px + env(safe-area-inset-top, 0px)); }
+  #tools { top: calc(150px + env(safe-area-inset-top, 0px)); }
   #conditions { top: calc(80px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); }
   #stats { top: calc(10px + env(safe-area-inset-top, 0px)); }
   #liftSpeed { top: calc(170px + env(safe-area-inset-top, 0px)); }
 }
+/* Right column: minimap, then the buttons, then the lift speed. One flex column, so nothing can overlap at any size. */
+#rcol { position: fixed; z-index: 2; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+#rcol > * { position: static; top: auto; right: auto; margin: 0; }
+#rcol > #mini { position: relative; }
+@media (hover: hover) and (pointer: fine) { #rcol { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); } }
+@media (pointer: coarse) and (orientation: portrait) { #rcol #tools { flex-direction: column; align-items: flex-end; } }
 </style>
 
 <canvas id="gl"></canvas>
@@ -297,6 +312,9 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     <div class="kits" id="homeKits" role="radiogroup" aria-label="滑雪者裝備"></div>
     <div class="stance" id="homeStance" role="radiogroup" aria-label="站姿">
       <button type="button" role="radio" data-s="regular">左腳在前 <small>Regular</small></button><button type="button" role="radio" data-s="goofy">右腳在前 <small>Goofy</small></button>
+    </div>
+    <div class="stance" id="homeSkill" role="radiogroup" aria-label="滑行程度">
+      <button type="button" role="radio" data-k="beginner">初級 <small>Beginner</small></button><button type="button" role="radio" data-k="intermediate">中級 <small>Intermediate</small></button><button type="button" role="radio" data-k="advanced">高級 <small>Advanced</small></button>
     </div>
     <h2>雪場 <span>Resorts</span></h2>
     <div class="resorts" id="homeResorts"></div>
@@ -314,7 +332,6 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 </section>
 
 <div class="hud panel" id="brand"><div class="name">二世古</div><div class="zone" id="zone">二世古安努普利山</div></div>
-<div class="hud panel" id="mini"><canvas id="minimap" width="400" height="320"></canvas></div>
 <div class="hud panel" id="stats">
   <div class="stat big"><div class="v" id="spd">0</div><div class="l">km/h</div></div>
   <div class="stat"><div class="v" id="alt">0</div><div class="l">海拔 m</div></div>
@@ -332,17 +349,31 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   <div class="controls">
     <label for="timeSelect">時間<select id="timeSelect" disabled><option value="day">白天</option><option value="sunset">黃昏</option><option value="night">夜晚</option></select></label>
     <label for="weatherSelect">天氣<select id="weatherSelect" disabled><option value="clear">晴朗 · Bluebird</option><option value="overcast">陰天</option><option value="snow">降雪 · Snow</option><option value="storm">暴風雪 · Snowstorm</option></select></label>
-    <p id="conditionsHint">自由組合時間與天氣；夜晚自動開啟頭燈。</p>
+    <p id="conditionsHint">自由組合時間與天氣；夜晚由纜車柱燈照亮雪道。</p>
   </div>
 </details>
 <div class="hud" id="toast"></div>
 <button class="hud btn" id="prompt" hidden></button>
-<label class="hud panel" id="liftSpeed" hidden>纜車速度 <select id="liftSpeedSelect" aria-label="纜車速度"></select></label>
 
-<div class="hud" id="tools"><button class="btn" id="tM"><i aria-hidden="true">🗺</i><b>地圖</b></button><button class="btn" id="tC"><i aria-hidden="true">🎥</i><b>鏡頭</b></button><button class="btn" id="tWalk" aria-pressed="false"><i aria-hidden="true">🚶</i><b>步行</b><span class="key"> · F</span></button></div>
+<div id="rcol">
+<div class="hud panel" id="mini"><canvas id="minimap" width="400" height="320"></canvas><div class="mz"><button type="button" id="mzIn" aria-label="放大小地圖">+</button><button type="button" id="mzOut" aria-label="縮小小地圖">−</button></div></div>
+<div class="hud" id="tools"><button class="btn" id="tPause" aria-label="暫停"><i aria-hidden="true">⏸</i><b>暫停</b><span class="key">Esc</span></button><button class="btn" id="tM"><i aria-hidden="true">🗺</i><b>地圖</b></button><button class="btn" id="tC"><i aria-hidden="true">🎥</i><b>鏡頭</b></button><button class="btn" id="tWalk" aria-pressed="false"><i aria-hidden="true">🚶</i><b>步行</b><span class="key"> · F</span></button></div>
+<label class="hud panel" id="liftSpeed" hidden>纜車速度 <select id="liftSpeedSelect" aria-label="纜車速度"></select></label>
+</div>
 <div id="touch">
   <div id="pad" aria-label="左右拖曳轉彎"><span>拖曳轉彎</span><div class="track"><div id="knob"></div></div></div>
   <div class="grp"><button id="tB">煞車</button><button id="tJ">跳躍</button><button id="tT">壓低</button></div>
+</div>
+
+<div class="modal" id="pause" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" hidden>
+  <div class="card panel">
+    <h1 id="pauseTitle">暫停</h1>
+    <div class="pause-actions">
+      <button class="go" id="pResume" type="button">繼續滑行</button>
+      <button class="btn" id="pRestart" type="button">重新開始</button>
+      <button class="btn" id="pHome" type="button">回主畫面 · 選擇其他雪場</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="intro">
@@ -392,8 +423,8 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { courseSegments } from './src/course-edges.js';
-import { ridingResistance } from './src/riding-speed.js';
+import { courseSegments, courseWidth, narrowCourseWidth } from './src/course-edges.js';
+import { ridingResistance, SKILLS } from './src/riding-speed.js';
 import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
 import { createRenderQuality } from './src/render-quality.js';
 import { chunkGeometry, chunkInstances, createNearbyShadows } from './src/spatial-rendering.js';
@@ -402,6 +433,7 @@ import { currentResort } from './src/resorts.js';
 import { RIDERS, pref, record, saveRecord } from './src/riders.js';
 import { chooseResort } from './src/home.js';
 import { createLoading } from './src/loading.js';
+import { createLiftLighting } from './src/lift-lighting.js';
 
 // ---------- Resort: the home screen picks one; ?resort=appi deep-links past it. Everything below reads its data the same way ----------
 const RESORT = new URLSearchParams(location.search).has('resort') ? currentResort() : await chooseResort(), DATA = RESORT.data;
@@ -526,13 +558,13 @@ if (OSM) {
   g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
   for (const p of OSM.pistes || []) {
     const pts = worldPts(p.c); if (pts.length < 2) continue;
-    const piste = { name: p.n || '', diff: p.d || '', area: !!p.a, pts };
+    const piste = { name: p.n || '', diff: p.d || '', area: !!p.a, pts, w: p.w ?? (p.a ? undefined : narrowCourseWidth(p.n, pts, height)) };
     PISTES.push(piste);
     g.beginPath();
     pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo']((q.x + WIDTH / 2) * sx, (q.z + DEPTH / 2) * sz));
     if (piste.area) { g.closePath(); g.fill(); }
     else {
-      const sections = courseSegments(pts, piste.diff, p.w);
+      const sections = courseSegments(pts, piste.diff, piste.w);
       COURSE_SEGMENTS.push(...sections);
       for (const { a, b, width } of sections) {
         g.beginPath(); g.moveTo((a.x + WIDTH / 2) * sx, (a.z + DEPTH / 2) * sz);
@@ -599,6 +631,31 @@ function pisteAt(x, z) {
   return best;
 }
 
+// Just outside a mapped run's corridor: how far past the edge, and the way back. Null on the run itself,
+// beside freeride lines, or farther than EDGE_REACH from any run (that is deliberate off-piste).
+const EDGE_REACH = 45;
+function pisteEdge(x, z) {
+  if (!segGrid.size || onPiste(x, z)) return null;
+  const cx = Math.floor(x / SEG_CELL), cz = Math.floor(z / SEG_CELL);
+  let best = null, bd = Infinity;
+  for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) {
+    for (const [a, b, p] of segGrid.get((cx + i) + ',' + (cz + j)) || []) {
+      if (p.area || p.diff === 'freeride') continue;
+      const dx = b.x - a.x, dz = b.z - a.z, L = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / L));
+      const qx = a.x + dx * t, qz = a.z + dz * t, d = Math.hypot(qx - x, qz - z);
+      if (d < bd) { bd = d; best = { piste: p, qx, qz, dist: d }; }
+    }
+  }
+  if (!best) return null;
+  const depth = best.dist - courseWidth(best.piste.diff, best.qx, best.qz, best.piste.w) / 2;
+  if (depth > EDGE_REACH) return null;
+  const n = best.dist || 1;
+  best.depth = depth; best.nx = (best.qx - x) / n; best.nz = (best.qz - z) / n;
+  return best;
+}
+let edgeNow = null;
+
 // ---------- Land cover from OpenStreetMap (optional: data/land.json, built by tools/build_land.py) ----------
 // Rasterised once into masks the trees, terrain shader and trail map share. Without the file, forests fall back to noise.
 let LAND = null;
@@ -639,7 +696,7 @@ const lmask = (() => {
 const A = LANDW.areas, Ln = LANDW.lines;
 // Woodland shoulders share the piste exclusion mask, so trees stay outside runs.
 const courseShoulderM = lmask(m => {
-  for (const { a, b, width } of COURSE_SEGMENTS) m.stroke([[a, b]], width + 22);
+  for (const { a, b, width } of COURSE_SEGMENTS) m.stroke([[a, b]], width + 40);
   for (const p of PISTES) if (p.area) m.stroke([[...p.pts, p.pts[0]]], 22);
 });
 const forestM = lmask(m => { m.fill(A.forest); m.fill(A.scrub, 0.45); m.stroke(Ln.treerow, 8); });
@@ -734,6 +791,41 @@ renderer.shadowMap.type = MOBILE ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap
 const scene = new THREE.Scene();
 const TRAIL_ROUTES = trailRoutes(PISTES, height);
 createTrailSigns({ THREE, scene, routes: TRAIL_ROUTES, height, diffOf, scale: matchMedia('(pointer: coarse)').matches ? 0.5 : 1 });
+// ---------- Piste edge poles ----------
+// Real resorts mark an open run edge with the odd pole, not a fence: where trees already line the run there are none.
+// Poles stand about every 55 m along open edges, tipped in the run's grade colour.
+{
+  const gap = MOBILE ? 80 : 55, spots = [], tip = new THREE.Color();
+  for (const p of PISTES) {
+    if (p.area || p.diff === 'freeride') continue;
+    let next = gap / 2;
+    for (let i = 1; i < p.pts.length; i++) {
+      const a = p.pts[i - 1], b = p.pts[i], len = Math.hypot(b.x - a.x, b.z - a.z);
+      if (len < 1e-3) continue;
+      const ux = (b.x - a.x) / len, uz = (b.z - a.z) / len;
+      for (; next < len; next += gap) {
+        const x = a.x + ux * next, z = a.z + uz * next, half = courseWidth(p.diff, x, z, p.w) / 2 + 0.6;
+        for (const side of [-1, 1]) {
+          const px = x - uz * half * side, pz = z + ux * half * side, k = lidx(px, pz);
+          if (k >= 0 && (hardM[k] > 200 || DEN[k] > 70)) continue;   // not on roads, lift lines or buildings, nor where trees line the edge
+          spots.push([px, pz, p.diff]);
+        }
+      }
+      next -= len;
+    }
+  }
+  if (spots.length) {
+    const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.03, 0.04, 2.4, 5).translate(0, 1.2, 0), new THREE.MeshLambertMaterial({ color: 0x2b3038 }), spots.length);
+    const cap = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6).translate(0, 2.1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), spots.length);
+    const m4 = new THREE.Matrix4();
+    spots.forEach(([x, z, diff], i) => {
+      m4.makeTranslation(x, height(x, z) - 0.1, z); pole.setMatrixAt(i, m4); cap.setMatrixAt(i, m4);
+      cap.setColorAt(i, tip.set(diffOf(diff).color));
+    });
+    pole.castShadow = false; pole.frustumCulled = cap.frustumCulled = false;
+    scene.add(pole, cap);
+  }
+}
 const FOG = new THREE.Color(0xc9d8e6);
 scene.fog = new THREE.FogExp2(FOG, 0.000055);
 // Keep distant mountains and the sky, but give nearby surfaces more depth precision.
@@ -1269,7 +1361,7 @@ try {
     LANDMARKS.push({ name: 'NEST813 · Ace Gondola 2F', ...center, area: 800, restaurant: true, hotel: false });
   }
 } catch (error) { console.warn('Ace summit mapped model unavailable', error); }
-let buildingLighting = null;
+let buildingLighting = null, liftLighting = null;
 const { createBuildingLighting } = await import('./src/building-lighting.js');
 if (LANDW.buildings.length) {
   const wallPos = [], wallUv = [], wallCol = [], wallLight = [], entrances = [], roofPos = [];
@@ -1754,6 +1846,15 @@ if (LIFTS.length) {
   // Operator huts by the loading ramps and at drag-lift ends.
   place(new THREE.BoxGeometry(3, 2.8, 3.2).translate(0, 1.4, 0), new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 0.8 }), huts, ([x, y, z, yaw, k]) => { v.set(x, y - 0.3, z); yawQ(yaw); s.set(k, k, k); });
   place(new THREE.BoxGeometry(3.5, 0.4, 3.7).translate(0, 0.2, 0), new THREE.MeshLambertMaterial({ color: 0xf2f6fa }), huts, ([x, y, z, yaw, k]) => { v.set(x, y - 0.3 + 2.8 * k, z); yawQ(yaw); s.set(k, k, k); });
+  // Night: a lamp on every tower and terminal (see src/lift-lighting.js).
+  liftLighting = createLiftLighting({
+    scene, height, mobile: MOBILE,
+    sources: [
+      ...towers.map(t => ({ x: t[0], y: t[1] + t[4] + 0.55, z: t[2], r: t[5] === 'gondola' ? 11 : 9 })),
+      ...chairTerms.map(t => ({ x: t[0], y: t[4] + 2.4, z: t[2], r: 14 })),
+      ...gondTerms.map(t => ({ x: t[0], y: t[4] + 4.6, z: t[2], r: 18 })),
+    ],
+  });
   if (cable.length) {
     const cableGeo = new THREE.BufferGeometry(); cableGeo.setAttribute('position', new THREE.Float32BufferAttribute(cable, 3));
     scene.add(new THREE.LineSegments(cableGeo, new THREE.LineBasicMaterial({ color: 0x23282e })));
@@ -1984,7 +2085,7 @@ const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ size: 0.16, ma
 snow.frustumCulled = false; scene.add(snow);
 
 const { createWeather } = await import('./src/weather.js');
-const weather = createWeather({ scene, renderer, sky, ambient, sun, sunDirection: SUN_DIR, snow, snowGeo, snowCount: SNOW_N, mappedLighting, buildingLighting });
+const weather = createWeather({ scene, renderer, sky, ambient, sun, sunDirection: SUN_DIR, snow, snowGeo, snowCount: SNOW_N, mappedLighting, buildingLighting, liftLighting });
 
 const SPRAY_N = 900;
 const spray = { pos: new Float32Array(SPRAY_N * 3), vel: new Float32Array(SPRAY_N * 3), life: new Float32Array(SPRAY_N), next: 0 };
@@ -2156,6 +2257,7 @@ function dropIn(spot) {
 const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), right = new THREE.Vector3(), worldUp = new THREE.Vector3(0, 1, 0);
 const HALF_W = WIDTH / 2 - 30, HALF_D = DEPTH / 2 - 30;
 
+let edgeToastAt = 0;
 function step(dt) {
   if (liftQueue) { queueStep(dt); wantJump = false; return; }
   if (S.ride) { rideStep(dt); wantJump = false; return; }
@@ -2182,7 +2284,20 @@ function step(dt) {
     // Keep heading in the slope plane.
     S.f.addScaledVector(n, -S.f.dot(n)).normalize();
     // Carve: rotate heading around the surface normal. Tighter at low speed.
-    const yaw = -S.steer * control * (brake ? 2.6 : 1.9) / (1 + speed / 30) * dt;
+    // Soft run edge. Real riders rarely leave a run by accident: the corridor is lined with trees and poles and the
+    // snow beside it is slower. Past the edge the heading eases back toward the run and the snow drags a little.
+    // Steering always wins, and beyond EDGE_REACH of any run you are deliberately off-piste.
+    edgeNow = pisteEdge(S.p.x, S.p.z);
+    let assist = 0;
+    if (edgeNow) {
+      const d = edgeNow.depth, ramp = THREE.MathUtils.smoothstep(d, 0.5, 8) * (1 - THREE.MathUtils.smoothstep(d, 30, EDGE_REACH));
+      const phi = Math.atan2(S.f.x * edgeNow.nz - S.f.z * edgeNow.nx, S.f.x * edgeNow.nx + S.f.z * edgeNow.nz);   // heading to run
+      const facing = 1 - THREE.MathUtils.smoothstep(Math.abs(phi), 1.2, 1.9), free = 1 - 0.75 * Math.min(1, Math.abs(steerIn));
+      assist = -Math.max(-0.4, Math.min(0.4, phi * 0.9)) * ramp * facing * free * control;
+      S.v.multiplyScalar(Math.exp(-0.16 * THREE.MathUtils.smoothstep(d, 1, 10) * dt));
+      if (d > 6 && performance.now() > edgeToastAt) { toast('離開雪道 · 雪道外積雪較深', 1.8); edgeToastAt = performance.now() + 15000; }
+    }
+    const yaw = -S.steer * control * (brake ? 2.6 : 1.9) / (1 + speed / 30) * dt + assist * dt;
     S.f.applyAxisAngle(n, yaw);
     right.crossVectors(S.f, n);
 
@@ -2204,7 +2319,7 @@ function step(dt) {
     // Snow friction + aero drag (+ skid brake).
     const sp = S.v.length();
     if (sp > 0.01) {
-      const dec = Math.min(sp, ridingResistance(sp, Math.max(0, -gDotN), { tuck, brake, steer: S.steer }) * dt);
+      const dec = Math.min(sp, ridingResistance(sp, Math.max(0, -gDotN), { tuck, brake, steer: S.steer, skill: SKILL }) * dt);
       S.v.multiplyScalar((sp - dec) / sp);
     }
     // Skate / hike on flats and gentle climbs.
@@ -2324,6 +2439,7 @@ function updateCamera(dt) {
 const AV = { ready: false };
 
 // ---------- Rider choice: outfit and stance, remembered per browser ----------
+const SKILL = SKILLS[pref.get('skill')] ? pref.get('skill') : 'intermediate';
 const PICK = { rider: RIDERS.some(r => r.id === pref.get('rider')) ? pref.get('rider') : 'sage', goofy: pref.get('stance') === 'goofy' };
 function applyKit() {
   if (!AV.model) return;
@@ -2565,7 +2681,7 @@ function updateParticles(dt) {
 
 await load.at(86, '繪製雪道地圖');
 // ---------- Trail map (hillshade + contours, drawn from the same elevation grid) ----------
-function drawMap(cv) {
+function drawMap(cv, { routes = true } = {}) {
   const g = cv.getContext('2d'), img = g.createImageData(GX, GY);
   const L = new THREE.Vector3(-1, 1.2, -1).normalize();
   for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) {
@@ -2619,6 +2735,7 @@ function drawMap(cv) {
     sg.putImageData(si, 0, 0);
     g.drawImage(sc, 0, 0, cv.width, cv.height);
   }
+  if (!routes) return;
   for (const p of PISTES) {
     line(p.pts);
     const c = diffOf(p.diff).color;
@@ -2637,8 +2754,9 @@ function drawMap(cv) {
 }
 const mini = document.getElementById('minimap'), big = document.getElementById('bigmap');
 drawMap(mini); drawMap(big);
-const miniBase = document.createElement('canvas'); miniBase.width = mini.width * 3; miniBase.height = mini.height * 3;
-drawMap(miniBase);
+// The minimap redraws runs and lifts live over this terrain, so the base stays clear of them.
+const miniBase = document.createElement('canvas'); miniBase.width = mini.width * 4; miniBase.height = Math.round(miniBase.width * DEPTH / WIDTH);
+drawMap(miniBase, { routes: false });
 
 const mapEl = document.getElementById('map'), labelsEl = document.getElementById('labels'), meEl = document.getElementById('me');
 const mapViewport = document.getElementById('mapViewport'), mapContent = document.getElementById('mapContent');
@@ -2829,19 +2947,126 @@ big.addEventListener('click', e => {
 document.getElementById('mapClose').addEventListener('click', () => toggleMap(false));
 mapEl.addEventListener('click', e => { if (e.target === mapEl) toggleMap(false); });
 
+// Minimap: heading-up, centred a little below the middle so more of the run ahead shows. Terrain comes
+// from the pre-rendered base; runs, lifts, names and the lift direction are drawn live at the zoom.
+const MINI_TONE = { '#15171a': '#46556b' };   // black runs read slate on the map, not like roads
+const MINI_SPANS = [450, 900, 1800];   // metres across the map
+let miniZoom = (() => { try { const v = +localStorage.getItem('miniZoom'); return v >= 0 && v < MINI_SPANS.length ? v : 1; } catch { return 1; } })();
+function setMiniZoom(z) {
+  miniZoom = Math.max(0, Math.min(MINI_SPANS.length - 1, z));
+  try { localStorage.setItem('miniZoom', miniZoom); } catch {}
+  document.getElementById('mzIn').disabled = miniZoom === 0; document.getElementById('mzOut').disabled = miniZoom === MINI_SPANS.length - 1;
+  drawMini();
+}
+document.getElementById('mzIn').addEventListener('click', e => { e.stopPropagation(); setMiniZoom(miniZoom - 1); });
+document.getElementById('mzOut').addEventListener('click', e => { e.stopPropagation(); setMiniZoom(miniZoom + 1); });
+// Where to head next: the top station while riding, otherwise the nearest lift base, preferring bases below you.
+function miniTarget() {
+  if (S.ride) return { p: S.ride.L.pts.at(-1), name: S.ride.L.name, top: true };
+  let best = null, bs = Infinity;
+  for (const L of LIFTS) {
+    const p = L.pts[0], d = Math.hypot(p.x - S.p.x, p.z - S.p.z), below = height(p.x, p.z) <= S.p.y + 40;
+    const sc = d * (below ? 1 : 2.5);
+    if (sc < bs) { bs = sc; best = { p, name: L.name }; }
+  }
+  return best;
+}
 function drawMini() {
-  const g = mini.getContext('2d');
-  // Show nearby trails at 3×, following the rider and clamping at terrain edges.
-  const { u, v } = frac(S.p.x, S.p.z);
-  const sourceX = Math.max(0, Math.min(miniBase.width - mini.width, u * miniBase.width - mini.width / 2));
-  const sourceY = Math.max(0, Math.min(miniBase.height - mini.height, v * miniBase.height - mini.height / 2));
-  g.drawImage(miniBase, sourceX, sourceY, mini.width, mini.height, 0, 0, mini.width, mini.height);
-  const x = u * miniBase.width - sourceX, y = v * miniBase.height - sourceY;
-  const a = mapHeading(S.f.x, S.f.z, WIDTH, DEPTH, mini.width, mini.height);
-  g.save(); g.translate(x, y); g.rotate(a);
-  g.fillStyle = '#ff6a3d'; g.strokeStyle = '#f4f8fc'; g.lineWidth = 2.5;
-  g.beginPath(); g.moveTo(14, 0); g.lineTo(-8, 8); g.lineTo(-4, 0); g.lineTo(-8, -8); g.closePath(); g.fill(); g.stroke();
+  const g = mini.getContext('2d'), W = mini.width, H = mini.height;
+  const span = MINI_SPANS[miniZoom], k = W / span, cx = W / 2, cy = H * 0.64;
+  const theta = Math.atan2(camDir.z, camDir.x), rot = -Math.PI / 2 - theta;
+  g.save();
+  g.fillStyle = '#c9d8e6'; g.fillRect(0, 0, W, H);
+  g.translate(cx, cy); g.rotate(rot); g.scale(k, k); g.translate(-S.p.x, -S.p.z);
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(miniBase, -WIDTH / 2, -DEPTH / 2, WIDTH, DEPTH);
+  g.lineCap = g.lineJoin = 'round';
+  const px = 1 / k, view = span * 0.75, here = !S.ride && pisteAt(S.p.x, S.p.z);
+  const near = pts => { for (const q of pts) if (Math.abs(q.x - S.p.x) < view && Math.abs(q.z - S.p.z) < view) return true; return false; };
+  const path = pts => { g.beginPath(); pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo'](q.x, q.z)); };
+  // Runs drawn at their real corridor width: the edge you can't see on the hill is the edge of the colour.
+  const named = [];
+  for (const p of PISTES) {
+    if (!near(p.pts)) continue;
+    const c = MINI_TONE[diffOf(p.diff).color] || diffOf(p.diff).color, mid = p.pts[p.pts.length >> 1], w = p.area ? 0 : courseWidth(p.diff, mid.x, mid.z, p.w);
+    path(p.pts);
+    if (p.area) { g.globalAlpha = 0.35; g.fillStyle = c; g.closePath(); g.fill(); g.globalAlpha = 1; g.strokeStyle = '#fff'; g.lineWidth = 2 * px; g.stroke(); }
+    else {
+      g.strokeStyle = '#fff'; g.lineWidth = w + 4 * px; g.stroke();
+      g.strokeStyle = c; g.globalAlpha = p === here ? 0.95 : 0.7; g.lineWidth = w; g.stroke(); g.globalAlpha = 1;
+      g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 1.2 * px; g.setLineDash([6 * px, 6 * px]); g.stroke(); g.setLineDash([]);
+      if (p.name) named.push(p);
+      // Chevrons every ~140 m pointing downhill, so the way down reads without a label.
+      const down = height(p.pts[0].x, p.pts[0].z) >= height(p.pts.at(-1).x, p.pts.at(-1).z) ? 1 : -1;
+      g.fillStyle = '#fff'; let next = 70;
+      for (let i = 1; i < p.pts.length; i++) {
+        const a = p.pts[i - 1], b = p.pts[i], len = Math.hypot(b.x - a.x, b.z - a.z);
+        for (; next < len; next += 140) {
+          const x = a.x + (b.x - a.x) * next / len, z = a.z + (b.z - a.z) * next / len;
+          if (Math.abs(x - S.p.x) > view || Math.abs(z - S.p.z) > view) continue;
+          g.save(); g.translate(x, z); g.rotate(Math.atan2(b.z - a.z, b.x - a.x) + (down > 0 ? 0 : Math.PI));
+          g.beginPath(); g.moveTo(6 * px, 0); g.lineTo(-4 * px, 4.5 * px); g.lineTo(-2 * px, 0); g.lineTo(-4 * px, -4.5 * px); g.closePath(); g.fill(); g.restore();
+        }
+        next -= len;
+      }
+    }
+  }
+  for (const L of LIFTS) {
+    if (!near(L.pts)) continue;
+    const gond = /gondola|cable_car/.test(L.type), col = gond ? '#b8321f' : '#1b1f24';
+    path(L.pts); g.strokeStyle = '#fff'; g.lineWidth = 4.5 * px; g.stroke();
+    g.strokeStyle = col; g.lineWidth = 2.4 * px; g.setLineDash(SURFACE_LIFT.test(L.type) ? [5 * px, 3 * px] : []); g.stroke(); g.setLineDash([]);
+    g.fillStyle = col; g.strokeStyle = '#fff'; g.lineWidth = 1.5 * px;
+    for (const q of [L.pts[0], L.pts.at(-1)]) { g.beginPath(); g.arc(q.x, q.z, 5 * px, 0, Math.PI * 2); g.fill(); g.stroke(); }
+  }
+  // Names, kept upright, only for runs near the middle of the view.
+  g.font = `600 ${11 * px}px Barlow, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 3 * px; g.strokeStyle = 'rgba(255,255,255,0.9)'; g.fillStyle = '#16212e';
+  let labels = 0;
+  for (const p of named) {
+    if (labels >= 7) break;
+    const m = p.pts[p.pts.length >> 1];
+    if (Math.hypot(m.x - S.p.x, m.z - S.p.z) > span * 0.45) continue;
+    g.save(); g.translate(m.x, m.z); g.rotate(-rot); g.strokeText(p.name, 0, 0); g.fillText(p.name, 0, 0); g.restore(); labels++;
+  }
   g.restore();
+  // Direction to the next lift: a pin inside the view, an arrow on the rim past it, with the distance.
+  const t = miniTarget();
+  if (t) {
+    const dx = t.p.x - S.p.x, dz = t.p.z - S.p.z, d = Math.hypot(dx, dz);
+    let sx = cx + k * (dx * Math.cos(rot) - dz * Math.sin(rot)), sy = cy + k * (dx * Math.sin(rot) + dz * Math.cos(rot));
+    const m = 16, inside = sx > m && sx < W - m && sy > m && sy < H - m;
+    g.save();
+    g.fillStyle = '#ffd23f'; g.strokeStyle = '#16212e'; g.lineWidth = 2.5;
+    if (!inside) {
+      const ang = Math.atan2(sy - cy, sx - cx), ax = Math.abs(Math.cos(ang)) || 1e-6, ay = Math.abs(Math.sin(ang)) || 1e-6;
+      const r = Math.min((W / 2 - m) / ax, ((Math.sin(ang) < 0 ? cy : H - cy) - m) / ay);
+      sx = cx + Math.cos(ang) * r; sy = cy + Math.sin(ang) * r;
+      g.translate(sx, sy); g.rotate(ang);
+      g.beginPath(); g.moveTo(12, 0); g.lineTo(-7, 9); g.lineTo(-3, 0); g.lineTo(-7, -9); g.closePath(); g.stroke(); g.fill();
+      g.rotate(-ang);
+    } else {
+      g.translate(sx, sy);
+      g.beginPath(); g.arc(0, 0, 7, 0, Math.PI * 2); g.stroke(); g.fill();
+    }
+    g.font = '700 11px Barlow, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+    const label = `${t.top ? '山頂' : '纜車'} ${d >= 1000 ? (d / 1000).toFixed(1) + ' 公里' : Math.round(d / 10) * 10 + ' 公尺'}`;
+    const ty = sy < 30 ? 24 : -12;
+    g.lineWidth = 3.5; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.strokeText(label, 0, ty); g.fillStyle = '#16212e'; g.fillText(label, 0, ty);
+    g.restore();
+  }
+  // You: the arrow always points up (the map turns, you don't). North and the scale sit in the corners.
+  g.save(); g.translate(cx, cy);
+  g.fillStyle = '#ff6a3d'; g.strokeStyle = '#fff'; g.lineWidth = 2.5;
+  g.beginPath(); g.moveTo(0, -13); g.lineTo(8, 9); g.lineTo(0, 4); g.lineTo(-8, 9); g.closePath(); g.stroke(); g.fill();
+  g.restore();
+  g.save(); g.translate(W - 22, 22); g.rotate(rot + Math.PI / 2);
+  g.fillStyle = 'rgba(13,27,42,0.75)'; g.beginPath(); g.arc(0, 0, 14, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ff6a3d'; g.beginPath(); g.moveTo(0, -11); g.lineTo(5, 3); g.lineTo(-5, 3); g.closePath(); g.fill();
+  g.restore();
+  const bar = span >= 1800 ? 500 : span >= 900 ? 200 : 100;
+  g.fillStyle = 'rgba(13,27,42,0.75)'; g.fillRect(10, H - 22, bar * k + 14, 16);
+  g.fillStyle = '#fff'; g.fillRect(17, H - 11, bar * k, 2);
+  g.font = '600 10px Barlow, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillText(`${bar} 公尺`, 17, H - 13);
 }
 
 // ---------- HUD ----------
@@ -2872,9 +3097,10 @@ function zoneName() {
   }
   return bd < 0.7 ? `${best.name} 側` : RESORT.backcountry;
 }
-let hudT = 0;
+let hudT = 0, miniT = 0;
 function updateHud(dt) {
   if ((toastT -= dt) <= 0) hud.toast.classList.remove('on');
+  if ((miniT -= dt) <= 0) { miniT = MOBILE ? 1 / 12 : 1 / 24; drawMini(); }
   if ((hudT -= dt) > 0) return;
   hudT = 0.1;
   hud.spd.textContent = Math.round(S.v.length() * 3.6);
@@ -2891,12 +3117,12 @@ function updateHud(dt) {
     const R = S.ride, L = R.L, left = L.n ? L.Tline - (liftTime + R.k * L.gap) % L.cycle : (L.total - R.s) / L.v;
     hud.zone.textContent = `${L.name} · 約 ${fmt(Math.max(0, left / liftSpeed))} 抵達山頂`;
   }
+  else if (!piste && !S.walking && edgeNow && edgeNow.depth > 3) hud.zone.textContent = `雪道外 · 離${edgeNow.piste.name || '雪道'} ${Math.round(edgeNow.dist)} 公尺`;
   else if (piste && piste.name) hud.zone.innerHTML = `<span class="dot" style="background:${diffOf(piste.diff).color}"></span>${piste.name.replace(/[<&>]/g, '')} · ${diffOf(piste.diff).label}`;
   else hud.zone.textContent = zoneName();
   liftNear = !S.ride && !liftQueue && S.v.length() < 12 ? nearLiftBase() : null;
   hud.prompt.hidden = !liftNear;
   if (liftNear) hud.prompt.textContent = `${matchMedia('(pointer: coarse)').matches ? '點選' : '按 E'}搭乘 ${liftNear.name}（${liftNear.gondola ? '吊艙纜車' : liftNear.n ? '吊椅' : '纜車'}）`;
-  drawMini();
 }
 
 // ---------- Wind audio (starts on Drop in) ----------
@@ -2940,7 +3166,33 @@ addEventListener('resize', () => {
 
 dropIn(SPOTS[0]);
 updateTrees(0, 99);
-let running = false, last = performance.now(), acc = 0;
+let running = false, paused = false, last = performance.now(), acc = 0;
+const simOn = () => running && !paused && mapEl.hidden;
+const pauseEl = document.getElementById('pause');
+function setPaused(on) {
+  if (!running || on === paused) return;
+  paused = on; pauseEl.hidden = !on;
+  keys.clear(); touch.steer = 0; touch.B = touch.T = false;
+  if (audio) audio.ctx[on ? 'suspend' : 'resume']().catch(() => {});
+  last = performance.now(); acc = 0;
+  if (on) document.getElementById('pResume').focus(); else canvas.focus();
+}
+function restartRun() {
+  S.ride = null; liftQueue = null; S.vert = 0; S.top = 0; S.crash = 0; S.walking = false;
+  dropIn(SPOTS[0]); setPaused(false);
+}
+document.getElementById('tPause').addEventListener('click', () => setPaused(true));
+document.getElementById('pResume').addEventListener('click', () => setPaused(false));
+document.getElementById('pRestart').addEventListener('click', restartRun);
+document.getElementById('pHome').addEventListener('click', () => { location.href = location.pathname; });
+addEventListener('keydown', e => {
+  if (e.repeat || !running) return;
+  const k = e.key.toLowerCase();
+  if (k === 'escape' && !mapEl.hidden) return;   // Esc closes the map first
+  if (k === 'escape' || k === 'p') { e.preventDefault(); setPaused(!paused); }
+});
+// A backgrounded phone shouldn't keep the rider sliding.
+addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
 // Background tabs must not feed a long pause into physics or the quality controller.
 addEventListener('visibilitychange', () => {
   last = performance.now(); acc = 0; renderQuality.reset();
@@ -2949,8 +3201,8 @@ function frame(now) {
   const frameSeconds = (now - last) / 1000;
   const dt = Math.min(0.05, frameSeconds); last = now;
   if (document.hidden) { requestAnimationFrame(frame); return; }
-  if (MOBILE && running && mapEl.hidden) renderQuality.sample(frameSeconds);
-  if (running && mapEl.hidden) {
+  if (MOBILE && simOn()) renderQuality.sample(frameSeconds);
+  if (simOn()) {
     acc += dt;
     while (acc >= 1 / 120) { step(1 / 120); acc -= 1 / 120; }
   }
@@ -2960,9 +3212,10 @@ function frame(now) {
   sky.position.copy(camera.position);
   weather.update(S);
   buildingLighting?.update(S.p, dt);
+  liftLighting?.update(S.p, dt);
   updateParticles(dt);
-  updateLifts(running && mapEl.hidden ? dt : 0);
-  visitors.update(running && mapEl.hidden ? dt : 0);
+  updateLifts(simOn() ? dt : 0);
+  visitors.update(simOn() ? dt : 0);
   nearbyShadows.update(S.p);
   updateTrees(dt);
   updateHud(dt);
@@ -2978,7 +3231,7 @@ $('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} �
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { saveRecord(RESORT.id, { runs: record(RESORT.id).runs + 1 }); $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
-window.__ski = { weather, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+window.__ski = { weather, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;
 window.__sim = { renderer, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
