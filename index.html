@@ -192,6 +192,54 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   #map .cap { position: static; grid-column: 2; margin: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px)); background: none; color: var(--mist); padding: 0; }
   #map .scale-bar { right: auto; left: calc(100dvh * 1.25 - 90px + env(safe-area-inset-left, 0px)); }
 }
+/* Icon tool buttons: icon + label; key hints only where there's a keyboard. */
+#tools .btn { display: inline-flex; align-items: center; gap: 6px; }
+#tools i { font-style: normal; font-size: 15px; }
+#mini { pointer-events: auto; cursor: pointer; }
+#conditions summary i { font-style: normal; margin-right: 4px; }
+#conditions summary b { font-weight: inherit; }
+.note summary { cursor: pointer; }
+.note p { margin: 6px 0 0; }
+
+/* Touch: one quiet HUD column per side, nothing the thumbs need to reach up for. */
+@media (pointer: coarse) {
+  .key { display: none; }
+  #brand { padding: 5px 9px; }
+  #brand .name { display: none; }
+  #brand .zone { font-size: 13px; color: var(--snow); }
+  #stats { top: calc(46px + env(safe-area-inset-top, 0px)); padding: 6px 10px 5px; }
+  .stat:nth-child(n+2) { display: none; }
+  .stat.big .v { font-size: 34px; }
+  #mini canvas { width: 112px; height: 90px; }
+  #tools .btn, #conditions summary { width: 52px; height: 52px; padding: 0; border-radius: 50%; flex-direction: column; justify-content: center; gap: 1px; font-size: 10px; letter-spacing: 0.04em; box-sizing: border-box; }
+  #tools i, #conditions summary i { font-size: 18px; margin: 0; line-height: 1; }
+  #tools .btn[aria-pressed="true"] { border-color: var(--signal); background: rgba(255,106,61,0.3); }
+  #conditions { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; width: auto !important; }
+  #conditions summary { display: flex; align-items: center; list-style: none; background: var(--panel); border: 1px solid rgba(255,255,255,0.18); font-family: var(--display); font-weight: 600; text-transform: uppercase; color: var(--snow); min-height: 0; }
+  #conditions summary::-webkit-details-marker { display: none; }
+  #conditions summary b { font-size: 0; }
+  #conditions summary b::after { content: "天氣"; font-size: 10px; }
+  #conditions summary .sep, #conditionsStatus { display: none; }
+  #conditions[open] summary { border-color: var(--signal); }
+  #conditions[open] .controls { margin-top: 8px; padding: 12px; width: min(250px, calc(100vw - 88px)); background: #152638; border-radius: 6px; }
+  #intro .card { width: 100%; }
+  #intro dl { gap: 8px 12px; }
+  #intro .go { width: 100%; padding: 14px; }
+  .pick button { padding: 8px 12px; font-size: 14px; }
+  #touch button { width: 66px; height: 66px; }
+  #touch #tJ { width: 90px; height: 90px; }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+  #tools { top: calc(112px + env(safe-area-inset-top, 0px)); flex-direction: column; gap: 8px; }
+  #conditions { top: calc(292px + env(safe-area-inset-top, 0px)); left: auto; right: max(12px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; align-items: flex-end; }
+  #liftSpeed { top: calc(354px + env(safe-area-inset-top, 0px)); }
+}
+@media (pointer: coarse) and (orientation: landscape) {
+  #tools { top: calc(108px + env(safe-area-inset-top, 0px)); }
+  #conditions { top: calc(80px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); }
+  #stats { top: calc(10px + env(safe-area-inset-top, 0px)); }
+  #liftSpeed { top: calc(170px + env(safe-area-inset-top, 0px)); }
+}
 </style>
 
 <canvas id="gl"></canvas>
@@ -211,7 +259,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   <kbd>F</kbd> 步行／穿上雪板 · <kbd>M</kbd> 地圖／傳送 · <kbd>R</kbd> 返回起點 · <kbd>E</kbd> 搭乘纜車 · <kbd>1</kbd>–<kbd>5</kbd> 地點
 </div>
 <details class="hud panel" id="conditions">
-  <summary>時間／天氣 · <span id="conditionsStatus" aria-live="polite">Bluebird</span></summary>
+  <summary><i aria-hidden="true">☀</i><b>時間／天氣</b><span class="sep"> · </span><span id="conditionsStatus" aria-live="polite">Bluebird</span></summary>
   <div class="controls">
     <label for="timeSelect">時間<select id="timeSelect" disabled><option value="day">白天</option><option value="sunset">黃昏</option><option value="night">夜晚</option></select></label>
     <label for="weatherSelect">天氣<select id="weatherSelect" disabled><option value="clear">晴朗 · Bluebird</option><option value="overcast">陰天</option><option value="snow">降雪 · Snow</option><option value="storm">暴風雪 · Snowstorm</option></select></label>
@@ -222,7 +270,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 <button class="hud btn" id="prompt" hidden></button>
 <label class="hud panel" id="liftSpeed" hidden>纜車速度 <select id="liftSpeedSelect" aria-label="纜車速度"></select></label>
 
-<div class="hud" id="tools"><button class="btn" id="tWalk" aria-pressed="false">步行 · F</button><button class="btn" id="tM">地圖</button><button class="btn" id="tC">鏡頭</button></div>
+<div class="hud" id="tools"><button class="btn" id="tM"><i aria-hidden="true">🗺</i><b>地圖</b></button><button class="btn" id="tC"><i aria-hidden="true">🎥</i><b>鏡頭</b></button><button class="btn" id="tWalk" aria-pressed="false"><i aria-hidden="true">🚶</i><b>步行</b><span class="key"> · F</span></button></div>
 <div id="touch">
   <div id="pad" aria-label="左右拖曳轉彎"><span>拖曳轉彎</span><div class="track"><div id="knob"></div></div></div>
   <div class="grp"><button id="tB">煞車</button><button id="tJ">跳躍</button><button id="tT">壓低</button></div>
@@ -233,12 +281,9 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     <h1>二世古滑雪</h1>
     <p class="sub">在北海道二世古安努普利山的真實地形上滑雪。</p>
     <dl class="touch-only">
-      <dt>拖曳</dt><dd>用左手拇指左右滑動轉彎</dd>
-      <dt>壓低</dt><dd>按住加速，或在平地滑行</dd>
-      <dt>煞車</dt><dd>按住側滑減速</dd>
-      <dt>跳躍</dt><dd>起跳後拖曳旋轉</dd>
-      <dt>步行</dt><dd>切換步行後，按鈕前後移動，左側拖曳轉向；拖曳雪地轉動鏡頭</dd>
-      <dt>地圖</dt><dd>點選雪道地圖上的位置開始滑行</dd>
+      <dt>左手</dt><dd>左右拖曳轉彎</dd>
+      <dt>右手</dt><dd>按住「壓低」加速，「煞車」減速，「跳躍」起跳</dd>
+      <dt>地圖</dt><dd>點小地圖選擇雪道或纜車</dd>
     </dl>
     <dl class="desk-only">
       <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>左右轉彎</dd>
@@ -258,7 +303,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     </div>
     <div id="loading">正在載入地形…</div>
     <button class="go" id="start" hidden>開始滑行</button>
-    <p class="note" id="credits"></p>
+    <details class="note"><summary>資料來源</summary><p id="credits"></p></details>
   </div>
 </div>
 
@@ -1910,6 +1955,7 @@ hold('tB', 'B'); hold('tT', 'T');
 document.getElementById('tC').addEventListener('click', () => { camMode = (camMode + 1) % CAM_MODES.length; toast(CAM_MODES[camMode], 0.8); });
 document.getElementById('tJ').addEventListener('pointerdown', e => { e.preventDefault(); wantJump = true; });
 document.getElementById('tM').addEventListener('click', () => toggleMap());
+document.getElementById('mini').addEventListener('click', () => toggleMap());
 
 document.getElementById('tWalk').addEventListener('click', toggleWalking);
 
@@ -1925,7 +1971,8 @@ let camMode = 0;
 
 function syncWalkingControls() {
   const button = document.getElementById('tWalk');
-  button.textContent = S.walking ? '穿上雪板 · F' : '步行 · F';
+  button.querySelector('i').textContent = S.walking ? '🏂' : '🚶';
+  button.querySelector('b').textContent = S.walking ? '穿上雪板' : '步行';
   button.setAttribute('aria-pressed', String(S.walking));
   const help = document.getElementById('keys');
   help.dataset.ridingHelp ??= help.innerHTML;
