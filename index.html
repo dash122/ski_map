@@ -803,7 +803,8 @@ const maskAt = (m, x, z) => { const k = lidx(x, z); return k < 0 ? 0 : m[k] / 25
 function inResort(x, z) { return HAS_SKI && maskAt(skiM, x, z) > 0.5; }
 // Tree cover 0–255 on the land grid: OSM woods and scrub, noise-driven woodland where OSM says nothing,
 // thinned by the treeline, cliffs, pistes and anything built.
-const TREELINE = (x, z) => 880 + (vnoise(x / 900, z / 900) - 0.5) * 260;
+const FLORA = { treeline: 880, conifer: 0.32, low: 520, rime: true, larch: 0, cover: 0, firBias: 0, ...RESORT.flora };
+const TREELINE = (x, z) => FLORA.treeline + (vnoise(x / 900, z / 900) - 0.5) * 260;
 const DEN = new Uint8Array(LW * LH);
 {
   const t0 = performance.now(), n = new THREE.Vector3();
@@ -812,7 +813,7 @@ const DEN = new Uint8Array(LW * LH);
     if (hardM[k] > 200 || onPiste(x, z)) continue;
     const h = height(x, z), tl = TREELINE(x, z);
     if (h > tl + 160) continue;
-    const proc = THREE.MathUtils.smoothstep(fbm(x / 520, z / 520), 0.38, 0.58);
+    const proc = THREE.MathUtils.smoothstep(fbm(x / 520, z / 520), 0.38 - FLORA.cover, 0.58 - FLORA.cover);
     const f = forestM[k] / 255, o = openM[k] / 255;
     let d = LAND ? Math.max(f, proc * (1 - o) * 0.85) : proc;
     // Reinforce wooded edges below the treeline, respecting mapped open land.
@@ -1021,7 +1022,7 @@ await load.at(42, '建立地形網格');
         diffuseColor.rgb *= mix(0.95 + 0.07 * crust, 1., pm);
         // Woods: shaded snow under the trees up close; beyond the tree draw distance, the canopy itself:
         // grey-brown bare birch with patches of dark fir.
-        float fir = smoothstep(0.45, 0.7, vn(vWXZ / 140.) * 0.7 + vn(vWXZ / 37.) * 0.3);
+        float fir = smoothstep(${(0.45 - FLORA.firBias).toFixed(2)}, ${(0.7 - FLORA.firBias).toFixed(2)}, vn(vWXZ / 140.) * 0.7 + vn(vWXZ / 37.) * 0.3);
         vec3 canopy = mix(vec3(0.43, 0.39, 0.38), vec3(0.17, 0.24, 0.21), fir) * (0.85 + 0.3 * vn(vWXZ / 9.));
         float far = smoothstep(treeFar.x, treeFar.y, dist);
         diffuseColor.rgb *= 1. - land.r * (1. - far) * 0.12;
@@ -1293,19 +1294,21 @@ function buildChunk(ci, cj) {
       treeGrid.get(key).push(jx, jz, coll);
     };
     if (h > tl - 40) {
-      // Treeline: rime-crusted firs and low stunted birch.
-      if (r < 0.75) { const s = 0.5 + s0 * 0.6; add(rime, s, s, 0.6 * s + 0.4); }
+      // Treeline: rime-crusted firs (stunted, snow-laden firs outside Japan) and low stunted birch or larch.
+      if (r < 0.75) { const s = 0.5 + s0 * 0.6; if (FLORA.rime) add(rime, s, s, 0.6 * s + 0.4); else add(fir, s * 0.8, s * 0.85, 0.45 * s + 0.3); }
       else { const s = 3 + s0 * 2; add(card, s * 0.8, s, 0.3, 0); }
       continue;
     }
-    const rimeShare = THREE.MathUtils.smoothstep(h, tl - 200, tl - 40) * 0.7;
-    const conifer = THREE.MathUtils.clamp((h < 500 ? 0.5 : 0.32) + (vnoise(jx / 260, jz / 260) - 0.5) * 1.1, 0.05, 0.9);
+    const rimeShare = FLORA.rime ? THREE.MathUtils.smoothstep(h, tl - 200, tl - 40) * 0.7 : 0;
+    const conifer = THREE.MathUtils.clamp((h < FLORA.low ? 0.5 : FLORA.conifer) + (vnoise(jx / 260, jz / 260) - 0.5) * 1.1, 0.05, FLORA.conifer > 0.8 ? 0.98 : 0.9);
     if (r < rimeShare) { const s = 0.6 + s0 * 0.7; add(rime, s, s, 0.6 * s + 0.4); }
     else if (hash2(jx * 31, jz * 37) < conifer) {
-      if (h < 520 && vnoise(jx / 600 + 40, jz / 600) > 0.74) { const s = 11 + s0 * 7; add(card, s * 0.45, s, 0.3, 2); }   // larch plantation
+      if (h < FLORA.low && vnoise(jx / 600 + 40, jz / 600) > 0.74) { const s = 11 + s0 * 7; add(card, s * 0.45, s, 0.3, 2); }   // larch plantation
       else { const s = 0.75 + s0 * 0.85; add(fir, s, s * (0.9 + hash2(jx * 41, jz) * 0.25), 0.45 * s + 0.35); }
+    } else if (hash2(jx * 53, jz * 59) < FLORA.larch) {
+      const s = 9 + s0 * 7; add(card, s * 0.45, s, 0.3, 2);                    // larch
     } else {
-      const white = h < 520 && hash2(jx * 43, jz * 47) < 0.5;
+      const white = h < FLORA.low && hash2(jx * 43, jz * 47) < 0.5;
       const s = (white ? 10 : 7) + s0 * (white ? 6 : 6);
       add(card, s * (white ? 0.55 : 0.85), s, 0.3, white ? 1 : 0);
     }
