@@ -56,6 +56,12 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 .go { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); background: var(--signal); border: 0; border-radius: 4px; padding: 10px 22px; cursor: pointer; }
 .go:focus-visible, button:focus-visible { outline: 2px solid var(--snow); outline-offset: 2px; }
 .note { font-size: 12px; color: var(--mist); margin-top: 14px; line-height: 1.5; }
+.pick { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: center; margin: 0 0 18px; }
+.pick .pl { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist); }
+.pick .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pick button { font-family: var(--body); font-size: 13px; color: var(--snow); background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; padding: 5px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.pick button[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.16); }
+.pick .sw { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.5); }
 #loading { font-family: var(--display); font-size: 18px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist); }
 
 #map .wrap { position: relative; width: min(100%, calc((100vh - 40px) * 1.25)); }
@@ -116,7 +122,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 </div>
 <div class="hud panel" id="keys">
   <kbd>A</kbd><kbd>D</kbd> carve · <kbd>W</kbd> tuck/skate · <kbd>S</kbd> brake<br>
-  <kbd>Space</kbd> ollie (A/D to spin) · <kbd>C</kbd> camera<br>
+  <kbd>Space</kbd> ollie (A/D to spin) · <kbd>C</kbd> camera · <kbd>G</kbd> goofy/regular<br>
   <kbd>M</kbd> map / teleport · <kbd>R</kbd> back to drop · <kbd>E</kbd> ride lift (hold <kbd>W</kbd> to fast-forward) · <kbd>1</kbd>–<kbd>5</kbd> spots
 </div>
 <div class="hud" id="toast"></div>
@@ -146,6 +152,14 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
       <dt><kbd>Space</kbd></dt><dd>Ollie, then A or D to spin</dd>
       <dt><kbd>M</kbd></dt><dd>Trail map. Click anywhere to drop in there</dd>
     </dl>
+    <div class="pick">
+      <div class="pl">Rider</div>
+      <div class="opts" id="riders" role="radiogroup" aria-label="Rider"></div>
+      <div class="pl">Stance</div>
+      <div class="opts" id="stance" role="radiogroup" aria-label="Stance">
+        <button type="button" role="radio" data-s="regular">Regular</button><button type="button" role="radio" data-s="goofy">Goofy</button>
+      </div>
+    </div>
     <div id="loading">Loading terrain…</div>
     <button class="go" id="start" hidden>Drop in</button>
     <p class="note" id="credits"></p>
@@ -1017,6 +1031,8 @@ if (HAS_SKI) {
 const rider = new THREE.Group();     // oriented to the board: +X along board (nose), +Y board normal, +Z toe side
 const body = new THREE.Group();      // angulates inside the rider frame; limbs are posed every frame
 rider.add(body);
+const stance = new THREE.Group();    // regular or goofy frame for the avatar, inside body
+body.add(stance);
 const limbs = {};
 {
   const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, ...o });
@@ -1524,6 +1540,7 @@ addEventListener('keydown', e => {
   if (k === ' ') { e.preventDefault(); wantJump = true; }
   if (k === 'c') camMode = (camMode + 1) % CAM_MODES.length, toast(CAM_MODES[camMode], 0.8);
   if (k === 'm') toggleMap();
+  if (k === 'g') { setStance(!PICK.goofy); toast(PICK.goofy ? 'Goofy' : 'Regular', 0.8); }
   if (k === 'r') { S.ride = null; liftQueue = null; dropIn(lastDrop); }
   if (k === 'e' && !S.ride && !liftQueue && liftNear) startRide(liftNear);
   if (k >= '1' && k <= String(SPOTS.length)) dropIn(SPOTS[+k - 1]);
@@ -1731,6 +1748,45 @@ function updateCamera(dt) {
 // ---------- Realistic rider: skinned glTF human, restyled in snow kit and posed bone by bone ----------
 // Loads lazily; the simple rider above stays until the model arrives (or if it fails to load).
 const AV = { ready: false };
+
+// ---------- Rider choice: outfit and stance, remembered per browser ----------
+// Each outfit recolours the model's materials by name; anything not listed keeps the model's colour.
+const RIDERS = [
+  { id: 'sage', name: 'Sage', swatch: '#aebf96', kit: {} },
+  { id: 'midnight', name: 'Midnight', swatch: '#2a3652', kit: { Jacket: 0x2a3652, JacketCuff: 0x1e2740, Pants: 0x3c3f44, PantsKick: 0x2c2e32, Helmet: 0x1b1c1f } },
+  { id: 'ember', name: 'Ember', swatch: '#c4622e', kit: { Jacket: 0xc4622e, JacketCuff: 0x9a4a22, Pants: 0x222427, PantsKick: 0x17181a } },
+  { id: 'glacier', name: 'Glacier', swatch: '#dde4e8', kit: { Jacket: 0xdde4e8, JacketCuff: 0xbcc6cc, Pants: 0x5b6444, PantsKick: 0x474f34, Helmet: 0x2b2e33 } },
+];
+const pref = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const PICK = { rider: RIDERS.some(r => r.id === pref.get('rider')) ? pref.get('rider') : 'sage', goofy: pref.get('stance') === 'goofy' };
+function applyKit() {
+  if (!AV.model) return;
+  const kit = RIDERS.find(r => r.id === PICK.rider).kit;
+  AV.model.traverse(o => {
+    if (!o.isMesh) return;
+    const m = o.material;
+    m.userData.baseColor ??= m.color.getHex();
+    m.color.setHex(kit[m.name] ?? m.userData.baseColor);
+  });
+}
+function setRider(id) { PICK.rider = id; pref.set('rider', id); applyKit(); syncPicker(); }
+function setStance(goofy) { PICK.goofy = goofy; pref.set('stance', goofy ? 'goofy' : 'regular'); syncPicker(); }
+function syncPicker() {
+  for (const b of document.querySelectorAll('#riders button')) b.setAttribute('aria-checked', b.dataset.id === PICK.rider);
+  for (const b of document.querySelectorAll('#stance button')) b.setAttribute('aria-checked', (b.dataset.s === 'goofy') === PICK.goofy);
+}
+{
+  const box = document.getElementById('riders');
+  for (const r of RIDERS) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.id = r.id; b.setAttribute('role', 'radio');
+    b.innerHTML = `<span class="sw" style="background:${r.swatch}"></span>${r.name}`;
+    b.addEventListener('click', () => setRider(r.id));
+    box.append(b);
+  }
+  for (const b of document.querySelectorAll('#stance button')) b.addEventListener('click', () => setStance(b.dataset.s === 'goofy'));
+  syncPicker();
+}
 (async () => {
   try {
     const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
@@ -1792,8 +1848,9 @@ const AV = { ready: false };
     }
     AV.B = B; AV.model = model;
     // Swap: hide the simple rider's body, keep its board and bindings.
-    for (const c of body.children) c.visible = false;
-    body.add(model);
+    for (const c of body.children) if (c !== stance) c.visible = false;
+    stance.add(model);
+    applyKit();
     AV.ready = true;
   } catch (err) { console.warn('rider model unavailable, using the simple rider', err); }
 })();
@@ -1804,30 +1861,36 @@ function rotateBoneWorld(bone, q) {           // apply a world-space rotation to
   bone.quaternion.premultiply(_pqi.multiply(q).multiply(_pq));
   bone.updateMatrixWorld(true);
 }
-function aimBone(bone, child, targetLocal) {  // turn bone so `child` points at a body-local target
+function aimBone(bone, child, targetLocal) {  // turn bone so `child` points at a stance-local target
   bone.getWorldPosition(_aw); child.getWorldPosition(_bw);
-  body.localToWorld(_tw.copy(targetLocal));
+  stance.localToWorld(_tw.copy(targetLocal));
   _qa.setFromUnitVectors(_bw.sub(_aw).normalize(), _tw.sub(_aw).normalize());
   rotateBoneWorld(bone, _qa);
 }
 const AP = {}; for (const k of ['hip', 'hipL', 'hipR', 'knee', 'foot', 'toe', 'chest', 'sh', 'elb', 'hand', 'up']) AP[k] = new THREE.Vector3();
-function poseAvatar(c, fwd, tuck, seated) {
-  const B = AV.B;
+// The avatar is posed in the stance frame: regular as written (left foot toward the nose at +X,
+// facing the toe edge at +Z); goofy turns that frame half a turn, so the right foot leads and the
+// rider faces the other edge. sg flips steering into that frame. Everyone sits the same way on a chair.
+function poseAvatar(c, tuck, seated) {
+  const B = AV.B, sg = PICK.goofy && !seated ? -1 : 1, steer = S.steer * sg;
+  const fwd = (1 - c) * 0.5 + Math.max(0, steer) * 0.12;
+  stance.rotation.y = sg > 0 ? 0 : Math.PI;
+  rider.updateMatrixWorld(true);
   for (const [b, q] of AV.rest) b.quaternion.copy(q);
   B.Hips.position.copy(AV.hipsRest);
   AV.model.updateMatrixWorld(true);
   const leg = AV.thigh + AV.shin;
   // Hips: low and a touch toward the heel edge; deeper when tucking or seated on a chair.
-  AP.hip.set(0, AV.ankle + 0.05 + leg * (seated ? 0.55 : 0.5 + 0.45 * c), -0.05 + fwd * 0.15 - Math.max(0, -S.steer) * 0.1);
-  const hipsWorld = body.localToWorld(_tw.copy(AP.hip).add({ x: 0, y: AV.hipAbove, z: 0 }));
+  AP.hip.set(0, AV.ankle + 0.05 + leg * (seated ? 0.55 : 0.5 + 0.45 * c), -0.05 + fwd * 0.15 - Math.max(0, -steer) * 0.1);
+  const hipsWorld = stance.localToWorld(_tw.copy(AP.hip).add({ x: 0, y: AV.hipAbove, z: 0 }));
   B.Hips.position.copy(B.Hips.parent.worldToLocal(hipsWorld));
   B.Hips.updateMatrixWorld(true);
   // Chest leans over the toe edge as the rider crouches or carves toeside.
   AP.chest.copy(AP.hip).add({ x: 0.02, y: 0.5 - fwd * 0.18, z: 0.06 + fwd * 0.4 });
   aimBone(B.Spine, B.Neck, AP.chest);
-  // Legs: regular stance, left foot forward toward the nose (+X).
+  // Legs: left foot at +X, which is the nose when regular and the tail when goofy.
   for (const [s, fx] of [['Left', 0.27], ['Right', -0.27]]) {
-    B[s + 'UpLeg'].getWorldPosition(_aw); body.worldToLocal(AP.hipL.copy(_aw));
+    B[s + 'UpLeg'].getWorldPosition(_aw); stance.worldToLocal(AP.hipL.copy(_aw));
     AP.foot.set(fx, AV.ankle + 0.06, 0.0);
     joint(AP.hipL, AP.foot, AV.thigh, AV.shin, KNEE_BEND, AP.knee);
     aimBone(B[s + 'UpLeg'], B[s + 'Leg'], AP.knee);
@@ -1837,17 +1900,17 @@ function poseAvatar(c, fwd, tuck, seated) {
   // Arms out for balance; the lead hand follows the turn.
   const sway = Math.sin(performance.now() * 0.002) * 0.03;
   for (const [s, dir] of [['Left', 1], ['Right', -1]]) {
-    B[s + 'Arm'].getWorldPosition(_aw); body.worldToLocal(AP.sh.copy(_aw));
+    B[s + 'Arm'].getWorldPosition(_aw); stance.worldToLocal(AP.sh.copy(_aw));
     if (seated) AP.hand.copy(AP.sh).add({ x: dir * 0.08, y: -0.4, z: 0.32 });
-    else AP.hand.copy(AP.sh).add({ x: dir * (dir > 0 ? 0.42 : 0.34), y: -0.32 + (tuck ? 0.1 : 0) + sway * dir, z: 0.12 + S.steer * 0.18 * dir });
+    else AP.hand.copy(AP.sh).add({ x: dir * (dir * sg > 0 ? 0.42 : 0.34), y: -0.32 + (tuck ? 0.1 : 0) + sway * dir, z: 0.12 + steer * 0.18 * dir * sg });
     joint(AP.sh, AP.hand, AV.upper, AV.fore, ELBOW_BEND, AP.elb);
     aimBone(B[s + 'Arm'], B[s + 'ForeArm'], AP.elb);
     aimBone(B[s + 'ForeArm'], B[s + 'Hand'], AP.hand);
   }
   // Look down the board: head (and a little neck) turn toward the nose.
-  body.localToWorld(AP.up.set(0, 1, 0)).sub(body.localToWorld(_tw.set(0, 0, 0))).normalize();
-  rotateBoneWorld(B.Neck, _qa.setFromAxisAngle(AP.up, 0.5));
-  rotateBoneWorld(B.Head, _qa.setFromAxisAngle(AP.up, 0.85));
+  stance.localToWorld(AP.up.set(0, 1, 0)).sub(stance.localToWorld(_tw.set(0, 0, 0))).normalize();
+  rotateBoneWorld(B.Neck, _qa.setFromAxisAngle(AP.up, 0.5 * sg));
+  rotateBoneWorld(B.Head, _qa.setFromAxisAngle(AP.up, 0.85 * sg));
 }
 
 // ---------- Rider pose ----------
@@ -1897,7 +1960,7 @@ function poseRider(dt) {
   }
   limbs.head.position.copy(P.chest).add({ x: 0.03, y: 0.24, z: 0.03 });
   limbs.head.rotation.set(0, 0, -0.15 + fwd * 0.3);
-  if (AV.ready) poseAvatar(c, fwd, tuck, seated);
+  if (AV.ready) poseAvatar(c, tuck, seated);
 }
 
 // ---------- Particles update ----------
