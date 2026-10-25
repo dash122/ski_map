@@ -1076,20 +1076,23 @@ const AV = { ready: false };
     model.traverse(o => { if (o.isBone) AV.rest.set(o, o.quaternion.clone()); });
     AV.hipsRest = B.Hips.position.clone();
 
-    // Gear, placed in the rest pose then parented to bones so it follows the skeleton.
-    const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o });
-    const head = wp('Head'), top = wp('HeadTop_End'), hc = head.clone().lerp(top, 0.5).add({ x: 0, y: 0, z: -0.012 }), hr = head.distanceTo(top) * 0.6;
-    const gear = (geo, mat, pos, parent) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.position.copy(pos); model.add(m); parent.attach(m); return m; };
-    gear(new THREE.SphereGeometry(hr * 1.08, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.6), M(0x2b2e33, { roughness: 0.4 }), hc, B.Head);
-    const gog = gear(new THREE.CylinderGeometry(hr * 1.04, hr * 1.04, hr * 0.42, 24, 1, true, -Math.PI * 0.32, Math.PI * 0.64), M(0xff8a3c, { roughness: 0.06, metalness: 0.9 }), hc.clone().add({ x: 0, y: -hr * 0.28, z: 0 }), B.Head);
-    gog.material.side = THREE.DoubleSide;
-    gear(new THREE.CylinderGeometry(hr * 1.06, hr * 1.06, hr * 0.16, 24, 1, true), M(0x111214), hc.clone().add({ x: 0, y: -hr * 0.28, z: 0 }), B.Head);
-    for (const s of ['Left', 'Right']) {
-      // Mitt over the whole hand: centred between the wrist and the middle knuckle.
-      const hp = wp(s + 'Hand'), knuckle = (model.getObjectByName(s + 'HandMiddle1') || B[s + 'Hand']).getWorldPosition(new THREE.Vector3());
-      const len = Math.max(0.09, hp.distanceTo(knuckle) * 1.9), mitt = gear(new THREE.CapsuleGeometry(0.048, len * 0.6, 4, 10), M(0x8a6a48, { roughness: 0.75 }), hp.clone().lerp(knuckle, 0.75), B[s + 'Hand']);
-      mitt.quaternion.copy(B[s + 'Hand'].getWorldQuaternion(new THREE.Quaternion()).invert().multiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), knuckle.clone().sub(hp).normalize())));
-      mitt.scale.set(1.15, 1, 0.8);
+    // Our own rider ships with helmet, goggles and gloves; other humanoids get them added here,
+    // placed in the rest pose then parented to bones so they follow the skeleton.
+    if (!model.getObjectByName('RiderGear')) {
+      const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o });
+      const head = wp('Head'), top = wp('HeadTop_End'), hc = head.clone().lerp(top, 0.5).add({ x: 0, y: 0, z: -0.012 }), hr = head.distanceTo(top) * 0.6;
+      const gear = (geo, mat, pos, parent) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.position.copy(pos); model.add(m); parent.attach(m); return m; };
+      gear(new THREE.SphereGeometry(hr * 1.08, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.6), M(0x2b2e33, { roughness: 0.4 }), hc, B.Head);
+      const gog = gear(new THREE.CylinderGeometry(hr * 1.04, hr * 1.04, hr * 0.42, 24, 1, true, -Math.PI * 0.32, Math.PI * 0.64), M(0xff8a3c, { roughness: 0.06, metalness: 0.9 }), hc.clone().add({ x: 0, y: -hr * 0.28, z: 0 }), B.Head);
+      gog.material.side = THREE.DoubleSide;
+      gear(new THREE.CylinderGeometry(hr * 1.06, hr * 1.06, hr * 0.16, 24, 1, true), M(0x111214), hc.clone().add({ x: 0, y: -hr * 0.28, z: 0 }), B.Head);
+      for (const s of ['Left', 'Right']) {
+        // Mitt over the whole hand: centred between the wrist and the middle knuckle.
+        const hp = wp(s + 'Hand'), knuckle = (model.getObjectByName(s + 'HandMiddle1') || B[s + 'Hand']).getWorldPosition(new THREE.Vector3());
+        const len = Math.max(0.09, hp.distanceTo(knuckle) * 1.9), mitt = gear(new THREE.CapsuleGeometry(0.048, len * 0.6, 4, 10), M(0x8a6a48, { roughness: 0.75 }), hp.clone().lerp(knuckle, 0.75), B[s + 'Hand']);
+        mitt.quaternion.copy(B[s + 'Hand'].getWorldQuaternion(new THREE.Quaternion()).invert().multiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), knuckle.clone().sub(hp).normalize())));
+        mitt.scale.set(1.15, 1, 0.8);
+      }
     }
     AV.B = B; AV.model = model;
     // Swap: hide the simple rider's body, keep its board and bindings.
