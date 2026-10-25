@@ -25,11 +25,11 @@ On touch screens, on-screen buttons replace the keys. Tap the walking button to 
 
 ## Resorts
 
-Pick the mountain and your kit on the home screen, or deep-link past it with `?resort=niseko`, `?resort=appi` or `?resort=gala`. A loading bar names each step (terrain, lifts, villages…) while the resort builds. Card thumbnails in `public/thumbs/` are bluebird-daylight screenshots of the game framing each resort's signature view, rendered by `tools/render_thumbs.mjs` (Niseko overlooks Mt. Yotei, Appi faces Mt. Iwate, Gala looks down the gondola to the Shinkansen station):
+Pick the mountain and your kit on the home screen, or deep-link past it with `?resort=niseko`, `?resort=appi` or `?resort=gala`. A loading bar names each step (terrain, lifts, villages…) while the resort builds. Card thumbnails in `public/thumbs/` are bluebird-daylight screenshots of the game framing each resort's signature view, rendered by `tools/render_thumbs.mjs` (Niseko overlooks Mt. Yotei, Appi faces Mt. Iwate, Gala looks down its steep upper slopes toward the Shinkansen station):
 
 - **Niseko United** (default): Mt. Niseko Annupuri, Hokkaido. Data in `public/data/`.
 - **Appi Kogen**: Mt. Maemori, Iwate, with Mt. Iwate on the horizon. Data in `public/data/appi/`.
-- **Gala Yuzawa**: Mt. Takanokura, Niigata, with its gondola rising straight from the Shinkansen station and Mt. Naeba on the horizon. Data in `public/data/gala/`.
+- **Gala Yuzawa**: Mt. Takanokura, Niigata, with its gondola rising straight from the Shinkansen station and Mt. Naeba on the horizon. Data in `public/data/gala/`. Its OSM data was built from OpenStreetMap API 0.6 map tiles while Overpass was down; the monthly workflow refreshes it from Overpass.
 
 All use the same page and logic; `src/resorts.js` holds each resort's names, base areas and data folder, and `tools/resorts.json` holds the map boxes the data tools bake. Set `RESORT=appi` when running a tool by hand, e.g. `RESORT=appi python3 tools/fetch_dem_gsi.py public/data/appi/dem.json`.
 

@@ -7,7 +7,7 @@ import sharp from 'sharp';
 const VIEWS = {
   niseko: { from: [140.6622, 42.8715], at: [140.811, 42.826, 1300] }, // Top of King #4 above the trees, overlooking Mt. Yotei
   appi: { from: [140.9586, 39.9768], at: [141.0007, 39.8528, 1500] }, // Maemori summit slopes toward Mt. Iwate
-  gala: { from: [138.7748, 36.9492], at: [138.7996, 36.9503, 400] }, // Top of Sociable above Cheers, down the gondola to the Shinkansen station
+  gala: { from: [138.7712, 36.9466], at: [138.7996, 36.9503, 350] }, // Steep upper slopes below the Coach summit, facing the station
 };
 const base = process.env.URL || 'http://localhost:4173/';
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
