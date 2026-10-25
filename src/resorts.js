@@ -54,6 +54,21 @@ export const RESORTS = {
     // Volcano on the horizon: Mt. Naeba, south-west across the Uonuma valley.
     volcano: { lon: 138.6903, lat: 36.8460 },
   },
+  cypress: {
+    id: 'cypress', label: '賽普勒斯山 Cypress Mountain', data: 'data/cypress/',
+    title: '賽普勒斯山滑雪', brand: '賽普勒斯山', mountain: '賽普勒斯山',
+    code: 'YVR', name: '賽普勒斯山', en: 'Cypress Mountain', region: '卑詩省 · 西溫哥華', thumb: 'thumbs/cypress.webp',
+    sub: '在加拿大卑詩省西溫哥華賽普勒斯山的真實地形上滑雪，面向溫哥華灣與北岸山脈。',
+    summit: 'Cypress', summitZone: '賽普勒斯山頂', backcountry: '賽普勒斯野雪區',
+    // Approximate base areas from the OSM lift terminals and trailheads (labels only, not survey data).
+    bases: [
+      { name: 'Cypress Lodge', lon: -123.2045, lat: 49.3965 },
+      { name: 'Raven Ridge', lon: -123.2036, lat: 49.3893 },
+      { name: 'Sky Chair', lon: -123.1961, lat: 49.4078 },
+    ],
+    // Snow-capped volcano on the horizon: Mt. Garibaldi, north across Howe Sound.
+    volcano: { lon: -123.0043, lat: 49.8503 },
+  },
 };
 
 export function currentResort(search = globalThis.location?.search ?? '') {
