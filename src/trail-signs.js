@@ -97,16 +97,27 @@ export function junctionBoards(routes, height) {
   return boards;
 }
 
-export function createTrailSigns({ THREE, scene, routes, height, diffOf }) {
+export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale = 1 }) {
   const root = new THREE.Group(); root.name = 'Virtual trail wayfinding'; scene.add(root);
   const poleMat = new THREE.MeshLambertMaterial({ color: '#b8442f' });
   const poleGeo = new THREE.CylinderGeometry(.055, .065, 3.2, 6);
   const plane = new THREE.PlaneGeometry(1, 1);
   const textures = new Map();
+  // Hundreds of boards: draw at `scale`, and free each canvas once the GPU has its copy.
+  function canvasMaterial(c, side) {
+    const texture = new THREE.CanvasTexture(c); texture.colorSpace = THREE.SRGBColorSpace;
+    texture.onUpdate = () => { c.width = c.height = 1; };
+    return new THREE.MeshLambertMaterial({ map: texture, side });
+  }
+  function board(w, h) {
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+    const g = c.getContext('2d'); g.scale(scale, scale);
+    return { c, g, w, h };
+  }
   function junctionMaterial(rows) {
-    const c = document.createElement('canvas'); c.width = 1024; c.height = 160 + rows.length * 180;
-    const g = c.getContext('2d');
-    g.fillStyle = '#151b20'; g.fillRect(0, 0, c.width, c.height);
+    const { c, g, w, h } = board(1024, 160 + rows.length * 180);
+    g.fillStyle = '#151b20'; g.fillRect(0, 0, w, h);
     g.fillStyle = '#fff'; g.textBaseline = 'middle';
     g.font = 'bold 56px sans-serif'; g.fillText('TRAIL JUNCTION / 雪道指引', 32, 78, 960);
     rows.forEach((row, i) => {
@@ -129,14 +140,12 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf }) {
       } else g.rect(922, y + 59, 52, 52);
       g.stroke();
     });
-    const texture = new THREE.CanvasTexture(c); texture.colorSpace = THREE.SRGBColorSpace;
-    return new THREE.MeshLambertMaterial({ map: texture, side: THREE.FrontSide });
+    return canvasMaterial(c, THREE.FrontSide);
   }
   function material(route, kind) {
     const key = `${route.name}|${route.diff}|${kind}`;
     if (textures.has(key)) return textures.get(key);
-    const c = document.createElement('canvas'); c.width = 1024; c.height = 320;
-    const g = c.getContext('2d'), slow = kind === 'slow';
+    const { c, g } = board(1024, 320), slow = kind === 'slow';
     g.fillStyle = '#f7f8f3'; g.fillRect(0, 0, 1024, 320);
     g.fillStyle = slow ? '#f2ce36' : '#123966'; g.fillRect(12, 12, 1000, 296);
     g.fillStyle = slow ? '#172332' : '#fff';
@@ -154,8 +163,7 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf }) {
       g.beginPath(); g.moveTo(920, 265); g.lineTo(920, 180); g.lineTo(894, 207);
       g.moveTo(920, 180); g.lineTo(946, 207); g.stroke();
     }
-    const texture = new THREE.CanvasTexture(c); texture.colorSpace = THREE.SRGBColorSpace;
-    const mat = new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide });
+    const mat = canvasMaterial(c, THREE.DoubleSide);
     textures.set(key, mat); return mat;
   }
   function sign(route, distance, kind) {
