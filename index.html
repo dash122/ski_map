@@ -436,6 +436,7 @@ import { RIDERS, pref, record, saveRecord } from './src/riders.js';
 import { chooseResort } from './src/home.js';
 import { createLoading } from './src/loading.js';
 import { createLiftLighting } from './src/lift-lighting.js';
+import { createBaseLandmarks, keepBesideTerminal, namePoiBuildings } from './src/base-landmarks.js';
 
 // ---------- Resort: the home screen picks one; ?resort=appi deep-links past it. Everything below reads its data the same way ----------
 const RESORT = new URLSearchParams(location.search).has('resort') ? currentResort() : await chooseResort(), DATA = RESORT.data;
@@ -544,7 +545,7 @@ let LAND = null;
 try { const r = await load.fetch(DATA + 'land.json', '下載建築、道路與樹林', 40); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
 const LOW_END = matchMedia('(pointer: coarse)').matches;
 const LW = LOW_END ? 1024 : 2048, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
-const LANDW = { areas: {}, lines: {}, buildings: [], labels: [] };
+const LANDW = { areas: {}, lines: {}, buildings: [], labels: [], pois: [] };
 if (LAND) {
   const [ow, on] = LAND.origin, Q = LAND.q;
   const dec = c => { const out = []; let x = 0, y = 0; for (let i = 0; i < c.length; i += 2) { x += c[i]; y += c[i + 1]; out.push(toWorld(ow + x / Q, on - y / Q)); } return out; };
@@ -552,6 +553,8 @@ if (LAND) {
   for (const [k, ls] of Object.entries(LAND.lines || {})) LANDW.lines[k] = ls.map(dec);
   LANDW.buildings = (LAND.buildings || []).map(b => ({ h: b.h, name: b.n || '', roof: b.r || '', pts: dec(b.c) }));
   LANDW.labels = (LAND.labels || []).map(l => ({ name: l.n, kind: l.k, ele: l.e, ...dec(l.c)[0] }));
+  LANDW.pois = (LAND.pois || []).map(p => ({ name: p.n, kind: p.k, ...dec(p.c)[0] }));
+  namePoiBuildings(LANDW.buildings, LANDW.pois);
 }
 const lmask = (() => {
   const c = document.createElement('canvas'); c.width = LW; c.height = LH;
@@ -759,6 +762,11 @@ const hardM = lmask(m => {
   m.stroke(Ln.rail, 9); m.stroke(Ln.river, 14); m.stroke(Ln.stream, 4); m.fill(A.water); m.fill(A.paved);
   for (const b of LANDW.buildings) m.poly(b.pts, 4);
   for (const L of LIFTS) m.stroke([L.pts], /gondola|cable_car/.test(L.type) ? 20 : 15);
+  // Lift-base queue mazes stand downhill of the bottom terminal (src/lift-queues.js).
+  for (const L of LIFTS) {
+    const [a, b] = L.pts, l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+    m.stroke([[a, { x: a.x - (b.x - a.x) / l * 30, z: a.z - (b.z - a.z) / l * 30 }]], 34);
+  }
 });
 const lidx = (x, z) => {
   const i = Math.floor((x + WIDTH / 2) * LPX), j = Math.floor((z + DEPTH / 2) * LPX);
@@ -1380,6 +1388,7 @@ try {
   }
 } catch (error) { console.warn('Ace summit mapped model unavailable', error); }
 let buildingLighting = null, liftLighting = null;
+const baseLandmarks = createBaseLandmarks({ scene, resort: RESORT.id, lifts: LIFTS, height });
 const { createBuildingLighting } = await import('./src/building-lighting.js');
 if (LANDW.buildings.length) {
   const wallPos = [], wallUv = [], wallCol = [], wallLight = [], entrances = [], roofPos = [];
@@ -1402,7 +1411,7 @@ if (LANDW.buildings.length) {
   for (const B of LANDW.buildings) {
     let pts = B.pts;
     if (pts.length < 3) continue;
-    if (ends.some(e => pts.some(p => Math.hypot(p.x - e.x, p.z - e.z) < 30) || Math.hypot(pts[0].x - e.x, pts[0].z - e.z) < 30)) continue;
+    if (ends.some(e => pts.some(p => Math.hypot(p.x - e.x, p.z - e.z) < 30) || Math.hypot(pts[0].x - e.x, pts[0].z - e.z) < 30) && !keepBesideTerminal(B, ends)) continue;
     // Counter-clockwise seen from above (x east, z south), so walls face out.
     let area = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; area += p.x * q.z - q.x * p.z; }
     if (area > 0) pts = [...pts].reverse();
@@ -1452,6 +1461,7 @@ if (LANDW.buildings.length) {
     }
     if (hotel) createSignatureHotelDetails({ scene, pts, base: gmax, top, profile: hotel });
     if (restaurant) createRestaurantDetails({ scene, pts, base: gmax, top, profile: restaurant });
+    baseLandmarks.building(B, pts, gmax, top, !!(hotel || restaurant));
     if (hotel || restaurant || (B.name && area > 700)) {
       let cx = 0, cz = 0; for (const p of pts) { cx += p.x; cz += p.z; }
       LANDMARKS.push({ name: hotel?.name ?? restaurant?.name ?? B.name, x: cx / pts.length, z: cz / pts.length, area, hotel: !!hotel, restaurant: !!restaurant });
@@ -1486,6 +1496,8 @@ if (LANDW.buildings.length) {
     source.geometry.dispose();
   }
   buildingLighting = createBuildingLighting({ scene, material: walls.material, entrances });
+  baseLandmarks.finish(LANDW.pois, LANDW.buildings.map(b => b.pts));
+  LANDMARKS.push(...baseLandmarks.landmarks);
   LANDMARKS.sort((a, b) => Number(b.hotel) - Number(a.hotel) || b.area - a.area);
   console.log(`buildings: ${LANDW.buildings.length}, ${(wallPos.length + roofPos.length) / 9} triangles`);
 }
@@ -3177,6 +3189,11 @@ const visitors = await createVisitors({
     (onPiste(x, z) || LIFTS.some(L => [L.path[0], L.path.at(-1)].some(p => Math.hypot(p.x - x, p.z - z) < 48))),
   blocks: (ax, az, bx, bz) => roadBarrier.blocks(ax, az, bx, bz),
 });
+const { createLiftQueues } = await import('./src/lift-queues.js');
+const liftQueues = createLiftQueues({
+  scene, lifts: LIFTS, height, clock: () => liftTime, lowEnd: LOW_END, registerShadow: mesh => nearbyShadows.add(mesh),
+  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints],
+});
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -3234,6 +3251,7 @@ function frame(now) {
   updateParticles(dt);
   updateLifts(simOn() ? dt : 0);
   visitors.update(simOn() ? dt : 0);
+  liftQueues.update(S.p, dt);
   nearbyShadows.update(S.p);
   updateTrees(dt);
   updateHud(dt);
@@ -3252,5 +3270,6 @@ startBtn.addEventListener('click', () => { saveRecord(RESORT.id, { runs: record(
 window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;
+window.__liftQueues = liftQueues;
 window.__sim = { renderer, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
 </script>

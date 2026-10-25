@@ -12,6 +12,9 @@
   way["building"]({{bbox}});
   relation["building"]["type"="multipolygon"]({{bbox}});
   node["natural"="peak"]({{bbox}});
+  node["amenity"~"^(restaurant|cafe|fast_food|bar|pub)$"]["name"]({{bbox}});
+  node["tourism"~"^(hotel|hostel|guest_house|chalet|apartment)$"]["name"]({{bbox}});
+  node["shop"~"^(ski|sports)$"]["name"]({{bbox}});
   node["place"~"^(village|hamlet|neighbourhood|suburb|locality)$"]({{bbox}});
 );
 out geom;
