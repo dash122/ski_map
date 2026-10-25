@@ -28,6 +28,7 @@ canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block
 .panel { background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 6px; }
 /* Mobile first: HUD hugs the top edge, thumbs own the bottom. Desktop rules come after. */
 #brand { top: calc(10px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); padding: 6px 10px; }
+#brand { pointer-events: auto; cursor: pointer; }
 #brand .name { font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; }
 #brand .zone { font-size: 12px; color: var(--mist); max-width: 52vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #stats { top: calc(64px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); padding: 6px 10px; display: flex; gap: 12px; align-items: flex-end; font-variant-numeric: tabular-nums; }
@@ -58,13 +59,57 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 .go { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); background: var(--signal); border: 0; border-radius: 4px; padding: 10px 22px; cursor: pointer; }
 .go:focus-visible, button:focus-visible { outline: 2px solid var(--snow); outline-offset: 2px; }
 .note { font-size: 12px; color: var(--mist); margin-top: 14px; line-height: 1.5; }
-.pick { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: center; margin: 0 0 18px; }
-.pick .pl { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist); }
-.pick .opts { display: flex; flex-wrap: wrap; gap: 6px; }
-.pick button { font-family: var(--body); font-size: 13px; color: var(--snow); background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; padding: 5px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-.pick button[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.16); }
-.pick .sw { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.5); }
-#loading { font-family: var(--display); font-size: 18px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist); }
+/* Home screen: a level-select sheet of resort cards (thumbnail fading into the panel), outfits above. */
+#home { position: fixed; inset: 0; z-index: 8; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; background: radial-gradient(120% 60% at 50% 0%, #1a2c42 0%, var(--ink) 70%); }
+#home .sheet { max-width: 640px; margin: 0 auto; padding: calc(28px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); border-top: 3px solid var(--signal); }
+#home h1 { font-family: var(--display); font-weight: 700; font-size: 40px; letter-spacing: 0.12em; margin: 0; line-height: 1; }
+#home .kick { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4em; color: var(--mist); margin: 8px 0 0; font-size: 14px; }
+#home .lede { color: var(--mist); font-size: 14px; line-height: 1.6; margin: 12px 0 0; }
+#home h2 { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: 0.14em; margin: 24px 0 10px; }
+#home h2 span { color: var(--mist); text-transform: uppercase; font-weight: 600; letter-spacing: 0.3em; font-size: 12px; margin-left: 6px; }
+#home button { font: inherit; color: var(--snow); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.kits { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.kit { display: grid; justify-items: center; gap: 2px; padding: 10px 4px 8px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12); border-radius: 6px; transition: transform 0.15s, border-color 0.15s; }
+.kit svg { width: 44px; height: 48px; }
+.kit b { font-size: 14px; font-weight: 600; }
+.kit small { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.18em; font-size: 10px; color: var(--mist); }
+.kit[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.14); transform: translateY(-2px); }
+.stance { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.stance button { padding: 9px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12); border-radius: 6px; font-size: 14px; }
+.stance small { color: var(--mist); font-family: var(--display); letter-spacing: 0.12em; text-transform: uppercase; margin-left: 4px; }
+.stance button[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.14); }
+.resorts { display: grid; gap: 12px; }
+.resort { position: relative; display: grid; justify-items: start; align-content: center; min-height: 150px; padding: 18px 20px 14px; text-align: left; background: #172435; border: 2px solid rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; isolation: isolate; transition: transform 0.15s, border-color 0.15s; }
+.resort:hover, .resort:focus-visible { border-color: rgba(255,255,255,0.5); transform: translateY(-1px); }
+.resort:active { transform: scale(0.985); }
+.resort.last { border-color: var(--snow); }
+.resort .thumb { position: absolute; inset: 0 0 0 28%; z-index: -1; background-size: cover; background-position: center; -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); }
+.resort .code { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 0.16em; border: 2px solid var(--snow); border-radius: 3px; padding: 0 6px; margin-bottom: 6px; }
+.resort .zh { font-size: 34px; font-weight: 700; letter-spacing: 0.06em; line-height: 1.1; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+.resort .en { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.32em; font-size: 14px; color: var(--mist); margin-top: 2px; }
+.resort .region { font-size: 15px; margin-top: 6px; text-shadow: 0 1px 6px rgba(0,0,0,0.7); }
+.resort .record { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: 0.04em; color: #f6c544; margin-top: 4px; text-shadow: 0 1px 6px rgba(0,0,0,0.7); }
+.resort .here { position: absolute; top: 14px; right: 14px; background: #d62b2b; font-weight: 700; font-size: 14px; letter-spacing: 0.1em; padding: 5px 10px; border-radius: 2px; }
+.resort .go-arrow { position: absolute; right: 14px; bottom: 50%; transform: translateY(50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(13,27,42,0.6); display: grid; place-items: center; font-size: 28px; line-height: 1; }
+.resort.last .go-arrow { display: none; }
+
+/* Loading screen: the chosen resort's thumbnail behind a named progress bar. */
+#loadscreen { position: fixed; inset: 0; z-index: 7; display: grid; align-items: end; background: var(--ink); }
+#loadscreen .bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: saturate(1.1); animation: drift 16s ease-out forwards; }
+#loadscreen::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(13,27,42,0.1) 30%, rgba(13,27,42,0.95) 80%); }
+@keyframes drift { from { transform: scale(1.12); } to { transform: scale(1); } }
+#loadscreen .inner { position: relative; z-index: 1; display: grid; justify-items: start; width: min(640px, 100%); box-sizing: border-box; margin: 0 auto; padding: 0 max(20px, env(safe-area-inset-right, 0px)) calc(36px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
+#loadscreen .code { font-family: var(--display); font-weight: 700; letter-spacing: 0.16em; border: 2px solid var(--snow); border-radius: 3px; padding: 0 6px; }
+#loadscreen .zh { font-size: 48px; font-weight: 700; letter-spacing: 0.08em; margin-top: 6px; line-height: 1.1; }
+#loadscreen .en { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4em; color: var(--mist); }
+#loadscreen .row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-top: 26px; font-size: 14px; }
+#loadscreen .pct { font-family: var(--display); font-weight: 700; font-size: 28px; font-variant-numeric: tabular-nums; }
+#loadscreen .bar { width: 100%; height: 8px; margin-top: 6px; background: rgba(255,255,255,0.14); border-radius: 4px; overflow: hidden; }
+#loadscreen .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--signal), #f6c544); border-radius: inherit; transition: width 0.3s ease-out; }
+#loadscreen .tip { color: var(--mist); font-size: 13px; margin: 12px 0 0; min-height: 2.6em; }
+#intro .back { display: block; margin-top: 10px; background: none; border: 0; color: var(--mist); font: inherit; font-size: 14px; cursor: pointer; padding: 6px 0; }
+@media (max-width: 420px) { .kits { gap: 6px; } .kit b { font-size: 13px; } .resort .zh { font-size: 30px; } .resort .here { font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { #loadscreen .bg { animation: none; } .kit, .resort { transition: none; } }
 
 #map .wrap { position: relative; width: min(100%, calc((100vh - 40px) * 1.25)); }
 #map .viewport { width: 100%; aspect-ratio: 5 / 4; overflow: hidden; border-radius: 6px; touch-action: none; cursor: grab; background: var(--ink); }
@@ -183,8 +228,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   #conditions { top: calc(66px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); }
   #intro .card { max-width: min(760px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; align-content: start; }
   #intro h1, #intro .sub, #intro .note { grid-column: 1 / -1; }
-  #intro .pick { grid-column: 2; grid-row: 3; align-self: start; }
-  #intro #loading, #intro #start { grid-column: 2; justify-self: start; }
+  #intro #start, #intro .back { grid-column: 2; justify-self: start; }
   #map .wrap { display: grid; grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; padding-right: env(safe-area-inset-right, 0px); box-sizing: border-box; }
   #map .viewport { grid-row: 1 / span 2; height: 100dvh; width: auto; margin-left: env(safe-area-inset-left, 0px); }
   #map .destination-lists { position: static; grid-column: 2; width: auto; margin: 56px 64px 0 10px; align-content: start; min-height: 0; }
@@ -225,8 +269,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   #intro .card { width: 100%; }
   #intro dl { gap: 8px 12px; }
   #intro .go { width: 100%; padding: 14px; }
-  .pick button { padding: 8px 12px; font-size: 14px; }
-  #touch button { width: 66px; height: 66px; }
+    #touch button { width: 66px; height: 66px; }
   #touch #tJ { width: 90px; height: 90px; }
 }
 @media (pointer: coarse) and (orientation: portrait) {
@@ -243,6 +286,30 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 </style>
 
 <canvas id="gl"></canvas>
+
+<section id="home" hidden>
+  <div class="sheet">
+    <header><h1>選擇雪場</h1><p class="kick">Choose a resort</p>
+      <p class="lede">挑選裝備與雪場開始滑行。每座雪場的最高速度與滑行次數各自保存在本機。</p></header>
+    <h2>裝備 <span>Kit</span></h2>
+    <div class="kits" id="homeKits" role="radiogroup" aria-label="滑雪者裝備"></div>
+    <div class="stance" id="homeStance" role="radiogroup" aria-label="站姿">
+      <button type="button" role="radio" data-s="regular">左腳在前 <small>Regular</small></button><button type="button" role="radio" data-s="goofy">右腳在前 <small>Goofy</small></button>
+    </div>
+    <h2>雪場 <span>Resorts</span></h2>
+    <div class="resorts" id="homeResorts"></div>
+  </div>
+</section>
+
+<section id="loadscreen" hidden aria-live="polite">
+  <div class="bg"></div>
+  <div class="inner">
+    <span class="code"></span><b class="zh"></b><span class="en"></span>
+    <div class="row"><span class="what">準備中</span><span class="pct">0%</span></div>
+    <div class="bar"><i></i></div>
+    <p class="tip"></p>
+  </div>
+</section>
 
 <div class="hud panel" id="brand"><div class="name">二世古</div><div class="zone" id="zone">二世古安努普利山</div></div>
 <div class="hud panel" id="mini"><canvas id="minimap" width="400" height="320"></canvas></div>
@@ -293,18 +360,8 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
       <dt><kbd>F</kbd></dt><dd>步行／穿上雪板；W/S 前後移動，A/D 轉向，鏡頭跟隨行進方向</dd>
       <dt><kbd>M</kbd></dt><dd>雪道地圖；點選位置開始滑行</dd>
     </dl>
-    <div class="pick">
-      <div class="pl">雪場</div>
-      <div class="opts" id="resorts" role="radiogroup" aria-label="雪場"></div>
-      <div class="pl">滑雪者</div>
-      <div class="opts" id="riders" role="radiogroup" aria-label="滑雪者"></div>
-      <div class="pl">站姿</div>
-      <div class="opts" id="stance" role="radiogroup" aria-label="站姿">
-        <button type="button" role="radio" data-s="regular">左腳在前</button><button type="button" role="radio" data-s="goofy">右腳在前</button>
-      </div>
-    </div>
-    <div id="loading">正在載入地形…</div>
     <button class="go" id="start" hidden>開始滑行</button>
+    <button class="back" id="homeLink" type="button">‹ 返回主頁</button>
     <details class="note"><summary>資料來源</summary><p id="credits"></p></details>
   </div>
 </div>
@@ -339,33 +396,24 @@ import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
 import { createRenderQuality } from './src/render-quality.js';
 import { chunkGeometry, chunkInstances, createNearbyShadows } from './src/spatial-rendering.js';
 import { trailRoutes, alongTrail, createTrailSigns } from './src/trail-signs.js';
-import { RESORTS as RESORT_LIST, currentResort } from './src/resorts.js';
+import { currentResort } from './src/resorts.js';
+import { RIDERS, pref, record, saveRecord } from './src/riders.js';
+import { chooseResort } from './src/home.js';
+import { createLoading } from './src/loading.js';
 
-// ---------- Resort: ?resort=appi picks another mountain; everything below reads its data the same way ----------
-const RESORT = currentResort(), DATA = RESORT.data;
+// ---------- Resort: the home screen picks one; ?resort=appi deep-links past it. Everything below reads its data the same way ----------
+const RESORT = new URLSearchParams(location.search).has('resort') ? currentResort() : await chooseResort(), DATA = RESORT.data;
+const load = createLoading(RESORT);
 document.title = RESORT.title;
 document.querySelector('#brand .name').textContent = RESORT.brand;
 document.getElementById('zone').textContent = RESORT.mountain;
 document.querySelector('#intro h1').textContent = RESORT.title;
 document.querySelector('#intro .sub').textContent = RESORT.sub;
-{
-  const box = document.getElementById('resorts');
-  for (const r of Object.values(RESORT_LIST)) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.setAttribute('role', 'radio'); b.textContent = r.label;
-    b.setAttribute('aria-checked', r === RESORT);
-    b.addEventListener('click', () => {
-      if (r === RESORT) return;
-      const url = new URL(location.href);
-      if (r.id === 'niseko') url.searchParams.delete('resort'); else url.searchParams.set('resort', r.id);
-      location.assign(url);
-    });
-    box.appendChild(b);
-  }
-}
+document.getElementById('homeLink').addEventListener('click', () => location.assign(location.pathname));
+document.getElementById('brand').addEventListener('click', () => { if (confirm('返回主頁選擇雪場？')) location.assign(location.pathname); });
 
 // ---------- Terrain data ----------
-const meta = await (await fetch(DATA + 'dem.json')).json();
+const meta = await (await load.fetch(DATA + 'dem.json', '下載海拔資料', 30)).json();
 const raw = new Uint16Array(Uint8Array.from(atob(meta.data), c => c.charCodeAt(0)).buffer);
 const GX = meta.gx, GY = meta.gy;
 const LAT0 = (meta.n + meta.s) / 2;
@@ -456,7 +504,7 @@ const SPOTS = [{ name: `${RESORT.summit} summit`, ...flatNear(PEAK.x + 30, PEAK.
 
 // ---------- OpenStreetMap pistes and lifts (optional: data/osm.json, built by tools/build_osm.py) ----------
 let OSM = null;
-try { const r = await fetch(DATA + 'osm.json'); if (r.ok) OSM = await r.json(); } catch { OSM = null; }
+try { const r = await load.fetch(DATA + 'osm.json', '下載雪道與纜車', 34); if (r.ok) OSM = await r.json(); } catch { OSM = null; }
 // Japanese trail maps grade runs green / red / black.
 const DIFF = {
   novice: { label: '初級', color: '#2e9e4f' }, easy: { label: '初級', color: '#2e9e4f' },
@@ -552,7 +600,7 @@ function pisteAt(x, z) {
 // ---------- Land cover from OpenStreetMap (optional: data/land.json, built by tools/build_land.py) ----------
 // Rasterised once into masks the trees, terrain shader and trail map share. Without the file, forests fall back to noise.
 let LAND = null;
-try { const r = await fetch(DATA + 'land.json'); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
+try { const r = await load.fetch(DATA + 'land.json', '下載建築、道路與樹林', 40); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
 const LOW_END = matchMedia('(pointer: coarse)').matches;
 const LW = LOW_END ? 1024 : 2048, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
 const LANDW = { areas: {}, lines: {}, buildings: [], labels: [] };
@@ -761,6 +809,7 @@ function grainTexture() {
 }
 
 // ---------- Terrain mesh ----------
+await load.at(42, '建立地形網格');
 {
   const ST = MESH_ST, MX = MESH_X, MZ = MESH_Z;
   const pos = new Float32Array(MX * MZ * 3), col = new Float32Array(MX * MZ * 3), uv = new Float32Array(MX * MZ * 2);
@@ -844,7 +893,7 @@ function grainTexture() {
 
 // ---------- Horizon: the resort's volcano (Mt. Yotei, Mt. Iwate) and the wider range from a coarse DEM ----------
 try {
-  const far = await (await fetch(DATA + 'far.json')).json();
+  const far = await (await load.fetch(DATA + 'far.json', '下載遠方山脈', 52)).json();
   const fr = new Uint16Array(Uint8Array.from(atob(far.data), c => c.charCodeAt(0)).buffer);
   const fgx = far.gx, fgy = far.gy, n = fgx * fgy;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
@@ -932,6 +981,7 @@ try {
   scene.add(new THREE.Mesh(geo, horizonMaterial));
 } catch (err) { console.warn('horizon terrain unavailable', err); }
 
+await load.at(55, '種植樹林');
 // ---------- Trees: Sakhalin fir, Erman's and white birch, larch, rime-crusted firs at the treeline ----------
 function hash2(x, y) {
   let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
@@ -1198,6 +1248,7 @@ function treeHit(x, z) {
   return false;
 }
 
+await load.at(64, '建造村莊與飯店');
 // ---------- Villages: OSM building footprints extruded to their height, snow on every roof ----------
 // Small rectangular chalets get gabled roofs; hotels and apartment blocks stay flat-topped. Two merged meshes.
 const LANDMARKS = [];
@@ -1328,6 +1379,7 @@ if (LANDW.buildings.length) {
 }
 
 // ---------- Mapped road surfaces and lamps ----------
+await load.at(72, '鋪設道路與路燈');
 // Narrow roads need geometry: the land mask is coarser than a village street.
 const roadSegments = [];
 const roadSurface = new THREE.MeshStandardMaterial({ color: 0x535861, roughness: 0.96, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
@@ -1518,6 +1570,7 @@ function joint(a, c, l1, l2, bend, out) {
 }
 
 // ---------- Lifts: towers, cables, terminals and moving chairs / gondola cabins ----------
+await load.at(78, '架設纜車');
 // Speeds follow the lift type. Fixed-grip chairs load at line speed (about 2 m/s). Detachable quads, hooded
 // six-packs and gondolas run about 5 m/s and slow to walking pace in the terminals, so carriers bunch up there.
 // OSM ride times (aerialway:duration) refine the line speed when they're plausible for the type.
@@ -2269,14 +2322,6 @@ function updateCamera(dt) {
 const AV = { ready: false };
 
 // ---------- Rider choice: outfit and stance, remembered per browser ----------
-// Each outfit recolours the model's materials by name; anything not listed keeps the model's colour.
-const RIDERS = [
-  { id: 'sage', name: '鼠尾草', swatch: '#aebf96', kit: {} },
-  { id: 'midnight', name: '午夜', swatch: '#2a3652', kit: { Jacket: 0x2a3652, JacketCuff: 0x1e2740, Pants: 0x3c3f44, PantsKick: 0x2c2e32, Helmet: 0x1b1c1f } },
-  { id: 'ember', name: '餘燼', swatch: '#c4622e', kit: { Jacket: 0xc4622e, JacketCuff: 0x9a4a22, Pants: 0x222427, PantsKick: 0x17181a } },
-  { id: 'glacier', name: '冰川', swatch: '#dde4e8', kit: { Jacket: 0xdde4e8, JacketCuff: 0xbcc6cc, Pants: 0x5b6444, PantsKick: 0x474f34, Helmet: 0x2b2e33 } },
-];
-const pref = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const PICK = { rider: RIDERS.some(r => r.id === pref.get('rider')) ? pref.get('rider') : 'sage', goofy: pref.get('stance') === 'goofy' };
 function applyKit() {
   if (!AV.model) return;
@@ -2288,24 +2333,7 @@ function applyKit() {
     m.color.setHex(kit[m.name] ?? m.userData.baseColor);
   });
 }
-function setRider(id) { PICK.rider = id; pref.set('rider', id); applyKit(); syncPicker(); }
-function setStance(goofy) { PICK.goofy = goofy; pref.set('stance', goofy ? 'goofy' : 'regular'); syncPicker(); }
-function syncPicker() {
-  for (const b of document.querySelectorAll('#riders button')) b.setAttribute('aria-checked', b.dataset.id === PICK.rider);
-  for (const b of document.querySelectorAll('#stance button')) b.setAttribute('aria-checked', (b.dataset.s === 'goofy') === PICK.goofy);
-}
-{
-  const box = document.getElementById('riders');
-  for (const r of RIDERS) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.dataset.id = r.id; b.setAttribute('role', 'radio');
-    b.innerHTML = `<span class="sw" style="background:${r.swatch}"></span>${r.name}`;
-    b.addEventListener('click', () => setRider(r.id));
-    box.append(b);
-  }
-  for (const b of document.querySelectorAll('#stance button')) b.addEventListener('click', () => setStance(b.dataset.s === 'goofy'));
-  syncPicker();
-}
+function setStance(goofy) { PICK.goofy = goofy; pref.set('stance', goofy ? 'goofy' : 'regular'); }
 (async () => {
   try {
     const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
@@ -2533,6 +2561,7 @@ function updateParticles(dt) {
   sprayGeo.attributes.position.needsUpdate = true;
 }
 
+await load.at(86, '繪製雪道地圖');
 // ---------- Trail map (hillshade + contours, drawn from the same elevation grid) ----------
 function drawMap(cv) {
   const g = cv.getContext('2d'), img = g.createImageData(GX, GY);
@@ -2790,7 +2819,7 @@ function drawMini() {
 const $ = id => document.getElementById(id);
 const hud = { spd: $('spd'), alt: $('alt'), slope: $('slope'), vert: $('vert'), top: $('top'), zone: $('zone'), toast: $('toast'), prompt: $('prompt') };
 $('prompt').addEventListener('click', () => { if (liftNear && !S.ride && !liftQueue) startRide(liftNear); });
-let toastT = 0;
+let toastT = 0, bestTop = record(RESORT.id).top;
 function toast(text, secs) { hud.toast.textContent = text; hud.toast.classList.add('on'); toastT = secs; }
 function zoneName() {
   const dx = S.p.x - PEAK.x, dz = S.p.z - PEAK.z, d = Math.hypot(dx, dz);
@@ -2824,6 +2853,7 @@ function updateHud(dt) {
   hud.slope.textContent = `${Math.round(Math.acos(Math.min(1, normalAt(S.p.x, S.p.z, tmp).y)) * 180 / Math.PI)}°`;
   hud.vert.textContent = Math.round(S.vert).toLocaleString();
   hud.top.textContent = Math.round(S.top);
+  if (S.top > bestTop + 1) { bestTop = S.top; saveRecord(RESORT.id, { top: bestTop }); }
   const piste = !S.ride && pisteAt(S.p.x, S.p.z);
   const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
   liftSpeedControl.hidden = !(S.ride || liftQueue);
@@ -2861,6 +2891,7 @@ function updateAudio() {
 }
 
 // ---------- Loop ----------
+await load.at(92, '安排滑雪客');
 const { createVisitors } = await import('./src/visitors.js');
 const visitors = await createVisitors({
   scene, lifts: LIFTS, height, normalAt, carrierPose, lowEnd: LOW_END,
@@ -2912,12 +2943,12 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
-$('loading').hidden = true;
+load.done();
 $('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} 公尺網格，範圍 ${(WIDTH / 1000).toFixed(1)} × ${(DEPTH / 1000).toFixed(1)} 公里。` +
   (OSM ? `${PISTES.length} 條雪道、${LIFTS.length} 條纜車${LAND ? `、${LANDW.buildings.length.toLocaleString()} 棟建築及道路、河流與樹林` : ''}。© OpenStreetMap 貢獻者（ODbL），擷取日期：${OSM.fetched || ''}。從纜車山腳站搭乘，可隨時選擇 1×–10× 速度。` : '度假村標籤位置僅供參考。');
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
-startBtn.addEventListener('click', () => { $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
+startBtn.addEventListener('click', () => { saveRecord(RESORT.id, { runs: record(RESORT.id).runs + 1 }); $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
 window.__ski = { weather, S, PEAK_GEO, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;

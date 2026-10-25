@@ -25,7 +25,7 @@ On touch screens, on-screen buttons replace the keys. Tap the walking button to 
 
 ## Resorts
 
-Pick the mountain on the start card, or open the page with `?resort=appi`:
+Pick the mountain and your kit on the home screen, or deep-link past it with `?resort=niseko` or `?resort=appi`. A loading bar names each step (terrain, lifts, villages…) while the resort builds. Card thumbnails in `public/thumbs/` are screenshots of the game at sunset:
 
 - **Niseko United** (default): Mt. Niseko Annupuri, Hokkaido. Data in `public/data/`.
 - **Appi Kogen**: Mt. Maemori, Iwate, with Mt. Iwate on the horizon. Data in `public/data/appi/`.
