@@ -11,6 +11,7 @@ const VIEWS = {
   appi: { from: [140.9586, 39.9768], at: [141.0007, 39.8528, 1500] }, // Maemori summit slopes toward Mt. Iwate
   cypress: { from: [-123.1975, 49.4060], at: [-123.26, 49.34, 0] }, // Upper Sky Chair slopes looking south-west over Howe Sound
   chaserrugg: { from: [9.3128, 47.1565], at: [9.3127, 47.1930, 1300] }, // Below the Chäserrugg summit, down the north slopes to Unterwasser and the Säntis
+  rusutsu: { from: [140.9215, 42.7125], at: [140.811, 42.826, 1300] }, // Isola summit looking north-west to Mt. Yotei
   teine: { from: [141.1935, 43.0770], at: [141.30, 43.16, 0] }, // Mt. Teine summit, looking down to Sapporo and Ishikari Bay
   gala: { from: [138.7712, 36.9466], at: [138.7996, 36.9503, 350] }, // Steep upper slopes below the Coach summit, facing the station
 };

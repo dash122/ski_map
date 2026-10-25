@@ -54,6 +54,23 @@ export const RESORTS = {
     // Volcano on the horizon: Mt. Naeba, south-west across the Uonuma valley.
     volcano: { lon: 138.6903, lat: 36.8460 },
   },
+  rusutsu: {
+    id: 'rusutsu', label: '留壽都 Rusutsu', data: 'data/rusutsu/',
+    title: '留壽都滑雪', brand: '留壽都', mountain: '貫氣別山',
+    code: 'CTS', name: '留壽都', en: 'Rusutsu', region: '北海道 · 貫氣別山', thumb: 'thumbs/rusutsu.webp',
+    sub: '在北海道留壽都的真實地形上滑雪：West、East 與 Isola 三座山以纜車相連，對面就是羊蹄山。',
+    summit: 'Isola', summitZone: '貫氣別山頂（Isola）', backcountry: '留壽都野雪區',
+    // Mt. Kankibetsu (OSM peak, 994 m), the top of the Isola gondola; Mt. Shiribetsu to the north is higher but unlifted.
+    peak: { lon: 140.9228, lat: 42.7101 },
+    // Base areas from the OSM lift terminals (labels only, not survey data).
+    bases: [
+      { name: 'West Mountain', lon: 140.9010, lat: 42.7500 },
+      { name: 'East Mountain', lon: 140.9108, lat: 42.7369 },
+      { name: 'Isola', lon: 140.9286, lat: 42.7361 },
+    ],
+    // Snow-capped volcano on the horizon: Mt. Yotei, to the north-west.
+    volcano: { lon: 140.811, lat: 42.826 },
+  },
   teine: {
     id: 'teine', label: '札幌手稻 Sapporo Teine', data: 'data/teine/',
     title: '札幌手稻滑雪', brand: '札幌手稻', mountain: '手稻山',
