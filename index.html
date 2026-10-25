@@ -146,7 +146,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     </dl>
     <div id="loading">Loading terrain…</div>
     <button class="go" id="start" hidden>Drop in</button>
-    <p class="note" id="credits">Elevation: AWS Terrain Tiles (SRTM-derived), about 17 m grid over a 10 × 10 km area. Resort labels are approximate. Pistes and lifts from OpenStreetMap are next.</p>
+    <p class="note" id="credits"></p>
   </div>
 </div>
 
@@ -1272,7 +1272,8 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 $('loading').hidden = true;
-if (OSM) $('credits').textContent = `Elevation: AWS Terrain Tiles (SRTM-derived). ${PISTES.length} runs and ${LIFTS.length} lifts from © OpenStreetMap contributors (ODbL), fetched ${OSM.fetched || ''}. Press E at a lift base to ride it, hold W to fast-forward.`;
+$('credits').textContent = `Elevation: ${meta.source}, ${Math.round(CX)} m grid over ${(WIDTH / 1000).toFixed(1)} × ${(DEPTH / 1000).toFixed(1)} km. ` +
+  (OSM ? `${PISTES.length} runs and ${LIFTS.length} lifts © OpenStreetMap contributors (ODbL), fetched ${OSM.fetched || ''}. Ride a lift from its base station; hold Tuck to fast-forward.` : 'Resort labels are approximate.');
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
