@@ -38,13 +38,20 @@ Runs are graded the way Japanese trail maps do it: green for beginner, red for i
 
 ## Rider model
 
-`public/models/rider.glb` is a skinned humanoid that the page poses bone by bone (legs, hips, spine, arms and head) for carving, tucking, jumping and riding lifts, then dresses with a helmet, goggles and mitts. Any GLB with Mixamo-style bone names (`Hips`, `LeftUpLeg`, `LeftLeg`, `LeftFoot`, `LeftArm`, … with or without the `mixamorig` prefix) works:
+`public/models/rider.glb` is a skinned humanoid that the page poses bone by bone (legs, hips, spine, arms and head) for carving, tucking, jumping and riding lifts.
+
+It's built from scratch by `tools/make_rider.py`: the [MakeHuman](http://www.makehumancommunity.org/) base mesh (CC0) shaped into a young East Asian man, rigged with Mixamo bone names, and dressed in a colour-blocked shell jacket, baggy pants, neck gaiter, gloves, boots, helmet and goggles modelled around the body:
+
+```sh
+python3 tools/make_rider.py /tmp/rider_raw.glb      # downloads the MakeHuman assets on first run
+npm run build:rider -- /tmp/rider_raw.glb public/models/rider.glb
+```
+
+Any other GLB with Mixamo-style bone names (`Hips`, `LeftUpLeg`, `LeftLeg`, `LeftFoot`, `LeftArm`, … with or without the `mixamorig` prefix) works too, and gets a helmet, goggles and mitts added at runtime:
 
 ```sh
 npm run build:rider -- path/to/character.glb public/models/rider.glb
 ```
-
-The current placeholder is the Ready Player Me sample avatar from the three.js examples (`examples/models/gltf/readyplayer.me.glb`, © Ready Player Me), restyled in snow colours.
 
 ## License and data
 
