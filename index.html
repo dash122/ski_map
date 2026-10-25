@@ -560,7 +560,7 @@ renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const TRAIL_ROUTES = trailRoutes(PISTES, height);
-createTrailSigns({ THREE, scene, routes: TRAIL_ROUTES, height, diffOf });
+createTrailSigns({ THREE, scene, routes: TRAIL_ROUTES, height, diffOf, scale: matchMedia('(pointer: coarse)').matches ? 0.5 : 1 });
 const FOG = new THREE.Color(0xc9d8e6);
 scene.fog = new THREE.FogExp2(FOG, 0.000055);
 // Keep distant mountains and the sky, but give nearby surfaces more depth precision.
