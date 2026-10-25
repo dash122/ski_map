@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Slop Niseko</title>
+<title>二世古滑雪</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,6 +43,8 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #toast { top: 30%; left: 50%; transform: translateX(-50%); font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); text-shadow: 0 2px 18px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.25s; width: max-content; max-width: 88vw; text-align: center; text-wrap: balance; line-height: 1.05; }
 #toast.on { opacity: 1; }
 #prompt { bottom: calc(170px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); pointer-events: auto; background: var(--signal); color: var(--ink); border: 0; }
+#liftSpeed { top: calc(148px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); padding: 7px 9px; display: flex; gap: 8px; align-items: center; pointer-events: auto; font-size: 12px; }
+#liftSpeed select { font: inherit; color: var(--snow); background: var(--ink); border: 1px solid var(--mist); border-radius: 4px; padding: 4px; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(255,255,255,0.6); vertical-align: 0; }
 
 /* Intro card and full map share the modal layer */
@@ -65,13 +67,36 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #loading { font-family: var(--display); font-size: 18px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist); }
 
 #map .wrap { position: relative; width: min(100%, calc((100vh - 40px) * 1.25)); }
-#map canvas { display: block; width: 100%; height: auto; border-radius: 6px; cursor: crosshair; }
-#map .label { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); background: rgba(244, 248, 252, 0.85); padding: 1px 6px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
+#map .viewport { width: 100%; aspect-ratio: 5 / 4; overflow: hidden; border-radius: 6px; touch-action: none; cursor: grab; background: var(--ink); }
+#map .viewport.dragging { cursor: grabbing; }
+#map .content { position: relative; width: 100%; height: 100%; transform-origin: 0 0; }
+#map canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+#map .label { position: absolute; transform: translate(-50%, -50%) scale(calc(1 / var(--map-scale, 1))); font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); background: rgba(244, 248, 252, 0.85); padding: 1px 6px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
 #map .label.peak { background: var(--signal); }
 #map .label.place { background: none; color: var(--ink); font-size: 13px; font-style: italic; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
 #map .label.bldg { background: rgba(92,84,77,0.85); color: var(--snow); font-size: 11px; letter-spacing: 0.02em; text-transform: none; }
-#map .me { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--signal); border: 2px solid var(--snow); pointer-events: none; }
-#map .cap { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--ink); background: rgba(244,248,252,0.8); padding: 2px 6px; border-radius: 3px; }
+#map .me { position: absolute; width: 14px; height: 14px; transform: translate(-50%, -50%) scale(calc(1 / var(--map-scale, 1))); border-radius: 50%; background: var(--signal); border: 2px solid var(--snow); pointer-events: none; }
+#map .lift-stop { position: absolute; transform: translate(-50%, -50%) scale(calc(1 / var(--map-scale, 1))); z-index: 2; min-width: 28px; min-height: 28px; border-radius: 50%; border: 2px solid var(--snow); background: #1b1f24; color: white; font: 700 13px var(--body); cursor: pointer; box-shadow: 0 2px 8px #0009; }
+#map .lift-stop.gondola { background: #b8321f; }
+#map .lift-stop.mixed { background: #9b4b1b; }
+#map .lift-stop:hover, #map .lift-stop:focus-visible { z-index: 4; }
+#map .lift-stop::after { content: attr(data-name); position: absolute; left: 50%; bottom: calc(100% + 5px); transform: translateX(-50%); display: none; width: max-content; max-width: 180px; padding: 4px 7px; border-radius: 4px; background: var(--ink); color: var(--snow); font: 12px var(--body); white-space: normal; box-shadow: 0 2px 8px #0009; pointer-events: none; }
+#map .lift-stop:hover::after, #map .lift-stop:focus-visible::after { display: block; }
+#map .lift-stop:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
+#map .lift-list { position: absolute; left: 8px; top: 8px; z-index: 5; width: min(260px, calc(100% - 66px)); color: var(--snow); background: var(--panel); border-radius: 4px; backdrop-filter: blur(8px); }
+#map .lift-list summary { padding: 8px 10px; cursor: pointer; font-size: 13px; font-weight: 600; }
+#map .lift-list-items { max-height: min(48vh, 360px); overflow-y: auto; padding: 2px 6px 8px; }
+#map .lift-list-items button { display: block; width: 100%; padding: 8px; margin: 2px 0; border: 0; border-radius: 3px; background: rgba(255,255,255,.08); color: var(--snow); text-align: left; cursor: pointer; font: 12px var(--body); }
+#map .lift-list-items button:hover, #map .lift-list-items button:focus-visible { background: rgba(255,255,255,.22); }
+#map .zoom { position: absolute; right: 8px; top: 52px; display: grid; gap: 6px; width: 140px; padding: 8px; border-radius: 4px; background: var(--panel); }
+#map .zoom-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+#map .zoom-actions { display: flex; gap: 6px; }
+#map .zoom input { width: 100%; accent-color: var(--signal); cursor: pointer; }
+#map .zoom button { width: 38px; height: 38px; padding: 0; font-size: 23px; }
+#map .zoom button:disabled { opacity: 0.45; cursor: default; }
+#map .scale-bar { position: absolute; right: 8px; bottom: 8px; padding: 3px 6px; color: var(--ink); background: rgba(244,248,252,0.9); font: 11px var(--body); border-radius: 3px; }
+#map .scale-line { height: 5px; margin-top: 2px; border: 2px solid var(--ink); border-top: 0; }
+#map .cap { position: absolute; left: 10px; bottom: 36px; font-size: 12px; color: var(--ink); background: rgba(244,248,252,0.8); padding: 2px 6px; border-radius: 3px; }
 #map .close { position: absolute; right: 8px; top: 8px; }
 .btn { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--snow); background: var(--panel); border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
 
@@ -105,74 +130,82 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   #tools { top: calc(190px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
   #toast { font-size: 44px; top: 32%; }
   #prompt { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+  #liftSpeed { top: calc(228px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) { #toast, #knob { transition: none; } }
 </style>
 
 <canvas id="gl"></canvas>
 
-<div class="hud panel" id="brand"><div class="name">Niseko</div><div class="zone" id="zone">Mt. Niseko Annupuri</div></div>
+<div class="hud panel" id="brand"><div class="name">二世古</div><div class="zone" id="zone">二世古安努普利山</div></div>
 <div class="hud panel" id="mini"><canvas id="minimap" width="400" height="320"></canvas></div>
 <div class="hud panel" id="stats">
   <div class="stat big"><div class="v" id="spd">0</div><div class="l">km/h</div></div>
-  <div class="stat"><div class="v" id="alt">0</div><div class="l">Elevation m</div></div>
-  <div class="stat"><div class="v" id="slope">0°</div><div class="l">Slope</div></div>
-  <div class="stat"><div class="v" id="vert">0</div><div class="l">Vert m</div></div>
-  <div class="stat"><div class="v" id="top">0</div><div class="l">Top km/h</div></div>
+  <div class="stat"><div class="v" id="alt">0</div><div class="l">海拔 m</div></div>
+  <div class="stat"><div class="v" id="slope">0°</div><div class="l">坡度</div></div>
+  <div class="stat"><div class="v" id="vert">0</div><div class="l">垂直落差 m</div></div>
+  <div class="stat"><div class="v" id="top">0</div><div class="l">最高速度 km/h</div></div>
 </div>
 <div class="hud panel" id="keys">
-  <kbd>A</kbd><kbd>D</kbd> carve · <kbd>W</kbd> tuck/skate · <kbd>S</kbd> brake<br>
-  <kbd>Space</kbd> ollie (A/D to spin) · <kbd>C</kbd> camera · <kbd>G</kbd> goofy/regular<br>
-  <kbd>M</kbd> map / teleport · <kbd>R</kbd> back to drop · <kbd>E</kbd> ride lift (hold <kbd>W</kbd> to fast-forward) · <kbd>1</kbd>–<kbd>5</kbd> spots
+  <kbd>A</kbd><kbd>D</kbd> 轉彎 · <kbd>W</kbd> 壓低／平地滑行 · <kbd>S</kbd> 煞車<br>
+  <kbd>Space</kbd> 跳躍（A/D 旋轉）· <kbd>C</kbd> 鏡頭 · <kbd>G</kbd> 切換站姿<br>
+  <kbd>M</kbd> 地圖／傳送 · <kbd>R</kbd> 返回起點 · <kbd>E</kbd> 搭乘纜車 · <kbd>1</kbd>–<kbd>5</kbd> 地點
 </div>
 <div class="hud" id="toast"></div>
 <button class="hud btn" id="prompt" hidden></button>
+<label class="hud panel" id="liftSpeed" hidden>纜車速度 <select id="liftSpeedSelect" aria-label="纜車速度"></select></label>
 
-<div class="hud" id="tools"><button class="btn" id="tM">Map</button><button class="btn" id="tC">Cam</button></div>
+<div class="hud" id="tools"><button class="btn" id="tM">地圖</button><button class="btn" id="tC">鏡頭</button></div>
 <div id="touch">
-  <div id="pad" aria-label="Steering: drag left or right"><span>Drag to carve</span><div class="track"><div id="knob"></div></div></div>
-  <div class="grp"><button id="tB">Brake</button><button id="tJ">Jump</button><button id="tT">Tuck</button></div>
+  <div id="pad" aria-label="左右拖曳轉彎"><span>拖曳轉彎</span><div class="track"><div id="knob"></div></div></div>
+  <div class="grp"><button id="tB">煞車</button><button id="tJ">跳躍</button><button id="tT">壓低</button></div>
 </div>
 
 <div class="modal" id="intro">
   <div class="card panel">
-    <h1>Slop Niseko</h1>
-    <p class="sub">Snowboard the real terrain of Mt. Niseko Annupuri, Hokkaido.</p>
+    <h1>二世古滑雪</h1>
+    <p class="sub">在北海道二世古安努普利山的真實地形上滑雪。</p>
     <dl class="touch-only">
-      <dt>Drag</dt><dd>Slide your left thumb sideways to carve</dd>
-      <dt>Tuck</dt><dd>Hold for speed, or to skate on the flats</dd>
-      <dt>Brake</dt><dd>Hold to skid</dd>
-      <dt>Jump</dt><dd>Ollie, then drag to spin</dd>
-      <dt>Map</dt><dd>Tap anywhere on the trail map to drop in</dd>
+      <dt>拖曳</dt><dd>用左手拇指左右滑動轉彎</dd>
+      <dt>壓低</dt><dd>按住加速，或在平地滑行</dd>
+      <dt>煞車</dt><dd>按住側滑減速</dd>
+      <dt>跳躍</dt><dd>起跳後拖曳旋轉</dd>
+      <dt>地圖</dt><dd>點選雪道地圖上的位置開始滑行</dd>
     </dl>
     <dl class="desk-only">
-      <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>Carve left and right</dd>
-      <dt><kbd>W</kbd></dt><dd>Tuck for speed, skate on the flats</dd>
-      <dt><kbd>S</kbd></dt><dd>Skid to brake</dd>
-      <dt><kbd>Space</kbd></dt><dd>Ollie, then A or D to spin</dd>
-      <dt><kbd>M</kbd></dt><dd>Trail map. Click anywhere to drop in there</dd>
+      <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>左右轉彎</dd>
+      <dt><kbd>W</kbd></dt><dd>壓低加速，或在平地滑行</dd>
+      <dt><kbd>S</kbd></dt><dd>側滑煞車</dd>
+      <dt><kbd>Space</kbd></dt><dd>跳躍後按 A 或 D 旋轉</dd>
+      <dt><kbd>M</kbd></dt><dd>雪道地圖；點選位置開始滑行</dd>
     </dl>
     <div class="pick">
-      <div class="pl">Rider</div>
-      <div class="opts" id="riders" role="radiogroup" aria-label="Rider"></div>
-      <div class="pl">Stance</div>
-      <div class="opts" id="stance" role="radiogroup" aria-label="Stance">
-        <button type="button" role="radio" data-s="regular">Regular</button><button type="button" role="radio" data-s="goofy">Goofy</button>
+      <div class="pl">滑雪者</div>
+      <div class="opts" id="riders" role="radiogroup" aria-label="滑雪者"></div>
+      <div class="pl">站姿</div>
+      <div class="opts" id="stance" role="radiogroup" aria-label="站姿">
+        <button type="button" role="radio" data-s="regular">左腳在前</button><button type="button" role="radio" data-s="goofy">右腳在前</button>
       </div>
     </div>
-    <div id="loading">Loading terrain…</div>
-    <button class="go" id="start" hidden>Drop in</button>
+    <div id="loading">正在載入地形…</div>
+    <button class="go" id="start" hidden>開始滑行</button>
     <p class="note" id="credits"></p>
   </div>
 </div>
 
 <div class="modal" id="map" hidden>
   <div class="wrap">
-    <canvas id="bigmap" width="1280" height="1024"></canvas>
-    <div id="labels"></div>
-    <div class="me" id="me"></div>
-    <div class="cap">Tap or click to drop in · 100 m contours · <span style="color:#b8321f">■</span> gondola · ● chair · <span style="color:#ff6a1a">- -</span> ski area boundary</div>
-    <button class="btn close" id="mapClose">Close</button>
+    <div class="viewport" id="mapViewport"><div class="content" id="mapContent">
+      <canvas id="bigmap" width="3072" height="2458"></canvas>
+      <div id="labels"></div>
+      <div id="liftStops"></div>
+      <div class="me" id="me"></div>
+    </div></div>
+    <details class="lift-list"><summary>纜車列表 <span id="liftCount"></span></summary><div class="lift-list-items" id="liftListItems"></div></details>
+    <div class="cap">拖曳移動地圖 · 點選位置開始滑行 · 點選纜車標記直達入口 · 紅色：吊艙　黑色：吊椅</div>
+    <div class="zoom"><div class="zoom-head"><span>縮放</span><output id="zoomValue" for="zoomSlider">1×</output></div><input id="zoomSlider" type="range" min="1" max="12" step="0.25" value="1" aria-label="地圖縮放倍率"><div class="zoom-actions"><button class="btn" id="zoomIn" aria-label="放大地圖" title="放大地圖">+</button><button class="btn" id="zoomOut" aria-label="縮小地圖" title="縮小地圖">−</button></div></div>
+    <div class="scale-bar" id="scaleBar"><span id="scaleLabel"></span><div class="scale-line" id="scaleLine"></div></div>
+    <button class="btn close" id="mapClose">關閉</button>
   </div>
 </div>
 
@@ -269,12 +302,12 @@ let OSM = null;
 try { const r = await fetch('data/osm.json'); if (r.ok) OSM = await r.json(); } catch { OSM = null; }
 // Japanese trail maps grade runs green / red / black.
 const DIFF = {
-  novice: { label: 'Beginner', color: '#2e9e4f' }, easy: { label: 'Beginner', color: '#2e9e4f' },
-  intermediate: { label: 'Intermediate', color: '#d23c3c' }, advanced: { label: 'Advanced', color: '#15171a' },
-  expert: { label: 'Expert', color: '#15171a' }, extreme: { label: 'Extreme', color: '#15171a' },
-  freeride: { label: 'Off-piste', color: '#ff8a00' },
+  novice: { label: '初級', color: '#2e9e4f' }, easy: { label: '初級', color: '#2e9e4f' },
+  intermediate: { label: '中級', color: '#d23c3c' }, advanced: { label: '高級', color: '#15171a' },
+  expert: { label: '專家級', color: '#15171a' }, extreme: { label: '極限', color: '#15171a' },
+  freeride: { label: '非雪道', color: '#ff8a00' },
 };
-const diffOf = d => DIFF[d] || { label: 'Run', color: '#5b6b7c' };
+const diffOf = d => DIFF[d] || { label: '雪道', color: '#5b6b7c' };
 const MASK_W = 2048, MASK_H = Math.round(MASK_W * DEPTH / WIDTH);
 const pisteCanvas = document.createElement('canvas'); pisteCanvas.width = MASK_W; pisteCanvas.height = MASK_H;
 let pisteData = null;
@@ -1126,11 +1159,11 @@ const SURFACE_LIFT = /t-bar|j-bar|platter|drag_lift|magic_carpet|rope_tow/;
 const CABLE_SIDE = 2.6;                      // half the gap between up and down cables (bullwheel radius)
 const STATION_V = 0.85;                      // detachable grips in the terminal, m/s
 const LIFT_TYPES = {                         // line speed m/s [default, min, max], seconds between carriers
-  fixed: { v: [2.0, 1.5, 2.6], gap: 7, label: 'fixed-grip chair' },
-  detach: { v: [5.0, 4.0, 5.5], gap: 7, label: 'detachable chair' },
-  gondola: { v: [5.5, 4.5, 6.0], gap: 10, label: 'gondola' },
-  surface: { v: [2.8, 2.0, 3.5], gap: 0, label: 'surface lift' },
-  carpet: { v: [0.7, 0.5, 1.0], gap: 0, label: 'magic carpet' },
+  fixed: { v: [2.0, 1.5, 2.6], gap: 7, label: '固定式吊椅' },
+  detach: { v: [5.0, 4.0, 5.5], gap: 7, label: '高速吊椅' },
+  gondola: { v: [5.5, 4.5, 6.0], gap: 10, label: '吊艙纜車' },
+  surface: { v: [2.8, 2.0, 3.5], gap: 0, label: '地面牽引纜車' },
+  carpet: { v: [0.7, 0.5, 1.0], gap: 0, label: '魔毯' },
 };
 function liftPoint(L, s, side = 0, out = new THREE.Vector3()) {
   s = Math.max(0, Math.min(L.total, s));
@@ -1369,10 +1402,14 @@ if (LIFTS.length) {
   }
 }
 const _cp = new THREE.Vector3(), _cd = new THREE.Vector3(), _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _one = new THREE.Vector3(1, 1, 1);
+const liftSpeedControl = document.getElementById('liftSpeed');
+const liftSpeedSelect = document.getElementById('liftSpeedSelect');
+for (let speed = 1; speed <= 10; speed++) liftSpeedSelect.add(new Option(`${speed}×`, speed));
+let liftSpeed = 1;
+liftSpeedSelect.addEventListener('change', () => { liftSpeed = Number(liftSpeedSelect.value); });
 function updateLifts(dt) {
-  // Hold Tuck on a lift (or in the queue) to fast-forward every lift together, so your chair stays your chair.
-  const fast = (S.ride || liftQueue) && (keys.has('w') || keys.has('arrowup') || touch.T) ? 8 : 1;
-  liftTime += dt * fast;
+  // The shared lift clock keeps the rider, queue and carriers in sync at every selected speed.
+  liftTime += dt * ((S.ride || liftQueue) ? liftSpeed : 1);
   for (const { L, im, n } of chairMeshes) {
     for (let k = 0; k < n; k++) {
       carrierPose(L, (liftTime + k * L.gap) % L.cycle, _cp, _cd);
@@ -1421,7 +1458,7 @@ function rideStep(dt) {
   const R = S.ride, L = R.L;
   if (!L.n) {
     // Drag lifts and carpets: on your board, pulled along the line.
-    R.s += dt * L.v * ((keys.has('w') || keys.has('arrowup') || touch.T) ? 8 : 1);
+    R.s += dt * L.v * liftSpeed;
     liftPoint(L, R.s, CABLE_SIDE, S.p); S.p.y = height(S.p.x, S.p.z);
     liftPoint(L, R.s + 1, CABLE_SIDE, _rp); R.dir.set(_rp.x - S.p.x, 0, _rp.z - S.p.z).normalize();
     S.f.copy(R.dir); normalAt(S.p.x, S.p.z, S.n); S.v.copy(R.dir).multiplyScalar(L.v);
@@ -1463,7 +1500,7 @@ function unloadLift(L, dir) {
   S.v.copy(S.f).multiplyScalar(L.surface ? 1.5 : 3.2);
   S.air = false; S.lastY = S.p.y; trail.last = null;
   lastDrop = { x: S.p.x + out.x * 8, z: S.p.z + out.z * 8, name: `Top of ${L.name}` };
-  toast(`Top of ${L.name}`, 1.4);
+  toast(`抵達 ${L.name} 山頂站`, 1.4);
 }
 
 // ---------- Board tracks in the snow ----------
@@ -1540,7 +1577,7 @@ addEventListener('keydown', e => {
   if (k === ' ') { e.preventDefault(); wantJump = true; }
   if (k === 'c') camMode = (camMode + 1) % CAM_MODES.length, toast(CAM_MODES[camMode], 0.8);
   if (k === 'm') toggleMap();
-  if (k === 'g') { setStance(!PICK.goofy); toast(PICK.goofy ? 'Goofy' : 'Regular', 0.8); }
+  if (k === 'g') { setStance(!PICK.goofy); toast(PICK.goofy ? '右腳在前' : '左腳在前', 0.8); }
   if (k === 'r') { S.ride = null; liftQueue = null; dropIn(lastDrop); }
   if (k === 'e' && !S.ride && !liftQueue && liftNear) startRide(liftNear);
   if (k >= '1' && k <= String(SPOTS.length)) dropIn(SPOTS[+k - 1]);
@@ -1579,7 +1616,7 @@ const S = {
   ride: null, air: false, airTime: 0, spin: 0, steer: 0, lean: 0, crash: 0, top: 0, vert: 0, lastY: 0,
 };
 let liftNear = null, wantJump = false, lastDrop = SPOTS[0];
-const CAM_MODES = ['Chase cam', 'Low cam', 'Helmet cam', 'Drone cam'];
+const CAM_MODES = ['跟隨鏡頭', '低角度鏡頭', '頭盔鏡頭', '空拍鏡頭'];
 let camMode = 0;
 
 function dropIn(spot) {
@@ -1683,7 +1720,7 @@ function step(dt) {
 
   // Trees.
   if (S.crash <= 0 && S.p.y - ground < 4 && treeHit(S.p.x, S.p.z)) {
-    S.v.multiplyScalar(-0.15); S.crash = 1.4; toast('Tree!', 1.2);
+    S.v.multiplyScalar(-0.15); S.crash = 1.4; toast('撞到樹了！', 1.2);
   }
 
   if (S.p.y < S.lastY) S.vert += S.lastY - S.p.y;
@@ -1702,9 +1739,9 @@ function land(ground) {
   // Clean landing if the board lines up with travel (either direction).
   const hv = tmp.copy(S.v).addScaledVector(n, -S.v.dot(n));
   const align = hv.lengthSq() > 1 ? Math.abs(hv.normalize().dot(S.f)) : 1;
-  if (align < 0.55 && S.airTime > 0.4) { S.crash = 1.2; S.v.multiplyScalar(0.3); toast('Wipeout', 1.2); }
-  else if (deg >= 180) toast(`${deg}${S.airTime > 1.2 ? ' · big air' : ''}`, 1.2);
-  else if (S.airTime > 1.4) toast(`Air ${S.airTime.toFixed(1)} s`, 1.0);
+  if (align < 0.55 && S.airTime > 0.4) { S.crash = 1.2; S.v.multiplyScalar(0.3); toast('摔倒了', 1.2); }
+  else if (deg >= 180) toast(`${deg}°${S.airTime > 1.2 ? ' · 高空跳躍' : ''}`, 1.2);
+  else if (S.airTime > 1.4) toast(`騰空 ${S.airTime.toFixed(1)} 秒`, 1.0);
 }
 
 // ---------- Camera ----------
@@ -1752,10 +1789,10 @@ const AV = { ready: false };
 // ---------- Rider choice: outfit and stance, remembered per browser ----------
 // Each outfit recolours the model's materials by name; anything not listed keeps the model's colour.
 const RIDERS = [
-  { id: 'sage', name: 'Sage', swatch: '#aebf96', kit: {} },
-  { id: 'midnight', name: 'Midnight', swatch: '#2a3652', kit: { Jacket: 0x2a3652, JacketCuff: 0x1e2740, Pants: 0x3c3f44, PantsKick: 0x2c2e32, Helmet: 0x1b1c1f } },
-  { id: 'ember', name: 'Ember', swatch: '#c4622e', kit: { Jacket: 0xc4622e, JacketCuff: 0x9a4a22, Pants: 0x222427, PantsKick: 0x17181a } },
-  { id: 'glacier', name: 'Glacier', swatch: '#dde4e8', kit: { Jacket: 0xdde4e8, JacketCuff: 0xbcc6cc, Pants: 0x5b6444, PantsKick: 0x474f34, Helmet: 0x2b2e33 } },
+  { id: 'sage', name: '鼠尾草', swatch: '#aebf96', kit: {} },
+  { id: 'midnight', name: '午夜', swatch: '#2a3652', kit: { Jacket: 0x2a3652, JacketCuff: 0x1e2740, Pants: 0x3c3f44, PantsKick: 0x2c2e32, Helmet: 0x1b1c1f } },
+  { id: 'ember', name: '餘燼', swatch: '#c4622e', kit: { Jacket: 0xc4622e, JacketCuff: 0x9a4a22, Pants: 0x222427, PantsKick: 0x17181a } },
+  { id: 'glacier', name: '冰川', swatch: '#dde4e8', kit: { Jacket: 0xdde4e8, JacketCuff: 0xbcc6cc, Pants: 0x5b6444, PantsKick: 0x474f34, Helmet: 0x2b2e33 } },
 ];
 const pref = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const PICK = { rider: RIDERS.some(r => r.id === pref.get('rider')) ? pref.get('rider') : 'sage', goofy: pref.get('stance') === 'goofy' };
@@ -2066,6 +2103,71 @@ const miniBase = document.createElement('canvas'); miniBase.width = mini.width; 
 miniBase.getContext('2d').drawImage(mini, 0, 0);
 
 const mapEl = document.getElementById('map'), labelsEl = document.getElementById('labels'), meEl = document.getElementById('me');
+const mapViewport = document.getElementById('mapViewport'), mapContent = document.getElementById('mapContent');
+let mapScale = 1, mapX = 0, mapY = 0, mapDragged = false;
+function applyMapTransform() {
+  const w = mapViewport.clientWidth, h = mapViewport.clientHeight;
+  mapX = Math.min(0, Math.max(w * (1 - mapScale), mapX));
+  mapY = Math.min(0, Math.max(h * (1 - mapScale), mapY));
+  mapContent.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
+  mapContent.style.setProperty('--map-scale', mapScale);
+  document.getElementById('zoomIn').disabled = mapScale >= 12;
+  document.getElementById('zoomOut').disabled = mapScale <= 1;
+  document.getElementById('zoomSlider').value = mapScale;
+  document.getElementById('zoomValue').textContent = `${Number(mapScale.toFixed(2))}×`;
+  const metresPerPixel = WIDTH / (w * mapScale);
+  const target = metresPerPixel * 85, power = 10 ** Math.floor(Math.log10(target));
+  const distance = [5, 2, 1].map(n => n * power).find(n => n <= target) || power;
+  document.getElementById('scaleLabel').textContent = distance >= 1000 ? `${distance / 1000} 公里` : `${distance} 公尺`;
+  document.getElementById('scaleLine').style.width = `${distance / metresPerPixel}px`;
+}
+function zoomMap(next, clientX, clientY) {
+  next = Math.min(12, Math.max(1, next));
+  const r = mapViewport.getBoundingClientRect(), x = clientX - r.left, y = clientY - r.top;
+  mapX = x - (x - mapX) * next / mapScale;
+  mapY = y - (y - mapY) * next / mapScale;
+  mapScale = next;
+  applyMapTransform();
+}
+for (const [id, factor] of [['zoomIn', 1.5], ['zoomOut', 1 / 1.5]]) {
+  document.getElementById(id).addEventListener('click', () => {
+    const r = mapViewport.getBoundingClientRect();
+    zoomMap(mapScale * factor, r.left + r.width / 2, r.top + r.height / 2);
+  });
+}
+document.getElementById('zoomSlider').addEventListener('input', e => {
+  const r = mapViewport.getBoundingClientRect();
+  zoomMap(Number(e.target.value), r.left + r.width / 2, r.top + r.height / 2);
+});
+mapViewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomMap(mapScale * (e.deltaY < 0 ? 1.2 : 1 / 1.2), e.clientX, e.clientY);
+}, { passive: false });
+let mapPointer = null;
+mapViewport.addEventListener('pointerdown', e => {
+  if (e.target.closest('button')) return;
+  mapPointer = { id: e.pointerId, x: e.clientX, y: e.clientY, originX: mapX, originY: mapY };
+  mapDragged = false;
+});
+mapViewport.addEventListener('pointermove', e => {
+  if (!mapPointer || e.pointerId !== mapPointer.id) return;
+  const dx = e.clientX - mapPointer.x, dy = e.clientY - mapPointer.y;
+  if (Math.hypot(dx, dy) > 5) mapDragged = true;
+  if (mapDragged) {
+    if (!mapViewport.hasPointerCapture(e.pointerId)) mapViewport.setPointerCapture(e.pointerId);
+    mapViewport.classList.add('dragging');
+    mapX = mapPointer.originX + dx; mapY = mapPointer.originY + dy;
+    applyMapTransform();
+  }
+});
+function endMapDrag(e) {
+  if (!mapPointer || e.pointerId !== mapPointer.id) return;
+  mapPointer = null;
+  mapViewport.classList.remove('dragging');
+  if (mapDragged) setTimeout(() => { mapDragged = false; }, 0);
+}
+mapViewport.addEventListener('pointerup', endMapDrag);
+mapViewport.addEventListener('pointercancel', endMapDrag);
 const frac = (x, z) => ({ u: (x + WIDTH / 2) / WIDTH, v: (z + DEPTH / 2) / DEPTH });
 // Villages from OSM place names (skipping street-block addresses), plus the biggest named buildings.
 const PLACES = LANDW.labels.filter(l => l.kind === 'place' && /^[\x20-\x7e]+$/.test(l.name) && !/chome|-jo|^Yotei/i.test(l.name) && Math.abs(l.x) < WIDTH / 2 - 200 && Math.abs(l.z) < DEPTH / 2 - 200)
@@ -2077,11 +2179,50 @@ for (const r of [{ name: `Annupuri ${Math.round(H[peakK])} m`, ...PEAK, peak: tr
   el.style.left = `${u * 100}%`; el.style.top = `${v * 100}%`;
   labelsEl.appendChild(el);
 }
+const passengerLifts = LIFTS.filter(lift => lift.gondola || lift.type === 'chair_lift' || lift.type === 'mixed_lift')
+  .sort((a, b) => a.name.localeCompare(b.name));
+const hanazonoMid = passengerLifts.find(lift => lift.name === 'Hanazono Symphony Gondola');
+// The mapped gondola line passes through the OSM mid-station node at 140.68966, 42.89039.
+const midGeo = toWorld(140.68966, 42.89039);
+const midPoint = hanazonoMid?.path.reduce((best, point) =>
+  Math.hypot(point.x - midGeo.x, point.z - midGeo.z) < Math.hypot(best.x - midGeo.x, best.z - midGeo.z) ? point : best);
+document.getElementById('liftCount').textContent = `（${passengerLifts.length} 條纜車${midPoint ? '，另有 1 個中間站' : ''}）`;
+function travelToStation(point, name) {
+  S.ride = null; liftQueue = null;
+  dropIn({ x: point.x, z: point.z, name });
+  toggleMap(false);
+}
+function addLiftDestination(point, name, kind, markerClass, symbol) {
+  const { u, v } = frac(point.x, point.z);
+  const button = document.createElement('button');
+  button.type = 'button'; button.className = `lift-stop ${markerClass}`;
+  button.textContent = symbol;
+  button.dataset.name = `${name} · ${kind}`;
+  button.setAttribute('aria-label', `前往 ${name}`);
+  button.title = `前往 ${name}`;
+  button.style.left = `${u * 100}%`; button.style.top = `${v * 100}%`;
+  button.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!mapDragged) travelToStation(point, name);
+  });
+  document.getElementById('liftStops').appendChild(button);
+  const item = document.createElement('button');
+  item.type = 'button'; item.textContent = `${kind} · ${name}`;
+  item.addEventListener('click', () => travelToStation(point, name));
+  document.getElementById('liftListItems').appendChild(item);
+}
+for (const L of passengerLifts) {
+  const kind = L.gondola ? '吊艙' : L.type === 'mixed_lift' ? '混合式' : '吊椅';
+  const name = L.name === 'Lift' ? `未命名${kind}纜車` : L.name;
+  addLiftDestination(L.path[0], `${name} 入口`, kind, L.gondola ? 'gondola' : L.type === 'mixed_lift' ? 'mixed' : 'chair', L.gondola ? '艙' : L.type === 'mixed_lift' ? '混' : '椅');
+  if (L === hanazonoMid && midPoint) addLiftDestination(midPoint, `${name} 中間站`, '中間站', 'gondola', '中');
+}
 function toggleMap(show = mapEl.hidden) {
   mapEl.hidden = !show;
-  if (show) { const { u, v } = frac(S.p.x, S.p.z); meEl.style.left = `${u * 100}%`; meEl.style.top = `${v * 100}%`; }
+  if (show) { const { u, v } = frac(S.p.x, S.p.z); meEl.style.left = `${u * 100}%`; meEl.style.top = `${v * 100}%`; applyMapTransform(); }
 }
 big.addEventListener('click', e => {
+  if (mapDragged) return;
   const r = big.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * WIDTH - WIDTH / 2, z = (e.clientY - r.top) / r.height * DEPTH - DEPTH / 2;
   const geo = toGeo(x, z);
@@ -2110,16 +2251,16 @@ let toastT = 0;
 function toast(text, secs) { hud.toast.textContent = text; hud.toast.classList.add('on'); toastT = secs; }
 function zoneName() {
   const dx = S.p.x - PEAK.x, dz = S.p.z - PEAK.z, d = Math.hypot(dx, dz);
-  if (d < 350) return 'Mt. Niseko Annupuri summit';
+  if (d < 350) return '二世古安努普利山頂';
   if (!inResort(S.p.x, S.p.z)) {
     // Below the resorts you're in a village; above or beside them, out of bounds.
     let best = null, bd = 900;
     for (const p of PLACES) { const dd = Math.hypot(p.x - S.p.x, p.z - S.p.z); if (dd < bd) { bd = dd; best = p; } }
     const town = maskAt(openM, S.p.x, S.p.z) > 0.5 || maskAt(roadM, S.p.x, S.p.z) > 0.3;
     if (best && (town || S.p.y < 400)) return best.name;
-    if (HAS_SKI) return 'Out of bounds · backcountry';
+    if (HAS_SKI) return '滑雪區外 · 野雪區';
   }
-  if (d > 6000) return 'Niseko backcountry';
+  if (d > 6000) return '二世古野雪區';
   // Which face of the mountain: compare bearing from the summit with each resort's bearing.
   const a = Math.atan2(dz, dx);
   let best = null, bd = Infinity;
@@ -2128,7 +2269,7 @@ function zoneName() {
     if (da > Math.PI) da = 2 * Math.PI - da;
     if (da < bd) { bd = da; best = r; }
   }
-  return bd < 0.7 ? `${best.name} side` : 'Niseko backcountry';
+  return bd < 0.7 ? `${best.name} 側` : '二世古野雪區';
 }
 let hudT = 0;
 function updateHud(dt) {
@@ -2142,16 +2283,17 @@ function updateHud(dt) {
   hud.top.textContent = Math.round(S.top);
   const piste = !S.ride && pisteAt(S.p.x, S.p.z);
   const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-  if (liftQueue) hud.zone.textContent = `${liftQueue.L.gondola ? 'Cabin' : 'Chair'} in ${Math.max(0, Math.ceil(liftQueue.until - liftTime))} s · ${liftQueue.L.name}`;
+  liftSpeedControl.hidden = !(S.ride || liftQueue);
+  if (liftQueue) hud.zone.textContent = `${Math.max(0, Math.ceil((liftQueue.until - liftTime) / liftSpeed))} 秒後搭乘${liftQueue.L.gondola ? '吊艙' : '吊椅'} · ${liftQueue.L.name}`;
   else if (S.ride) {
     const R = S.ride, L = R.L, left = L.n ? L.Tline - (liftTime + R.k * L.gap) % L.cycle : (L.total - R.s) / L.v;
-    hud.zone.textContent = `${L.name} · ${fmt(Math.max(0, left))} to the top`;
+    hud.zone.textContent = `${L.name} · 約 ${fmt(Math.max(0, left / liftSpeed))} 抵達山頂`;
   }
   else if (piste && piste.name) hud.zone.innerHTML = `<span class="dot" style="background:${diffOf(piste.diff).color}"></span>${piste.name.replace(/[<&>]/g, '')} · ${diffOf(piste.diff).label}`;
   else hud.zone.textContent = zoneName();
   liftNear = !S.ride && !liftQueue && S.v.length() < 12 ? nearLiftBase() : null;
   hud.prompt.hidden = !liftNear;
-  if (liftNear) hud.prompt.textContent = `${matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Press E'} to ride ${liftNear.name} (${liftNear.gondola ? 'gondola' : liftNear.n ? 'chair' : 'lift'})`;
+  if (liftNear) hud.prompt.textContent = `${matchMedia('(pointer: coarse)').matches ? '點選' : '按 E'}搭乘 ${liftNear.name}（${liftNear.gondola ? '吊艙纜車' : liftNear.n ? '吊椅' : '纜車'}）`;
   drawMini();
 }
 
@@ -2205,8 +2347,8 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 $('loading').hidden = true;
-$('credits').textContent = `Elevation: ${meta.source}, ${Math.round(CX)} m grid over ${(WIDTH / 1000).toFixed(1)} × ${(DEPTH / 1000).toFixed(1)} km. ` +
-  (OSM ? `${PISTES.length} runs and ${LIFTS.length} lifts${LAND ? `, ${LANDW.buildings.length.toLocaleString()} buildings, roads, rivers and woods` : ''} © OpenStreetMap contributors (ODbL), fetched ${OSM.fetched || ''}. Ride a lift from its base station at its real speed; hold Tuck to fast-forward.` : 'Resort labels are approximate.');
+$('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} 公尺網格，範圍 ${(WIDTH / 1000).toFixed(1)} × ${(DEPTH / 1000).toFixed(1)} 公里。` +
+  (OSM ? `${PISTES.length} 條雪道、${LIFTS.length} 條纜車${LAND ? `、${LANDW.buildings.length.toLocaleString()} 棟建築及道路、河流與樹林` : ''}。© OpenStreetMap 貢獻者（ODbL），擷取日期：${OSM.fetched || ''}。從纜車山腳站搭乘，可隨時選擇 1×–10× 速度。` : '度假村標籤位置僅供參考。');
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
