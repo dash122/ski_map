@@ -102,6 +102,12 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
   const poleMat = new THREE.MeshLambertMaterial({ color: '#b8442f' });
   const poleGeo = new THREE.CylinderGeometry(.055, .065, 3.2, 6);
   const plane = new THREE.PlaneGeometry(1, 1);
+  // Poles are drawn as two instanced meshes rather than one mesh each.
+  const poles = [], posts = [], slot = new THREE.Object3D();
+  function place(list, group, x, y, z) {
+    slot.position.set(x, y, z); group.add(slot); group.updateMatrixWorld(true);
+    list.push(slot.matrixWorld.clone()); group.remove(slot);
+  }
   const textures = new Map();
   // Hundreds of boards: draw at `scale`, and free each canvas once the GPU has its copy.
   function canvasMaterial(c, side) {
@@ -175,7 +181,7 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
     const board = new THREE.Mesh(plane, material(route, kind));
     board.scale.set(4.6, 1.44, 1); board.position.y = 2.4; group.add(board);
     for (const side of [-1, 1]) {
-      const pole = new THREE.Mesh(poleGeo, poleMat); pole.position.set(side * 1.95, 1.6, -.06); group.add(pole);
+      place(poles, group, side * 1.95, 1.6, -.06);
     }
     root.add(group);
   }
@@ -196,9 +202,15 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
     const panel = new THREE.Mesh(plane, junctionMaterial(junction.rows));
     panel.scale.set(5.4, boardHeight, 1); panel.position.y = 1.4 + boardHeight / 2; group.add(panel);
     for (const side of [-1, 1]) {
-      const post = new THREE.Mesh(tallPole, poleMat); post.position.set(side * 2.35, 2.8, -.08); group.add(post);
+      place(posts, group, side * 2.35, 2.8, -.08);
     }
     root.add(group);
+  }
+  for (const [geo, list] of [[poleGeo, poles], [tallPole, posts]]) {
+    if (!list.length) continue;
+    const mesh = new THREE.InstancedMesh(geo, poleMat, list.length);
+    list.forEach((m, i) => mesh.setMatrixAt(i, m));
+    mesh.computeBoundingSphere(); root.add(mesh);
   }
   return root;
 }
