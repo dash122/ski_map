@@ -2,6 +2,7 @@
 """Bake public/data/dem.json from Japan's GSI 10 m DEM (dem_png, zoom 14), filling gaps from AWS terrarium.
 
     python3 tools/fetch_dem_gsi.py public/data/dem.json
+    RESORT=appi python3 tools/fetch_dem_gsi.py public/data/appi/dem.json
 
 GSI tiles: https://maps.gsi.go.jp/development/ichiran.html (出典: 国土地理院 基盤地図情報数値標高モデル)
 """
@@ -10,7 +11,7 @@ import numpy as np
 from PIL import Image
 
 Z = 14
-W, E, S, N = 140.615, 140.745, 42.815, 42.905
+from resort import W, E, S, N
 GX, GY = 960, 768          # about 11 m x 13 m spacing
 
 

@@ -1,0 +1,17 @@
+[out:json][timeout:300][maxsize:536870912];
+(
+  way["landuse"]({{bbox}});
+  relation["landuse"]["type"="multipolygon"]({{bbox}});
+  way["natural"~"^(wood|scrub|heath|grassland|water|wetland|bare_rock|scree|cliff|tree_row)$"]({{bbox}});
+  relation["natural"~"^(wood|scrub|heath|grassland|water|wetland|bare_rock|scree)$"]["type"="multipolygon"]({{bbox}});
+  way["waterway"~"^(river|stream|canal|riverbank|ditch)$"]({{bbox}});
+  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|track|[a-z]+_link)$"]({{bbox}});
+  way["railway"="rail"]({{bbox}});
+  way["leisure"~"^(golf_course|park|pitch)$"]({{bbox}});
+  way["amenity"="parking"]({{bbox}});
+  way["building"]({{bbox}});
+  relation["building"]["type"="multipolygon"]({{bbox}});
+  node["natural"="peak"]({{bbox}});
+  node["place"~"^(village|hamlet|neighbourhood|suburb|locality)$"]({{bbox}});
+);
+out geom;

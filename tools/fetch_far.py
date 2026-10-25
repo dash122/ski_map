@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Fetch a coarse wide-area DEM (AWS terrarium z11) for the horizon: Mt. Yotei, the Niseko range, Shiribetsu.
+"""Fetch a coarse wide-area DEM (AWS terrarium z11) for the horizon: Mt. Yotei, the Niseko range, Shiribetsu
+(or the $RESORT area from tools/resorts.json).
 
     python3 tools/fetch_far.py public/data/far.json
 """
@@ -7,7 +8,8 @@ import math, io, urllib.request, json, sys, base64
 import numpy as np
 from PIL import Image
 Z = 11
-W, E, S, N = 140.30, 141.05, 42.60, 43.10
+from resort import FAR
+W, S, E, N = FAR
 GX, GY = 512, 464
 def tx(lon): return (lon + 180) / 360 * 2 ** Z
 def ty(lat):

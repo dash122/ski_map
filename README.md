@@ -23,6 +23,15 @@ Every drop-in starts at rest. Press W (or the touch tuck button), steer, or jump
 
 On touch screens, on-screen buttons replace the keys. Tap the walking button to carry the board and walk uphill or downhill. W/S move forward/back and A/D turn. The camera faces the direction of travel, including when walking backward. Drag the scene to change heading. On touch screens, use the forward/back buttons and the pad to turn. Switch modes on the ground; boarding a lift or dropping in puts the board back on.
 
+## Resorts
+
+Pick the mountain on the start card, or open the page with `?resort=appi`:
+
+- **Niseko United** (default): Mt. Niseko Annupuri, Hokkaido. Data in `public/data/`.
+- **Appi Kogen**: Mt. Maemori, Iwate, with Mt. Iwate on the horizon. Data in `public/data/appi/`.
+
+Both use the same page and logic; `src/resorts.js` holds each resort's names, base areas and data folder, and `tools/resorts.json` holds the map boxes the data tools bake. Set `RESORT=appi` when running a tool by hand, e.g. `RESORT=appi python3 tools/fetch_dem_gsi.py public/data/appi/dem.json`.
+
 ## Run it
 
 It's a static page. Serve the folder and open it:
@@ -35,9 +44,9 @@ python3 -m http.server 8000
 ## Data
 
 - `public/data/dem.json`: elevation, baked by `tools/fetch_dem.py` from [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (terrarium, zoom 14) over lon 140.615–140.745, lat 42.815–42.905. 640 × 512 grid, about 17 m spacing.
-- `public/data/osm.json`: downhill pistes (`piste:type=downhill`, with `piste:difficulty`) and lifts (`aerialway=*`) from OpenStreetMap, fetched with `tools/niseko.overpassql` and converted by `tools/build_osm.py`. The **Fetch OSM ski data** GitHub Action refreshes it monthly, on demand, or when the query changes.
+- `public/data/osm.json`: downhill pistes (`piste:type=downhill`, with `piste:difficulty`) and lifts (`aerialway=*`) from OpenStreetMap, fetched with `tools/ski.overpassql` and converted by `tools/build_osm.py`. The **Fetch OSM ski data** GitHub Action refreshes it monthly, on demand, or when the query changes.
 
-- `public/data/land.json`: woods, scrub, farmland, water, roads, rail, buildings and resort areas from OpenStreetMap, fetched with `tools/niseko_land.overpassql` by the same Action and simplified by `tools/build_land.py` (about 300 KB).
+- `public/data/land.json`: woods, scrub, farmland, water, roads, rail, buildings and resort areas from OpenStreetMap, fetched with `tools/land.overpassql` by the same Action and simplified by `tools/build_land.py` (about 300 KB).
 
 ## Lifts
 

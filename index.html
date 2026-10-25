@@ -294,6 +294,8 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
       <dt><kbd>M</kbd></dt><dd>雪道地圖；點選位置開始滑行</dd>
     </dl>
     <div class="pick">
+      <div class="pl">雪場</div>
+      <div class="opts" id="resorts" role="radiogroup" aria-label="雪場"></div>
       <div class="pl">滑雪者</div>
       <div class="opts" id="riders" role="radiogroup" aria-label="滑雪者"></div>
       <div class="pl">站姿</div>
@@ -337,9 +339,33 @@ import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
 import { createRenderQuality } from './src/render-quality.js';
 import { chunkGeometry, chunkInstances, createNearbyShadows } from './src/spatial-rendering.js';
 import { trailRoutes, alongTrail, createTrailSigns } from './src/trail-signs.js';
+import { RESORTS as RESORT_LIST, currentResort } from './src/resorts.js';
+
+// ---------- Resort: ?resort=appi picks another mountain; everything below reads its data the same way ----------
+const RESORT = currentResort(), DATA = RESORT.data;
+document.title = RESORT.title;
+document.querySelector('#brand .name').textContent = RESORT.brand;
+document.getElementById('zone').textContent = RESORT.mountain;
+document.querySelector('#intro h1').textContent = RESORT.title;
+document.querySelector('#intro .sub').textContent = RESORT.sub;
+{
+  const box = document.getElementById('resorts');
+  for (const r of Object.values(RESORT_LIST)) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'radio'); b.textContent = r.label;
+    b.setAttribute('aria-checked', r === RESORT);
+    b.addEventListener('click', () => {
+      if (r === RESORT) return;
+      const url = new URL(location.href);
+      if (r.id === 'niseko') url.searchParams.delete('resort'); else url.searchParams.set('resort', r.id);
+      location.assign(url);
+    });
+    box.appendChild(b);
+  }
+}
 
 // ---------- Terrain data ----------
-const meta = await (await fetch('data/dem.json')).json();
+const meta = await (await fetch(DATA + 'dem.json')).json();
 const raw = new Uint16Array(Uint8Array.from(atob(meta.data), c => c.charCodeAt(0)).buffer);
 const GX = meta.gx, GY = meta.gy;
 const LAT0 = (meta.n + meta.s) / 2;
@@ -403,26 +429,29 @@ function flatNear(x, z, r = 30) {
 }
 
 // Real summit straight from the elevation grid.
-let peakK = 0; for (let i = 1; i < H.length; i++) if (H[i] > H[peakK]) peakK = i;
+// A resort can name its ski summit when a higher peak shares the box: highest cell within 400 m of it.
+let peakK = -1;
+{
+  const near = RESORT.peak && toWorld(RESORT.peak.lon, RESORT.peak.lat);
+  for (let i = 0; i < H.length; i++) {
+    if (near && Math.hypot((i % GX) * CX - WIDTH / 2 - near.x, Math.floor(i / GX) * CZ - DEPTH / 2 - near.z) > 400) continue;
+    if (peakK < 0 || H[i] > H[peakK]) peakK = i;
+  }
+}
 const PEAK = { x: (peakK % GX) * CX - WIDTH / 2, z: Math.floor(peakK / GX) * CZ - DEPTH / 2 };
 const PEAK_GEO = toGeo(PEAK.x, PEAK.z);
 
-// Approximate base areas of the four resorts (labels only, not survey data).
-const RESORTS = [
-  { name: 'Hanazono', lon: 140.716, lat: 42.889 },
-  { name: 'Grand Hirafu', lon: 140.702, lat: 42.861 },
-  { name: 'Niseko Village', lon: 140.672, lat: 42.826 },
-  { name: 'Annupuri', lon: 140.652, lat: 42.847 },
-].map(r => ({ ...r, ...toWorld(r.lon, r.lat) }));
+// Base areas of the resort (labels only, not survey data).
+const RESORTS = RESORT.bases.map(r => ({ ...r, ...toWorld(r.lon, r.lat) }));
 
 // Drop-in spots: the summit, then part-way from summit toward each resort base.
-const SPOTS = [{ name: 'Annupuri summit', ...flatNear(PEAK.x + 30, PEAK.z + 20, 25) }].concat(RESORTS.map(r => ({
+const SPOTS = [{ name: `${RESORT.summit} summit`, ...flatNear(PEAK.x + 30, PEAK.z + 20, 25) }].concat(RESORTS.map(r => ({
   name: `Above ${r.name}`, x: PEAK.x + (r.x - PEAK.x) * 0.13, z: PEAK.z + (r.z - PEAK.z) * 0.13,
 })));
 
 // ---------- OpenStreetMap pistes and lifts (optional: data/osm.json, built by tools/build_osm.py) ----------
 let OSM = null;
-try { const r = await fetch('data/osm.json'); if (r.ok) OSM = await r.json(); } catch { OSM = null; }
+try { const r = await fetch(DATA + 'osm.json'); if (r.ok) OSM = await r.json(); } catch { OSM = null; }
 // Japanese trail maps grade runs green / red / black.
 const DIFF = {
   novice: { label: '初級', color: '#2e9e4f' }, easy: { label: '初級', color: '#2e9e4f' },
@@ -518,7 +547,7 @@ function pisteAt(x, z) {
 // ---------- Land cover from OpenStreetMap (optional: data/land.json, built by tools/build_land.py) ----------
 // Rasterised once into masks the trees, terrain shader and trail map share. Without the file, forests fall back to noise.
 let LAND = null;
-try { const r = await fetch('data/land.json'); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
+try { const r = await fetch(DATA + 'land.json'); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
 const LOW_END = matchMedia('(pointer: coarse)').matches;
 const LW = LOW_END ? 1024 : 2048, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
 const LANDW = { areas: {}, lines: {}, buildings: [], labels: [] };
@@ -809,9 +838,9 @@ function grainTexture() {
   scene.add(terrain);
 }
 
-// ---------- Horizon: Mt. Yotei and the wider Niseko range from a coarse DEM ----------
+// ---------- Horizon: the resort's volcano (Mt. Yotei, Mt. Iwate) and the wider range from a coarse DEM ----------
 try {
-  const far = await (await fetch('data/far.json')).json();
+  const far = await (await fetch(DATA + 'far.json')).json();
   const fr = new Uint16Array(Uint8Array.from(atob(far.data), c => c.charCodeAt(0)).buffer);
   const fgx = far.gx, fgy = far.gy, n = fgx * fgy;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
@@ -843,7 +872,7 @@ try {
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeVertexNormals();
   const horizonMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
-  const yotei = toWorld(140.811, 42.826);
+  const yotei = toWorld(RESORT.volcano.lon, RESORT.volcano.lat);
   // Continuous, domain-warped snow cover avoids visible bands on the coarse DEM.
   horizonMaterial.onBeforeCompile = sh => {
     sh.uniforms.yoteiCenter = { value: new THREE.Vector2(yotei.x, yotei.z) };
@@ -1173,7 +1202,7 @@ const { restaurantProfile, createRestaurantDetails } = await import('./src/signa
 const { createAceSummit } = await import('./src/ace-summit.js');
 let aceSummit = null;
 try {
-  const response = await fetch('data/ace-summit.json');
+  const response = await fetch(DATA + 'ace-summit.json');
   if (response.ok) {
     const data = await response.json();
     const pts = data.osm.geometry.slice(0, -1).map(p => toWorld(p.lon, p.lat));
@@ -1331,7 +1360,7 @@ for (const [kind, width] of Object.entries(ROAD_W)) {
 const { createRoadBarrier } = await import('./src/road-boundaries.js');
 const roadBarrier = createRoadBarrier(roadSegments);
 let infrastructure = null;
-try { const r = await fetch('data/infrastructure.json'); if (r.ok) infrastructure = await r.json(); } catch (e) { console.warn('Mapped lighting unavailable', e); }
+try { const r = await fetch(DATA + 'infrastructure.json'); if (r.ok) infrastructure = await r.json(); } catch (e) { console.warn('Mapped lighting unavailable', e); }
 // Keep positions, source IDs and dimensions accessible for a future culled night-light pass.
 const mappedLighting = new THREE.Group(); mappedLighting.name = 'OSM mapped lighting'; scene.add(mappedLighting);
 for (const lamp of infrastructure?.lamps || []) {
@@ -2657,7 +2686,7 @@ const frac = (x, z) => mapFraction(x, z, WIDTH, DEPTH);
 // Villages from OSM place names (skipping street-block addresses), plus the biggest named buildings.
 const PLACES = LANDW.labels.filter(l => l.kind === 'place' && /^[\x20-\x7e]+$/.test(l.name) && !/chome|-jo|^Yotei/i.test(l.name) && Math.abs(l.x) < WIDTH / 2 - 200 && Math.abs(l.z) < DEPTH / 2 - 200)
   .filter(l => !RESORTS.some(r => r.name.includes(l.name) && Math.hypot(r.x - l.x, r.z - l.z) < 2000));
-for (const r of [{ name: `Annupuri ${Math.round(H[peakK])} m`, ...PEAK, peak: true }, ...RESORTS,
+for (const r of [{ name: `${RESORT.summit} ${Math.round(H[peakK])} m`, ...PEAK, peak: true }, ...RESORTS,
   ...PLACES.map(p => ({ ...p, cls: 'place' })), ...LANDMARKS.filter(b => b.restaurant || b.hotel).map(b => ({ ...b, cls: b.restaurant ? 'bldg dining' : 'bldg' })),
   ...LANDMARKS.filter(b => !b.restaurant && !b.hotel && /^[\x20-\x7e]+$/.test(b.name)).slice(0, 1).map(b => ({ ...b, cls: 'bldg' }))]) {
   const { u, v } = frac(r.x, r.z), el = document.createElement('div');
@@ -2761,7 +2790,7 @@ let toastT = 0;
 function toast(text, secs) { hud.toast.textContent = text; hud.toast.classList.add('on'); toastT = secs; }
 function zoneName() {
   const dx = S.p.x - PEAK.x, dz = S.p.z - PEAK.z, d = Math.hypot(dx, dz);
-  if (d < 350) return '二世古安努普利山頂';
+  if (d < 350) return RESORT.summitZone;
   if (!inResort(S.p.x, S.p.z)) {
     // Below the resorts you're in a village; above or beside them, out of bounds.
     let best = null, bd = 900;
@@ -2770,7 +2799,7 @@ function zoneName() {
     if (best && (town || S.p.y < 400)) return best.name;
     if (HAS_SKI) return '滑雪區外 · 野雪區';
   }
-  if (d > 6000) return '二世古野雪區';
+  if (d > 6000) return RESORT.backcountry;
   // Which face of the mountain: compare bearing from the summit with each resort's bearing.
   const a = Math.atan2(dz, dx);
   let best = null, bd = Infinity;
@@ -2779,7 +2808,7 @@ function zoneName() {
     if (da > Math.PI) da = 2 * Math.PI - da;
     if (da < bd) { bd = da; best = r; }
   }
-  return bd < 0.7 ? `${best.name} 側` : '二世古野雪區';
+  return bd < 0.7 ? `${best.name} 側` : RESORT.backcountry;
 }
 let hudT = 0;
 function updateHud(dt) {

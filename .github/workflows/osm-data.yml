@@ -6,8 +6,9 @@ on:
     - cron: '0 3 1 * *'   # monthly refresh
   push:
     paths:
-      - tools/niseko.overpassql
-      - tools/niseko_land.overpassql
+      - tools/ski.overpassql
+      - tools/land.overpassql
+      - tools/resorts.json
       - tools/build_osm.py
       - tools/build_land.py
       - tools/fetch_infrastructure.mjs
@@ -26,31 +27,38 @@ jobs:
           node-version: 22
       - name: Refresh mapped lighting
         continue-on-error: true # Preserve existing lamps if Overpass is unavailable.
-        run: node tools/fetch_infrastructure.mjs
-      - name: Query Overpass
+        run: |
+          RESORT=niseko node tools/fetch_infrastructure.mjs
+          RESORT=appi node tools/fetch_infrastructure.mjs
+      - name: Query Overpass and build osm.json and land.json for each resort
         run: |
           mkdir -p tools/data
           fetch() {
+            # The queries share one area placeholder; tools/resorts.json gives each resort's box as w,s,e,n.
+            query=$(python3 -c "import json,sys; w,s,e,n=json.load(open('tools/resorts.json'))['$3']['bbox']; print(open(sys.argv[1]).read().replace('{{bbox}}', f'{s},{w},{n},{e}'))" "$1")
             for url in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter; do
-              if curl -fsS --retry 3 --retry-delay 30 --max-time 600 --data-urlencode "data@$1" "$url" -o "$2"; then return 0; fi
+              if curl -fsS --retry 3 --retry-delay 30 --max-time 600 --data-urlencode "data=$query" "$url" -o "$2"; then return 0; fi
             done
             return 1
           }
-          fetch tools/niseko.overpassql tools/data/osm_niseko.json
-          sleep 20
-          # Land cover, roads, buildings: large, so the raw response stays out of git.
-          fetch tools/niseko_land.overpassql "$RUNNER_TEMP/osm_land.json"
-          test -s tools/data/osm_niseko.json && test -s "$RUNNER_TEMP/osm_land.json"
-      - name: Build public/data/osm.json and land.json
-        run: |
-          python3 tools/build_osm.py tools/data/osm_niseko.json public/data/osm.json
-          python3 tools/build_land.py "$RUNNER_TEMP/osm_land.json" public/data/land.json
-          ls -l public/data
+          for resort in niseko appi; do
+            out=$(python3 -c "import json; print(json.load(open('tools/resorts.json'))['$resort']['out'])")
+            mkdir -p "$out"
+            fetch tools/ski.overpassql "tools/data/osm_$resort.json" "$resort"
+            sleep 20
+            # Land cover, roads, buildings: large, so the raw response stays out of git.
+            fetch tools/land.overpassql "$RUNNER_TEMP/osm_land_$resort.json" "$resort"
+            test -s "tools/data/osm_$resort.json" && test -s "$RUNNER_TEMP/osm_land_$resort.json"
+            python3 tools/build_osm.py "tools/data/osm_$resort.json" "$out/osm.json"
+            RESORT=$resort python3 tools/build_land.py "$RUNNER_TEMP/osm_land_$resort.json" "$out/land.json"
+            ls -l "$out"
+            sleep 20
+          done
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tools/data/osm_niseko.json public/data/osm.json public/data/land.json
+          git add tools/data public/data
           if ! git diff --cached --quiet; then
             git commit -m "Update OSM ski and land data"
             git pull --rebase origin "$GITHUB_REF_NAME"
