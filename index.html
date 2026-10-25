@@ -1040,7 +1040,12 @@ const AV = { ready: false };
     const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
       import('three/addons/loaders/GLTFLoader.js'), import('three/addons/libs/meshopt_decoder.module.js'),
     ]);
-    const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('models/rider.glb');
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+    // Hosts that can't serve .glb get the same bytes as base64 in models/rider.json.
+    const gltf = await loader.loadAsync('models/rider.glb').catch(async () => {
+      const { data } = await (await fetch('models/rider.json')).json();
+      return loader.parseAsync(Uint8Array.from(atob(data), c => c.charCodeAt(0)).buffer, '');
+    });
     const model = gltf.scene;
     // Snow kit: olive shell jacket, black pants, brown boots; keep the fabric normal maps for folds.
     const kit = {
