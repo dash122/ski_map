@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Slop Niseko</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas; HUD pinned to the corners like trail-map signage. Single dark look by choice. */
+:root {
+  --ink: #0d1b2a;          /* deep alpine night, panel ground */
+  --panel: rgba(13, 27, 42, 0.72);
+  --snow: #f4f8fc;
+  --mist: #a9bccf;
+  --signal: #ff6a3d;       /* lift-pass orange */
+  --green: #3fbf6a; --blue: #3a8dde; --black: #111; /* piste grades */
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--ink); color: var(--snow); font-family: var(--body); overflow: hidden; }
+canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.hud { position: fixed; pointer-events: none; z-index: 2; }
+.panel { background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 6px; }
+#brand { top: calc(12px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 8px 12px; }
+#brand .name { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; }
+#brand .zone { font-size: 13px; color: var(--mist); }
+#stats { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 10px 14px; display: flex; gap: 18px; align-items: flex-end; font-variant-numeric: tabular-nums; }
+.stat .v { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 1; }
+.stat.big .v { font-size: 52px; color: var(--snow); }
+.stat .l { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mist); margin-top: 3px; }
+#mini { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 6px; }
+#mini canvas { display: block; width: 200px; height: 160px; border-radius: 3px; }
+#keys { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 10px 12px; font-size: 12px; color: var(--mist); line-height: 1.7; }
+kbd { font-family: var(--display); font-weight: 600; color: var(--snow); background: rgba(255,255,255,0.12); border-radius: 3px; padding: 0 5px; }
+#toast { top: 32%; left: 50%; transform: translateX(-50%); font-family: var(--display); font-weight: 700; font-size: 44px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); text-shadow: 0 2px 18px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.25s; white-space: nowrap; }
+#toast.on { opacity: 1; }
+#prompt { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); pointer-events: auto; background: var(--signal); color: var(--ink); border: 0; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(255,255,255,0.6); vertical-align: 0; }
+
+/* Intro card and full map share the modal layer */
+.modal { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(8, 16, 26, 0.55); padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+#intro .card { max-width: 440px; padding: 24px 26px; }
+#intro h1 { font-family: var(--display); font-weight: 700; font-size: 40px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0; line-height: 1; text-wrap: balance; }
+#intro .sub { color: var(--mist); margin: 6px 0 16px; font-size: 14px; }
+#intro dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 18px; font-size: 14px; }
+#intro dt { text-align: right; }
+#intro dd { margin: 0; color: var(--mist); }
+.go { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); background: var(--signal); border: 0; border-radius: 4px; padding: 10px 22px; cursor: pointer; }
+.go:focus-visible, button:focus-visible { outline: 2px solid var(--snow); outline-offset: 2px; }
+.note { font-size: 12px; color: var(--mist); margin-top: 14px; line-height: 1.5; }
+#loading { font-family: var(--display); font-size: 18px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist); }
+
+#map .wrap { position: relative; width: min(100%, calc((100vh - 40px) * 1.25)); }
+#map canvas { display: block; width: 100%; height: auto; border-radius: 6px; cursor: crosshair; }
+#map .label { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); background: rgba(244, 248, 252, 0.85); padding: 1px 6px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
+#map .label.peak { background: var(--signal); }
+#map .me { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--signal); border: 2px solid var(--snow); pointer-events: none; }
+#map .cap { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--ink); background: rgba(244,248,252,0.8); padding: 2px 6px; border-radius: 3px; }
+#map .close { position: absolute; right: 8px; top: 8px; }
+.btn { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--snow); background: var(--panel); border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+
+#touch { position: fixed; inset: auto 0 0 0; z-index: 3; display: none; justify-content: space-between; align-items: flex-end; padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); pointer-events: none; }
+#touch .grp { display: flex; gap: 10px; pointer-events: auto; }
+#touch button { width: 64px; height: 64px; border-radius: 50%; font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 0.06em; color: var(--snow); background: rgba(13,27,42,0.55); border: 1px solid rgba(255,255,255,0.25); touch-action: none; user-select: none; -webkit-user-select: none; }
+@media (pointer: coarse) {
+  #touch { display: flex; }
+  #keys { display: none; }
+  #stats { gap: 12px; }
+  .stat.big .v { font-size: 40px; }
+  #mini canvas { width: 140px; height: 112px; }
+}
+@media (max-width: 520px) { .stat:not(.big):nth-child(n+4) { display: none; } #toast { font-size: 32px; } }
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+
+<canvas id="gl"></canvas>
+
+<div class="hud panel" id="brand"><div class="name">Niseko</div><div class="zone" id="zone">Mt. Niseko Annupuri</div></div>
+<div class="hud panel" id="mini"><canvas id="minimap" width="400" height="320"></canvas></div>
+<div class="hud panel" id="stats">
+  <div class="stat big"><div class="v" id="spd">0</div><div class="l">km/h</div></div>
+  <div class="stat"><div class="v" id="alt">0</div><div class="l">Elevation m</div></div>
+  <div class="stat"><div class="v" id="slope">0°</div><div class="l">Slope</div></div>
+  <div class="stat"><div class="v" id="vert">0</div><div class="l">Vert m</div></div>
+  <div class="stat"><div class="v" id="top">0</div><div class="l">Top km/h</div></div>
+</div>
+<div class="hud panel" id="keys">
+  <kbd>A</kbd><kbd>D</kbd> carve · <kbd>W</kbd> tuck/skate · <kbd>S</kbd> brake<br>
+  <kbd>Space</kbd> ollie (A/D to spin) · <kbd>C</kbd> camera<br>
+  <kbd>M</kbd> map / teleport · <kbd>R</kbd> back to drop · <kbd>E</kbd> ride lift · <kbd>1</kbd>–<kbd>5</kbd> spots
+</div>
+<div class="hud" id="toast"></div>
+<button class="hud btn" id="prompt" hidden></button>
+
+<div id="touch">
+  <div class="grp"><button id="tL" aria-label="Carve left">◀</button><button id="tR" aria-label="Carve right">▶</button></div>
+  <div class="grp"><button id="tB">Brake</button><button id="tT">Tuck</button><button id="tJ">Jump</button><button id="tM">Map</button></div>
+</div>
+
+<div class="modal" id="intro">
+  <div class="card panel">
+    <h1>Slop Niseko</h1>
+    <p class="sub">Snowboard the real terrain of Mt. Niseko Annupuri, Hokkaido.</p>
+    <dl>
+      <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>Carve left and right</dd>
+      <dt><kbd>W</kbd></dt><dd>Tuck for speed, skate on the flats</dd>
+      <dt><kbd>S</kbd></dt><dd>Skid to brake</dd>
+      <dt><kbd>Space</kbd></dt><dd>Ollie, then A or D to spin</dd>
+      <dt><kbd>M</kbd></dt><dd>Trail map. Click anywhere to drop in there</dd>
+    </dl>
+    <div id="loading">Loading terrain…</div>
+    <button class="go" id="start" hidden>Drop in</button>
+    <p class="note" id="credits">Elevation: AWS Terrain Tiles (SRTM-derived), about 17 m grid over a 10 × 10 km area. Resort labels are approximate. Pistes and lifts from OpenStreetMap are next.</p>
+  </div>
+</div>
+
+<div class="modal" id="map" hidden>
+  <div class="wrap">
+    <canvas id="bigmap" width="1280" height="1024"></canvas>
+    <div id="labels"></div>
+    <div class="me" id="me"></div>
+    <div class="cap">Click to drop in · 100 m contours</div>
+    <button class="btn close" id="mapClose">Close</button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ---------- Terrain data ----------
+const meta = await (await fetch('data/dem.json')).json();
+const raw = new Uint16Array(Uint8Array.from(atob(meta.data), c => c.charCodeAt(0)).buffer);
+const GX = meta.gx, GY = meta.gy;
+const LAT0 = (meta.n + meta.s) / 2;
+const M_LAT = 111132.92 - 559.82 * Math.cos(2 * LAT0 * Math.PI / 180);
+const M_LON = 111412.84 * Math.cos(LAT0 * Math.PI / 180);
+const WIDTH = (meta.e - meta.w) * M_LON, DEPTH = (meta.n - meta.s) * M_LAT;
+const CX = WIDTH / (GX - 1), CZ = DEPTH / (GY - 1);
+
+// Heights in metres, lightly smoothed so upsampled 30 m data rides cleanly.
+let H = new Float32Array(GX * GY);
+for (let i = 0; i < H.length; i++) H[i] = raw[i] * meta.scale;
+{
+  const S = new Float32Array(H.length);
+  for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) {
+    let s = 0, w = 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const ii = Math.min(GX - 1, Math.max(0, i + di)), jj = Math.min(GY - 1, Math.max(0, j + dj));
+      const k = (di === 0 ? 2 : 1) * (dj === 0 ? 2 : 1);
+      s += H[jj * GX + ii] * k; w += k;
+    }
+    S[j * GX + i] = s / w;
+  }
+  H = S;
+}
+
+const toWorld = (lon, lat) => ({ x: (lon - meta.w) * M_LON - WIDTH / 2, z: (meta.n - lat) * M_LAT - DEPTH / 2 });
+const toGeo = (x, z) => ({ lon: meta.w + (x + WIDTH / 2) / M_LON, lat: meta.n - (z + DEPTH / 2) / M_LAT });
+
+function height(x, z) {
+  let fi = (x + WIDTH / 2) / CX, fj = (z + DEPTH / 2) / CZ;
+  fi = Math.min(GX - 1.001, Math.max(0, fi)); fj = Math.min(GY - 1.001, Math.max(0, fj));
+  const i = fi | 0, j = fj | 0, u = fi - i, v = fj - j, k = j * GX + i;
+  return (H[k] * (1 - u) + H[k + 1] * u) * (1 - v) + (H[k + GX] * (1 - u) + H[k + GX + 1] * u) * v;
+}
+const _n = new THREE.Vector3();
+function normalAt(x, z, out = _n) {
+  const e = 4;
+  return out.set(height(x - e, z) - height(x + e, z), 2 * e, height(x, z - e) - height(x, z + e)).normalize();
+}
+
+// Real summit straight from the elevation grid.
+let peakK = 0; for (let i = 1; i < H.length; i++) if (H[i] > H[peakK]) peakK = i;
+const PEAK = { x: (peakK % GX) * CX - WIDTH / 2, z: Math.floor(peakK / GX) * CZ - DEPTH / 2 };
+const PEAK_GEO = toGeo(PEAK.x, PEAK.z);
+
+// Approximate base areas of the four resorts (labels only, not survey data).
+const RESORTS = [
+  { name: 'Hanazono', lon: 140.716, lat: 42.889 },
+  { name: 'Grand Hirafu', lon: 140.702, lat: 42.861 },
+  { name: 'Niseko Village', lon: 140.672, lat: 42.826 },
+  { name: 'Annupuri', lon: 140.652, lat: 42.847 },
+].map(r => ({ ...r, ...toWorld(r.lon, r.lat) }));
+
+// Drop-in spots: the summit, then part-way from summit toward each resort base.
+const SPOTS = [{ name: 'Annupuri summit', x: PEAK.x + 40, z: PEAK.z + 25 }].concat(RESORTS.map(r => ({
+  name: `Above ${r.name}`, x: PEAK.x + (r.x - PEAK.x) * 0.13, z: PEAK.z + (r.z - PEAK.z) * 0.13,
+})));
+
+// ---------- OpenStreetMap pistes and lifts (optional: data/osm.json, built by tools/build_osm.py) ----------
+let OSM = null;
+try { const r = await fetch('data/osm.json'); if (r.ok) OSM = await r.json(); } catch { OSM = null; }
+// Japanese trail maps grade runs green / red / black.
+const DIFF = {
+  novice: { label: 'Beginner', color: '#2e9e4f' }, easy: { label: 'Beginner', color: '#2e9e4f' },
+  intermediate: { label: 'Intermediate', color: '#d23c3c' }, advanced: { label: 'Advanced', color: '#15171a' },
+  expert: { label: 'Expert', color: '#15171a' }, extreme: { label: 'Extreme', color: '#15171a' },
+  freeride: { label: 'Off-piste', color: '#ff8a00' },
+};
+const diffOf = d => DIFF[d] || { label: 'Run', color: '#5b6b7c' };
+const MASK_W = 2048, MASK_H = Math.round(MASK_W * DEPTH / WIDTH);
+const pisteCanvas = document.createElement('canvas'); pisteCanvas.width = MASK_W; pisteCanvas.height = MASK_H;
+let pisteData = null;
+const PISTES = [], LIFTS = [];
+const SEG_CELL = 60, segGrid = new Map();
+const worldPts = flat => { const out = []; for (let i = 0; i < flat.length; i += 2) out.push(toWorld(flat[i], flat[i + 1])); return out; };
+if (OSM) {
+  const g = pisteCanvas.getContext('2d'), sx = MASK_W / WIDTH, sz = MASK_H / DEPTH;
+  g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
+  for (const p of OSM.pistes || []) {
+    const pts = worldPts(p.c); if (pts.length < 2) continue;
+    const piste = { name: p.n || '', diff: p.d || '', area: !!p.a, pts };
+    PISTES.push(piste);
+    g.beginPath();
+    pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo']((q.x + WIDTH / 2) * sx, (q.z + DEPTH / 2) * sz));
+    if (piste.area) { g.closePath(); g.fill(); }
+    else { g.lineWidth = (/novice|easy/.test(piste.diff) ? 44 : 34) * sx; g.stroke(); }
+    // Index segments so the HUD can name the run under the board.
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const x0 = Math.floor((Math.min(a.x, b.x) - 25) / SEG_CELL), x1 = Math.floor((Math.max(a.x, b.x) + 25) / SEG_CELL);
+      const z0 = Math.floor((Math.min(a.z, b.z) - 25) / SEG_CELL), z1 = Math.floor((Math.max(a.z, b.z) + 25) / SEG_CELL);
+      for (let cz = z0; cz <= z1; cz++) for (let cx = x0; cx <= x1; cx++) {
+        const key = cx + ',' + cz;
+        if (!segGrid.has(key)) segGrid.set(key, []);
+        segGrid.get(key).push([a, b, piste]);
+      }
+    }
+  }
+  pisteData = g.getImageData(0, 0, MASK_W, MASK_H).data;
+  for (const l of OSM.lifts || []) {
+    let pts = worldPts(l.c); if (pts.length < 2) continue;
+    if (height(pts[0].x, pts[0].z) > height(pts.at(-1).x, pts.at(-1).z)) pts = pts.reverse(); // ride uphill
+    LIFTS.push({ name: l.n || 'Lift', type: l.t || '', pts });
+  }
+}
+function onPiste(x, z) {
+  if (!pisteData) return false;
+  const i = Math.floor((x + WIDTH / 2) / WIDTH * MASK_W), j = Math.floor((z + DEPTH / 2) / DEPTH * MASK_H);
+  return i >= 0 && j >= 0 && i < MASK_W && j < MASK_H && pisteData[(j * MASK_W + i) * 4] > 100;
+}
+function pisteAt(x, z) {
+  const list = segGrid.get(Math.floor(x / SEG_CELL) + ',' + Math.floor(z / SEG_CELL));
+  if (!list) return null;
+  let best = null, bd = 25 * 25;
+  for (const [a, b, p] of list) {
+    const dx = b.x - a.x, dz = b.z - a.z, L = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / L));
+    const ex = a.x + dx * t - x, ez = a.z + dz * t - z, d = ex * ex + ez * ez;
+    if (d < bd) { bd = d; best = p; }
+  }
+  return best;
+}
+
+// ---------- Renderer & scene ----------
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const FOG = new THREE.Color(0xc9d8e6);
+scene.fog = new THREE.FogExp2(FOG, 0.00011);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 40000);
+
+// Sky dome with a winter gradient.
+const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { top: { value: new THREE.Color(0x3d6ea8) }, horizon: { value: FOG } },
+  vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+  fragmentShader: 'uniform vec3 top, horizon; varying vec3 vP; void main(){ float h = clamp(normalize(vP).y * 3.0, 0., 1.); gl_FragColor = vec4(mix(horizon, top, pow(h, 0.7)), 1.); }',
+}));
+scene.add(sky);
+
+scene.add(new THREE.HemisphereLight(0xcfe3ff, 0xdfe6ee, 0.95));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.9);
+const SUN_DIR = new THREE.Vector3(-0.45, 0.42, 0.78).normalize(); // low winter sun from the south-west
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 400 });
+sun.shadow.bias = -0.0005;
+scene.add(sun, sun.target);
+
+// Fine snow grain texture so speed reads at close range.
+function grainTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d'), img = g.createImageData(256, 256);
+  for (let i = 0; i < 256 * 256; i++) {
+    const y = i >> 8;
+    const streak = 0.03 * Math.sin(y * 0.35 + Math.sin(i * 0.002) * 3);
+    const v = 236 + (Math.random() * 19 | 0) + streak * 255;
+    img.data[i * 4] = img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = Math.min(255, v + 6); img.data[i * 4 + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+
+// ---------- Terrain mesh ----------
+{
+  const pos = new Float32Array(GX * GY * 3), col = new Float32Array(GX * GY * 3), uv = new Float32Array(GX * GY * 2);
+  const n = new THREE.Vector3();
+  for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) {
+    const k = j * GX + i, x = i * CX - WIDTH / 2, z = j * CZ - DEPTH / 2, h = H[k];
+    pos.set([x, h, z], k * 3); uv.set([x / 7, z / 7], k * 2);
+    normalAt(x, z, n);
+    const rock = THREE.MathUtils.smoothstep(1 - n.y, 0.32, 0.5) * 0.55;  // wind-scoured cliffs
+    const lowTint = THREE.MathUtils.smoothstep(600 - h, 0, 500) * 0.03;   // valley snow slightly warmer
+    col.set([0.95 - rock * 0.5 + lowTint, 0.965 - rock * 0.5 + lowTint * 0.6, 1.0 - rock * 0.45], k * 3);
+  }
+  const idx = new Uint32Array((GX - 1) * (GY - 1) * 6);
+  let p = 0;
+  for (let j = 0; j < GY - 1; j++) for (let i = 0; i < GX - 1; i++) {
+    const a = j * GX + i, b = a + 1, c = a + GX, d = c + 1;
+    idx[p++] = a; idx[p++] = c; idx[p++] = b; idx[p++] = b; idx[p++] = c; idx[p++] = d;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: grainTexture(), roughness: 0.82, metalness: 0 });
+  if (pisteData) {
+    // Groomed runs: smoother, slightly bluer snow with faint corduroy, from the OSM piste mask.
+    const maskTex = new THREE.CanvasTexture(pisteCanvas);
+    maskTex.flipY = false;
+    mat.onBeforeCompile = sh => {
+      sh.uniforms.pisteMask = { value: maskTex };
+      sh.uniforms.extent = { value: new THREE.Vector4(-WIDTH / 2, -DEPTH / 2, WIDTH, DEPTH) };
+      sh.vertexShader = 'varying vec2 vWXZ;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvWXZ = (modelMatrix * vec4(position, 1.0)).xz;');
+      sh.fragmentShader = 'uniform sampler2D pisteMask;\nuniform vec4 extent;\nvarying vec2 vWXZ;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        float pm = texture2D(pisteMask, (vWXZ - extent.xy) / extent.zw).r;
+        float cord = 0.975 + 0.025 * sin(dot(vWXZ, vec2(2.6, 0.9)));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vColor.rgb * vec3(0.93, 0.955, 0.995) * cord, pm * 0.8);`);
+    };
+  }
+  const terrain = new THREE.Mesh(geo, mat);
+  terrain.receiveShadow = true;
+  scene.add(terrain);
+}
+
+// ---------- Trees (snow-loaded firs and birch, placed by elevation, slope and patchy noise) ----------
+function hash2(x, y) {
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function vnoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+}
+const fbm = (x, y) => vnoise(x, y) * 0.6 + vnoise(x * 2.1, y * 2.1) * 0.28 + vnoise(x * 4.3, y * 4.3) * 0.12;
+
+function coloredGeo(geo, color) {
+  if (geo.index) geo = geo.toNonIndexed();
+  const c = new THREE.Color(color), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  geo.deleteAttribute('uv');
+  return geo;
+}
+function merge(parts) {
+  const total = parts.reduce((s, g) => s + g.attributes.position.count, 0);
+  const out = new THREE.BufferGeometry();
+  for (const name of ['position', 'normal', 'color']) {
+    const arr = new Float32Array(total * 3); let o = 0;
+    for (const g of parts) { arr.set(g.attributes[name].array, o); o += g.attributes[name].array.length; }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, 3));
+  }
+  return out;
+}
+const firGeo = merge([
+  coloredGeo(new THREE.CylinderGeometry(0.12, 0.18, 2, 5).translate(0, 1, 0), 0x4a3a2c),
+  coloredGeo(new THREE.ConeGeometry(2.0, 3.6, 7).translate(0, 3.0, 0), 0x2c4a3c),
+  coloredGeo(new THREE.ConeGeometry(1.75, 0.5, 7).translate(0, 2.2, 0), 0xe9f0f5),
+  coloredGeo(new THREE.ConeGeometry(1.5, 3.0, 7).translate(0, 4.8, 0), 0x355a47),
+  coloredGeo(new THREE.ConeGeometry(1.2, 0.45, 7).translate(0, 4.4, 0), 0xe9f0f5),
+  coloredGeo(new THREE.ConeGeometry(0.9, 2.4, 7).translate(0, 6.6, 0), 0x3d6450),
+  coloredGeo(new THREE.ConeGeometry(0.45, 0.8, 7).translate(0, 7.6, 0), 0xf3f7fa),
+]);
+const birchGeo = merge([
+  coloredGeo(new THREE.CylinderGeometry(0.1, 0.16, 7, 5).translate(0, 3.5, 0), 0xd9d6cf),
+  coloredGeo(new THREE.IcosahedronGeometry(1.7, 0).scale(1, 1.5, 1).translate(0, 6.3, 0), 0x8b7d6f),
+]);
+
+const TREE_CELL = 12;
+const treeGrid = new Map(); // "ci,cj" -> [x, z, r, x, z, r, ...]
+{
+  const firs = [], birches = [];
+  const n = new THREE.Vector3();
+  const step = 13;
+  for (let z = -DEPTH / 2 + 20; z < DEPTH / 2 - 20; z += step) {
+    for (let x = -WIDTH / 2 + 20; x < WIDTH / 2 - 20; x += step) {
+      const jx = x + (hash2(x * 7, z * 3) - 0.5) * step, jz = z + (hash2(x * 5, z * 11) - 0.5) * step;
+      const h = height(jx, jz);
+      const forest = fbm(jx / 520, jz / 520);
+      const treeline = 880 + (vnoise(jx / 900, jz / 900) - 0.5) * 260;
+      if (h > treeline) continue;
+      normalAt(jx, jz, n);
+      if (n.y < 0.8 || onPiste(jx, jz)) continue;
+      const density = THREE.MathUtils.smoothstep(forest, 0.42, 0.62) * THREE.MathUtils.smoothstep(treeline - h, 0, 120);
+      if (hash2(jx * 13, jz * 17) > density * 0.24) continue;
+      const birch = h < 650 && hash2(jx * 3, jz * 29) < 0.35;
+      const s = 0.7 + hash2(jx * 19, jz * 23) * 0.9;
+      (birch ? birches : firs).push([jx, h - 0.3, jz, s, hash2(jx, jz) * Math.PI * 2]);
+      const key = `${Math.floor(jx / TREE_CELL)},${Math.floor(jz / TREE_CELL)}`;
+      if (!treeGrid.has(key)) treeGrid.set(key, []);
+      treeGrid.get(key).push(jx, jz, (birch ? 0.3 : 0.45) * s + 0.35);
+    }
+  }
+  const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), ps = new THREE.Vector3();
+  for (const [list, geo] of [[firs, firGeo], [birches, birchGeo]]) {
+    const im = new THREE.InstancedMesh(geo, treeMat, list.length);
+    list.forEach(([x, y, z, s, r], i) => {
+      q.setFromAxisAngle(up, r); sc.set(s, s * (0.9 + (s % 0.2)), s); ps.set(x, y, z);
+      im.setMatrixAt(i, m4.compose(ps, q, sc));
+    });
+    im.computeBoundingSphere();
+    scene.add(im);
+  }
+  console.log(`trees: ${firs.length} firs, ${birches.length} birch`);
+}
+function treeHit(x, z) {
+  const ci = Math.floor(x / TREE_CELL), cj = Math.floor(z / TREE_CELL);
+  for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+    const list = treeGrid.get(`${ci + di},${cj + dj}`);
+    if (!list) continue;
+    for (let k = 0; k < list.length; k += 3) {
+      const dx = x - list[k], dz = z - list[k + 1];
+      if (dx * dx + dz * dz < list[k + 2] * list[k + 2]) return true;
+    }
+  }
+  return false;
+}
+
+// ---------- Rider ----------
+const rider = new THREE.Group();     // oriented to the board: +X along board, +Y board normal, +Z toe side
+const body = new THREE.Group();      // leans and crouches inside the rider frame
+rider.add(body);
+{
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
+  const jacket = M(0xff6a3d), pants = M(0x22324a), white = M(0xf2f4f6), dark = M(0x15191f);
+  const add = (geo, mat, x, y, z, parent = body) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; };
+  const board = add(new THREE.BoxGeometry(1.55, 0.03, 0.29), M(0x1f6fb2, { roughness: 0.4 }), 0, 0.03, 0, rider);
+  add(new THREE.BoxGeometry(1.3, 0.035, 0.25), white, 0, 0.05, 0, rider).scale.set(1, 0.5, 1);
+  board.scale.set(1, 1, 1);
+  for (const sx of [-0.27, 0.27]) {
+    add(new THREE.BoxGeometry(0.28, 0.12, 0.13), dark, sx, 0.1, 0);                 // boots
+    const leg = add(new THREE.CylinderGeometry(0.08, 0.075, 0.82, 8), pants, sx * 0.62, 0.52, -0.04);
+    leg.rotation.z = sx > 0 ? 0.33 : -0.33;
+  }
+  add(new THREE.BoxGeometry(0.42, 0.56, 0.26), jacket, 0, 1.12, -0.02);
+  add(new THREE.SphereGeometry(0.13, 16, 12), white, 0.02, 1.55, 0);                  // helmet
+  add(new THREE.BoxGeometry(0.1, 0.07, 0.2), M(0xffb347, { roughness: 0.15, metalness: 0.3 }), 0.12, 1.53, 0); // goggles face down the board
+  for (const sx of [-1, 1]) {
+    const arm = add(new THREE.CylinderGeometry(0.055, 0.05, 0.62, 8), jacket, sx * 0.33, 1.06, 0.02);
+    arm.rotation.z = sx * 1.1;
+  }
+}
+scene.add(rider);
+
+// ---------- Lifts: towers, cables, stations and moving chairs ----------
+const CHAIR_SPACING = 28, LIFT_SPEED = 5;   // metres between chairs; detachable chairs run about 5 m/s
+const SURFACE_LIFT = /t-bar|j-bar|platter|drag_lift|magic_carpet|rope_tow/;
+const CABLE_SIDE = 2.6;                      // half the gap between up and down cables
+function liftPoint(L, s, side = 0, out = new THREE.Vector3()) {
+  s = Math.max(0, Math.min(L.total, s));
+  let i = 1; while (i < L.len.length - 1 && L.len[i] < s) i++;
+  const a = L.path[i - 1], b = L.path[i], t = (s - L.len[i - 1]) / (L.len[i] - L.len[i - 1] || 1);
+  const dx = b.x - a.x, dz = b.z - a.z, dl = Math.hypot(dx, dz) || 1;
+  return out.set(a.x + dx * t - dz / dl * side, a.y + (b.y - a.y) * t, a.z + dz * t + dx / dl * side);
+}
+const chairMeshes = [];
+if (LIFTS.length) {
+  const towers = [], cable = [], stations = [];
+  for (const L of LIFTS) {
+    L.surface = SURFACE_LIFT.test(L.type);
+    L.cabin = /gondola|cable_car|mixed_lift/.test(L.type);
+    L.towerH = L.surface ? 2.5 : L.cabin ? 16 : 11;
+    // Densify the line, put a tower every ~90 m and run the cable between tower tops.
+    const path = [];
+    for (let i = 0; i < L.pts.length - 1; i++) {
+      const a = L.pts[i], b = L.pts[i + 1], n = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.z - a.z) / 90));
+      for (let k = 0; k < n; k++) path.push({ x: a.x + (b.x - a.x) * k / n, z: a.z + (b.z - a.z) * k / n });
+    }
+    path.push(L.pts.at(-1));
+    L.path = path.map(p => ({ x: p.x, z: p.z, y: height(p.x, p.z) + L.towerH }));
+    L.len = [0];
+    for (let i = 1; i < L.path.length; i++) { const a = L.path[i - 1], b = L.path[i]; L.len.push(L.len[i - 1] + Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z)); }
+    L.total = L.len.at(-1);
+    L.path.forEach((p, i) => {
+      const q = L.path[Math.min(i + 1, L.path.length - 1)], r = L.path[Math.max(i - 1, 0)];
+      const yaw = Math.atan2(-(q.x - r.x), -(q.z - r.z));
+      if (i === 0 || i === L.path.length - 1) stations.push([p.x, p.y - L.towerH, p.z, yaw, L.surface ? 0.5 : 1]);
+      else towers.push([p.x, p.y - L.towerH, p.z, yaw, L.towerH]);
+    });
+    for (const side of [-CABLE_SIDE, CABLE_SIDE]) for (let i = 0; i < L.path.length - 1; i++) {
+      const a = liftPoint(L, L.len[i], side), b = liftPoint(L, L.len[i + 1], side);
+      cable.push(a.x, a.y, a.z, b.x, b.y, b.z);
+    }
+  }
+  const steel = new THREE.MeshStandardMaterial({ color: 0x59636e, roughness: 0.5, metalness: 0.6 });
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), s = new THREE.Vector3();
+  const place = (geo, mat, list, f) => {
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach((it, i) => { f(it); im.setMatrixAt(i, m4.compose(v, q, s)); });
+    im.castShadow = true; im.computeBoundingSphere(); scene.add(im);
+  };
+  place(new THREE.CylinderGeometry(0.28, 0.4, 1, 6).translate(0, 0.5, 0), steel, towers, ([x, y, z, yaw, h]) => { v.set(x, y, z); q.setFromEuler(e.set(0, yaw, 0)); s.set(1, h, 1); });
+  place(new THREE.BoxGeometry(CABLE_SIDE * 2 + 1, 0.35, 0.35), steel, towers, ([x, y, z, yaw, h]) => { v.set(x, y + h, z); q.setFromEuler(e.set(0, yaw, 0)); s.set(1, 1, 1); });
+  place(new THREE.BoxGeometry(10, 6, 9).translate(0, 3, 0), new THREE.MeshStandardMaterial({ color: 0x6b5d52, roughness: 0.8 }), stations, ([x, y, z, yaw, k]) => { v.set(x, y - 0.5, z); q.setFromEuler(e.set(0, yaw, 0)); s.set(k, k, k); });
+  const cableGeo = new THREE.BufferGeometry(); cableGeo.setAttribute('position', new THREE.Float32BufferAttribute(cable, 3));
+  scene.add(new THREE.LineSegments(cableGeo, new THREE.LineBasicMaterial({ color: 0x2a2f36 })));
+
+  const chairGeo = merge([
+    coloredGeo(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 4).translate(0, -1.1, 0), 0x2a2f36),
+    coloredGeo(new THREE.BoxGeometry(2.3, 0.12, 0.6).translate(0, -2.2, 0.1), 0x24486e),
+    coloredGeo(new THREE.BoxGeometry(2.3, 0.6, 0.08).translate(0, -1.9, -0.2), 0x24486e),
+  ]);
+  const cabinGeo = merge([
+    coloredGeo(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 4).translate(0, -0.6, 0), 0x2a2f36),
+    coloredGeo(new THREE.BoxGeometry(1.9, 2.1, 1.9).translate(0, -2.3, 0), 0xc8452f),
+    coloredGeo(new THREE.BoxGeometry(1.95, 0.7, 1.95).translate(0, -1.9, 0), 0x9fc7e8),
+  ]);
+  const chairMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  for (const L of LIFTS) {
+    if (L.surface) continue;
+    const n = Math.floor(2 * L.total / CHAIR_SPACING);
+    if (n < 2) continue;
+    const im = new THREE.InstancedMesh(L.cabin ? cabinGeo : chairGeo, chairMat, n);
+    im.frustumCulled = false;
+    scene.add(im);
+    chairMeshes.push({ L, im, n });
+  }
+}
+const _cp = new THREE.Vector3(), _cq = new THREE.Vector3(), _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _one = new THREE.Vector3(1, 1, 1);
+function updateLifts(time) {
+  for (const { L, im, n } of chairMeshes) {
+    const loop = 2 * L.total, spacing = loop / n;
+    for (let k = 0; k < n; k++) {
+      const u = (k * spacing + time * LIFT_SPEED) % loop;
+      const up = u < L.total, s = up ? u : loop - u, side = up ? CABLE_SIDE : -CABLE_SIDE;
+      liftPoint(L, s, side, _cp); liftPoint(L, s + (up ? 1 : -1), side, _cq);
+      _e.set(0, Math.atan2(_cq.x - _cp.x, _cq.z - _cp.z), 0);
+      im.setMatrixAt(k, _m4.compose(_cp, _q.setFromEuler(_e), _one));
+    }
+    im.instanceMatrix.needsUpdate = true;
+  }
+}
+function nearLiftBase() {
+  let best = null, bd = 35;
+  for (const L of LIFTS) {
+    const d = Math.hypot(L.path[0].x - S.p.x, L.path[0].z - S.p.z);
+    if (d < bd) { bd = d; best = L; }
+  }
+  return best;
+}
+function startRide(L) { S.ride = { L, s: 0 }; S.crash = 0; toast(L.name, 1.4); }
+function rideStep(dt) {
+  const R = S.ride, L = R.L;
+  const fast = keys.has('w') || keys.has('arrowup') || touch.T ? 8 : 1;
+  R.s += dt * LIFT_SPEED * fast;
+  const prev = tmp2.copy(S.p);
+  liftPoint(L, R.s, CABLE_SIDE, S.p);
+  S.p.y = L.surface ? height(S.p.x, S.p.z) : S.p.y - 2.45;
+  S.v.subVectors(S.p, prev).divideScalar(dt);
+  const flat = tmp.set(S.v.x, 0, S.v.z);
+  if (flat.lengthSq() > 0.01) S.f.copy(flat.normalize());
+  S.n.set(0, 1, 0); S.air = false; S.lastY = S.p.y;
+  if (R.s >= L.total) {
+    S.ride = null;
+    const end = L.pts.at(-1);
+    dropIn({ x: end.x + S.f.x * 18, z: end.z + S.f.z * 18, name: `Top of ${L.name}` });
+  }
+}
+
+// ---------- Particles: snowfall and carving spray ----------
+function dotTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
+const DOT = dotTexture();
+const SNOW_N = 4000, SNOW_R = 70;
+const snowPos = new Float32Array(SNOW_N * 3);
+for (let i = 0; i < SNOW_N * 3; i++) snowPos[i] = (Math.random() - 0.5) * SNOW_R * 2;
+const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ size: 0.16, map: DOT, transparent: true, depthWrite: false, opacity: 0.9 }));
+snow.frustumCulled = false; scene.add(snow);
+
+const SPRAY_N = 900;
+const spray = { pos: new Float32Array(SPRAY_N * 3), vel: new Float32Array(SPRAY_N * 3), life: new Float32Array(SPRAY_N), next: 0 };
+const sprayGeo = new THREE.BufferGeometry(); sprayGeo.setAttribute('position', new THREE.BufferAttribute(spray.pos, 3));
+const sprayPts = new THREE.Points(sprayGeo, new THREE.PointsMaterial({ size: 0.35, map: DOT, transparent: true, depthWrite: false, opacity: 0.85 }));
+sprayPts.frustumCulled = false; scene.add(sprayPts);
+function emitSpray(p, dir, amount) {
+  for (let n = 0; n < amount; n++) {
+    const i = spray.next = (spray.next + 1) % SPRAY_N;
+    spray.pos.set([p.x + (Math.random() - 0.5) * 0.6, p.y + 0.1, p.z + (Math.random() - 0.5) * 0.6], i * 3);
+    spray.vel.set([dir.x * (2 + Math.random() * 3) + (Math.random() - 0.5) * 2, 1.5 + Math.random() * 3, dir.z * (2 + Math.random() * 3) + (Math.random() - 0.5) * 2], i * 3);
+    spray.life[i] = 0.6 + Math.random() * 0.6;
+  }
+}
+
+// ---------- Input ----------
+const keys = new Set();
+const touch = { L: false, R: false, B: false, T: false };
+addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const k = e.key.toLowerCase();
+  keys.add(k);
+  if (k === ' ') { e.preventDefault(); wantJump = true; }
+  if (k === 'c') camMode = (camMode + 1) % CAM_MODES.length, toast(CAM_MODES[camMode], 0.8);
+  if (k === 'm') toggleMap();
+  if (k === 'r') { S.ride = null; dropIn(lastDrop); }
+  if (k === 'e' && !S.ride && liftNear) startRide(liftNear);
+  if (k >= '1' && k <= String(SPOTS.length)) dropIn(SPOTS[+k - 1]);
+  if (k === 'escape' && !mapEl.hidden) toggleMap(false);
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => keys.clear());
+const hold = (id, f) => {
+  const el = document.getElementById(id);
+  el.addEventListener('pointerdown', e => { e.preventDefault(); touch[f] = true; el.setPointerCapture(e.pointerId); });
+  for (const ev of ['pointerup', 'pointercancel']) el.addEventListener(ev, () => { touch[f] = false; });
+};
+hold('tL', 'L'); hold('tR', 'R'); hold('tB', 'B'); hold('tT', 'T');
+document.getElementById('tJ').addEventListener('pointerdown', e => { e.preventDefault(); wantJump = true; });
+document.getElementById('tM').addEventListener('click', () => toggleMap());
+
+// ---------- Physics state ----------
+const G = 9.81;
+const S = {
+  p: new THREE.Vector3(), v: new THREE.Vector3(), f: new THREE.Vector3(1, 0, 0), n: new THREE.Vector3(0, 1, 0),
+  ride: null, air: false, airTime: 0, spin: 0, steer: 0, lean: 0, crash: 0, top: 0, vert: 0, lastY: 0,
+};
+let liftNear = null, wantJump = false, lastDrop = SPOTS[0];
+const CAM_MODES = ['Chase cam', 'Low cam', 'Helmet cam', 'Drone cam'];
+let camMode = 0;
+
+function dropIn(spot) {
+  lastDrop = spot;
+  const n = normalAt(spot.x, spot.z, new THREE.Vector3());
+  S.p.set(spot.x, height(spot.x, spot.z), spot.z);
+  const down = new THREE.Vector3(n.x, 0, n.z);
+  if (down.lengthSq() < 1e-6) down.set(1, 0, 0);
+  S.f.copy(down.normalize()); S.f.y = 0;
+  S.v.set(0, 0, 0); S.n.copy(n); S.air = false; S.crash = 0; S.lastY = S.p.y;
+  camPos.copy(S.p).addScaledVector(S.f, -8).add(new THREE.Vector3(0, 4, 0));
+  if (spot.name) toast(spot.name, 1.4);
+}
+
+const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), right = new THREE.Vector3(), worldUp = new THREE.Vector3(0, 1, 0);
+const HALF_W = WIDTH / 2 - 30, HALF_D = DEPTH / 2 - 30;
+
+function step(dt) {
+  if (S.ride) { rideStep(dt); wantJump = false; return; }
+  const steerIn = (keys.has('d') || keys.has('arrowright') || touch.R ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') || touch.L ? 1 : 0);
+  const tuck = keys.has('w') || keys.has('arrowup') || touch.T;
+  const brake = keys.has('s') || keys.has('arrowdown') || touch.B;
+  S.steer += (steerIn - S.steer) * Math.min(1, dt * 7);
+  const speed = S.v.length();
+
+  if (S.crash > 0) {
+    S.crash -= dt;
+    S.v.multiplyScalar(Math.exp(-3 * dt));
+  }
+  const control = S.crash > 0 ? 0 : 1;
+
+  if (!S.air) {
+    const n = normalAt(S.p.x, S.p.z, S.n);
+    // Keep heading in the slope plane.
+    S.f.addScaledVector(n, -S.f.dot(n)).normalize();
+    // Carve: rotate heading around the surface normal. Tighter at low speed.
+    const yaw = -S.steer * control * (brake ? 2.6 : 1.9) / (1 + speed / 30) * dt;
+    S.f.applyAxisAngle(n, yaw);
+    right.crossVectors(S.f, n);
+
+    // Gravity along the slope.
+    const gDotN = -G * n.y;
+    tmp.set(0, -G, 0).addScaledVector(n, -gDotN);
+    S.v.addScaledVector(tmp, dt);
+
+    // Edge grip: bleed lateral velocity, give most of it back along the board (that's a carve).
+    let vf = S.v.dot(S.f), vl = S.v.dot(right);
+    const grip = brake ? 2.5 : 9;
+    const keepLat = Math.exp(-grip * dt);
+    const lost = vl * vl * (1 - keepLat * keepLat);
+    vl *= keepLat;
+    const ret = brake ? 0.2 : 0.72;
+    vf = Math.sign(vf || 1) * Math.sqrt(vf * vf + lost * ret);
+    S.v.copy(S.f).multiplyScalar(vf).addScaledVector(right, vl);
+
+    // Snow friction + aero drag (+ skid brake).
+    const sp = S.v.length();
+    if (sp > 0.01) {
+      const mu = 0.045 * Math.max(0, -gDotN);
+      const drag = (tuck ? 0.0022 : 0.0042) * sp * sp;
+      const skid = brake ? 5.5 : 0;
+      const dec = Math.min(sp, (mu + drag + skid) * dt);
+      S.v.multiplyScalar((sp - dec) / sp);
+    }
+    // Skate / hike on flats and gentle climbs.
+    if (tuck && control && vf < 7) S.v.addScaledVector(S.f, 2.4 * dt);
+
+    if (Math.abs(vl) > 1.8 || (brake && sp > 3)) emitSpray(S.p, right.clone().multiplyScalar(-Math.sign(vl || 1)), Math.min(6, Math.abs(vl) * 0.6 + (brake ? 3 : 0)));
+
+    if (wantJump && control) { S.v.addScaledVector(n, 4.8); S.v.y += 1.0; S.air = true; S.airTime = 0; S.spin = 0; }
+  } else {
+    S.v.y -= G * dt;
+    const sp = S.v.length();
+    S.v.multiplyScalar(1 - 0.0022 * sp * dt);
+    const yaw = -S.steer * control * 6.5 * dt;   // spins
+    S.f.applyAxisAngle(worldUp, yaw);
+    S.spin += yaw;
+    S.airTime += dt;
+    S.n.lerp(worldUp, Math.min(1, dt * 2)).normalize();
+  }
+  wantJump = false;
+
+  // Integrate and resolve against the ground.
+  S.p.addScaledVector(S.v, dt);
+  S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
+  S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
+  const ground = height(S.p.x, S.p.z);
+  if (S.air) {
+    if (S.p.y <= ground) land(ground);
+  } else if (S.p.y > ground + 0.25) {
+    S.air = true; S.airTime = 0; S.spin = 0;        // terrain fell away: catch air
+  } else {
+    S.p.y = ground;
+    const n = normalAt(S.p.x, S.p.z, tmp2);
+    S.v.addScaledVector(n, -S.v.dot(n));           // stay on the snow
+  }
+
+  // Trees.
+  if (S.crash <= 0 && S.p.y - ground < 4 && treeHit(S.p.x, S.p.z)) {
+    S.v.multiplyScalar(-0.15); S.crash = 1.4; toast('Tree!', 1.2);
+  }
+
+  if (S.p.y < S.lastY) S.vert += S.lastY - S.p.y;
+  S.lastY = S.p.y;
+  S.top = Math.max(S.top, S.v.length() * 3.6);
+}
+
+function land(ground) {
+  S.p.y = ground;
+  const n = normalAt(S.p.x, S.p.z, S.n);
+  S.v.addScaledVector(n, -S.v.dot(n));
+  S.air = false;
+  S.f.addScaledVector(n, -S.f.dot(n)).normalize();
+  const turns = Math.abs(S.spin) / (2 * Math.PI);
+  const deg = Math.round(turns * 2) * 180;
+  // Clean landing if the board lines up with travel (either direction).
+  const hv = tmp.copy(S.v).addScaledVector(n, -S.v.dot(n));
+  const align = hv.lengthSq() > 1 ? Math.abs(hv.normalize().dot(S.f)) : 1;
+  if (align < 0.55 && S.airTime > 0.4) { S.crash = 1.2; S.v.multiplyScalar(0.3); toast('Wipeout', 1.2); }
+  else if (deg >= 180) toast(`${deg}${S.airTime > 1.2 ? ' · big air' : ''}`, 1.2);
+  else if (S.airTime > 1.4) toast(`Air ${S.airTime.toFixed(1)} s`, 1.0);
+}
+
+// ---------- Camera ----------
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+function updateCamera(dt) {
+  const hv = tmp.set(S.v.x, 0, S.v.z);
+  const dir = hv.lengthSq() > 4 ? hv.normalize() : tmp.set(S.f.x, 0, S.f.z).normalize();
+  const want = tmp2;
+  const k = 1 - Math.exp(-dt * (camMode === 2 ? 30 : 4));
+  if (camMode === 0) want.copy(S.p).addScaledVector(dir, -7.5).add({ x: 0, y: 3.2, z: 0 });
+  else if (camMode === 1) want.copy(S.p).addScaledVector(dir, -4).add({ x: 0, y: 1.1, z: 0 });
+  else if (camMode === 2) want.copy(S.p).addScaledVector(S.n, 1.6).addScaledVector(dir, 0.25);
+  else want.copy(S.p).addScaledVector(dir, -38).add({ x: 18, y: 26, z: 0 });
+  camPos.lerp(want, k);
+  const floor = height(camPos.x, camPos.z) + (camMode === 2 ? 0.3 : 0.8);
+  if (camPos.y < floor) camPos.y = floor;
+  camera.position.copy(camPos);
+  const look = tmp2.copy(S.p).addScaledVector(dir, camMode === 2 ? 12 : 3).add({ x: 0, y: camMode === 2 ? 0.4 : 1.0, z: 0 });
+  camLook.lerp(look, camMode === 2 ? 1 : 1 - Math.exp(-dt * 10));
+  camera.lookAt(camLook);
+  rider.visible = camMode !== 2;
+}
+
+// ---------- Rider pose ----------
+const basis = new THREE.Matrix4(), side = new THREE.Vector3(), upv = new THREE.Vector3();
+function poseRider(dt) {
+  upv.copy(S.n);
+  const f = tmp.copy(S.f).addScaledVector(upv, -S.f.dot(upv)).normalize();
+  side.crossVectors(f, upv);
+  basis.makeBasis(f, upv, side);
+  rider.quaternion.setFromRotationMatrix(basis);
+  rider.position.copy(S.p);
+  const speed = S.v.length();
+  const targetLean = S.air ? 0 : S.steer * Math.min(1, speed / 14) * 0.55;
+  S.lean += (targetLean - S.lean) * Math.min(1, dt * 8);
+  body.rotation.x = S.lean;
+  const tuck = keys.has('w') || touch.T;
+  const crouch = S.crash > 0 || (S.ride && !S.ride.L.surface) ? 0.62 : tuck ? 0.8 : 1;
+  body.scale.y += (crouch - body.scale.y) * Math.min(1, dt * 8);
+  if (S.crash > 0) body.rotation.x = Math.sin(S.crash * 9) * 0.5;
+}
+
+// ---------- Particles update ----------
+function updateParticles(dt) {
+  const arr = snowGeo.attributes.position.array;
+  for (let i = 0; i < SNOW_N; i++) {
+    const o = i * 3;
+    arr[o + 1] -= (1.2 + (i % 7) * 0.12) * dt;
+    arr[o] += Math.sin(i + performance.now() * 0.0005) * 0.3 * dt;
+    // Keep flakes in a box around the camera.
+    for (let a = 0; a < 3; a++) {
+      const c = camera.position.getComponent(a);
+      if (arr[o + a] < c - SNOW_R) arr[o + a] += SNOW_R * 2;
+      else if (arr[o + a] > c + SNOW_R) arr[o + a] -= SNOW_R * 2;
+    }
+  }
+  snowGeo.attributes.position.needsUpdate = true;
+  for (let i = 0; i < SPRAY_N; i++) {
+    if (spray.life[i] <= 0) continue;
+    spray.life[i] -= dt;
+    const o = i * 3;
+    spray.vel[o + 1] -= 7 * dt;
+    for (let a = 0; a < 3; a++) spray.pos[o + a] += spray.vel[o + a] * dt;
+    if (spray.life[i] <= 0) spray.pos[o + 1] = -9999;
+  }
+  sprayGeo.attributes.position.needsUpdate = true;
+}
+
+// ---------- Trail map (hillshade + contours, drawn from the same elevation grid) ----------
+function drawMap(cv) {
+  const g = cv.getContext('2d'), img = g.createImageData(GX, GY);
+  const L = new THREE.Vector3(-1, 1.2, -1).normalize();
+  for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) {
+    const k = j * GX + i, h = H[k];
+    const dx = (H[j * GX + Math.min(GX - 1, i + 1)] - H[j * GX + Math.max(0, i - 1)]) / (2 * CX);
+    const dz = (H[Math.min(GY - 1, j + 1) * GX + i] - H[Math.max(0, j - 1) * GX + i]) / (2 * CZ);
+    const nx = -dx, ny = 1, nz = -dz, nl = Math.hypot(nx, ny, nz);
+    const shade = Math.max(0, (nx * L.x + ny * L.y + nz * L.z) / nl);
+    const t = Math.min(1, (h - 150) / 1150);
+    let r = 220 + 30 * t, gg = 230 + 22 * t, b = 238 + 17 * t;
+    const s = 0.55 + shade * 0.55;
+    r *= s; gg *= s; b *= s;
+    const c100 = Math.floor(h / 100), cR = Math.floor(H[j * GX + Math.min(GX - 1, i + 1)] / 100), cD = Math.floor(H[Math.min(GY - 1, j + 1) * GX + i] / 100);
+    if (c100 !== cR || c100 !== cD) { r *= 0.7; gg *= 0.72; b *= 0.8; }
+    const o = k * 4;
+    img.data[o] = Math.min(255, r); img.data[o + 1] = Math.min(255, gg); img.data[o + 2] = Math.min(255, b); img.data[o + 3] = 255;
+  }
+  const off = document.createElement('canvas'); off.width = GX; off.height = GY;
+  off.getContext('2d').putImageData(img, 0, 0);
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(off, 0, 0, cv.width, cv.height);
+  const k = cv.width / WIDTH, P = q => [(q.x + WIDTH / 2) * k, (q.z + DEPTH / 2) * k];
+  const line = pts => { g.beginPath(); pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo'](...P(q))); };
+  g.lineCap = g.lineJoin = 'round';
+  for (const p of PISTES) {
+    line(p.pts);
+    const c = diffOf(p.diff).color;
+    if (p.area) { g.globalAlpha = 0.25; g.fillStyle = c; g.closePath(); g.fill(); g.globalAlpha = 1; }
+    else { g.strokeStyle = c; g.lineWidth = Math.max(1.5, cv.width / 520); g.setLineDash(p.diff === 'freeride' ? [4, 3] : []); g.stroke(); }
+  }
+  g.setLineDash([]);
+  for (const L of LIFTS) {
+    line(L.pts); g.strokeStyle = '#1b1f24'; g.lineWidth = Math.max(1, cv.width / 900); g.stroke();
+    g.fillStyle = '#1b1f24';
+    for (const q of [L.pts[0], L.pts.at(-1)]) { g.beginPath(); g.arc(...P(q), Math.max(1.5, cv.width / 500), 0, Math.PI * 2); g.fill(); }
+  }
+}
+const mini = document.getElementById('minimap'), big = document.getElementById('bigmap');
+drawMap(mini); drawMap(big);
+const miniBase = document.createElement('canvas'); miniBase.width = mini.width; miniBase.height = mini.height;
+miniBase.getContext('2d').drawImage(mini, 0, 0);
+
+const mapEl = document.getElementById('map'), labelsEl = document.getElementById('labels'), meEl = document.getElementById('me');
+const frac = (x, z) => ({ u: (x + WIDTH / 2) / WIDTH, v: (z + DEPTH / 2) / DEPTH });
+for (const r of [{ name: `Annupuri ${Math.round(H[peakK])} m`, ...PEAK, peak: true }, ...RESORTS]) {
+  const { u, v } = frac(r.x, r.z), el = document.createElement('div');
+  el.className = 'label' + (r.peak ? ' peak' : ''); el.textContent = r.name;
+  el.style.left = `${u * 100}%`; el.style.top = `${v * 100}%`;
+  labelsEl.appendChild(el);
+}
+function toggleMap(show = mapEl.hidden) {
+  mapEl.hidden = !show;
+  if (show) { const { u, v } = frac(S.p.x, S.p.z); meEl.style.left = `${u * 100}%`; meEl.style.top = `${v * 100}%`; }
+}
+big.addEventListener('click', e => {
+  const r = big.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * WIDTH - WIDTH / 2, z = (e.clientY - r.top) / r.height * DEPTH - DEPTH / 2;
+  const geo = toGeo(x, z);
+  dropIn({ x, z, name: `${geo.lat.toFixed(4)}° N, ${geo.lon.toFixed(4)}° E` });
+  toggleMap(false);
+});
+document.getElementById('mapClose').addEventListener('click', () => toggleMap(false));
+mapEl.addEventListener('click', e => { if (e.target === mapEl) toggleMap(false); });
+
+function drawMini() {
+  const g = mini.getContext('2d');
+  g.drawImage(miniBase, 0, 0);
+  const { u, v } = frac(S.p.x, S.p.z), x = u * mini.width, y = v * mini.height;
+  const a = Math.atan2(S.f.z, S.f.x);
+  g.save(); g.translate(x, y); g.rotate(a);
+  g.fillStyle = '#ff6a3d'; g.strokeStyle = '#f4f8fc'; g.lineWidth = 2.5;
+  g.beginPath(); g.moveTo(14, 0); g.lineTo(-8, 8); g.lineTo(-4, 0); g.lineTo(-8, -8); g.closePath(); g.fill(); g.stroke();
+  g.restore();
+}
+
+// ---------- HUD ----------
+const $ = id => document.getElementById(id);
+const hud = { spd: $('spd'), alt: $('alt'), slope: $('slope'), vert: $('vert'), top: $('top'), zone: $('zone'), toast: $('toast'), prompt: $('prompt') };
+$('prompt').addEventListener('click', () => { if (liftNear && !S.ride) startRide(liftNear); });
+let toastT = 0;
+function toast(text, secs) { hud.toast.textContent = text; hud.toast.classList.add('on'); toastT = secs; }
+function zoneName() {
+  const dx = S.p.x - PEAK.x, dz = S.p.z - PEAK.z, d = Math.hypot(dx, dz);
+  if (d < 350) return 'Mt. Niseko Annupuri summit';
+  if (d > 6000) return 'Niseko backcountry';
+  // Which face of the mountain: compare bearing from the summit with each resort's bearing.
+  const a = Math.atan2(dz, dx);
+  let best = null, bd = Infinity;
+  for (const r of RESORTS) {
+    let da = Math.abs(Math.atan2(r.z - PEAK.z, r.x - PEAK.x) - a);
+    if (da > Math.PI) da = 2 * Math.PI - da;
+    if (da < bd) { bd = da; best = r; }
+  }
+  return bd < 0.7 ? `${best.name} side` : 'Niseko backcountry';
+}
+let hudT = 0;
+function updateHud(dt) {
+  if ((toastT -= dt) <= 0) hud.toast.classList.remove('on');
+  if ((hudT -= dt) > 0) return;
+  hudT = 0.1;
+  hud.spd.textContent = Math.round(S.v.length() * 3.6);
+  hud.alt.textContent = Math.round(S.p.y);
+  hud.slope.textContent = `${Math.round(Math.acos(Math.min(1, normalAt(S.p.x, S.p.z, tmp).y)) * 180 / Math.PI)}°`;
+  hud.vert.textContent = Math.round(S.vert).toLocaleString();
+  hud.top.textContent = Math.round(S.top);
+  const piste = !S.ride && pisteAt(S.p.x, S.p.z);
+  if (S.ride) hud.zone.textContent = `Riding ${S.ride.L.name}`;
+  else if (piste && piste.name) hud.zone.innerHTML = `<span class="dot" style="background:${diffOf(piste.diff).color}"></span>${piste.name.replace(/[<&>]/g, '')} · ${diffOf(piste.diff).label}`;
+  else hud.zone.textContent = zoneName();
+  liftNear = !S.ride && S.v.length() < 12 ? nearLiftBase() : null;
+  hud.prompt.hidden = !liftNear;
+  if (liftNear) hud.prompt.textContent = `${matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Press E'} to ride ${liftNear.name}`;
+  drawMini();
+}
+
+// ---------- Wind audio (starts on Drop in) ----------
+let audio = null;
+function startAudio() {
+  try {
+    const ctx = new AudioContext(), len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    let last = 0; for (let i = 0; i < len; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
+    const gain = ctx.createGain(); gain.gain.value = 0;
+    src.connect(lp).connect(gain).connect(ctx.destination); src.start();
+    audio = { ctx, lp, gain };
+  } catch { audio = null; }
+}
+function updateAudio() {
+  if (!audio) return;
+  const sp = S.v.length(), t = audio.ctx.currentTime;
+  audio.gain.gain.setTargetAtTime(Math.min(0.5, 0.04 + sp / 60), t, 0.1);
+  audio.lp.frequency.setTargetAtTime(300 + sp * 45 + (S.air ? 400 : 0), t, 0.1);
+}
+
+// ---------- Loop ----------
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+});
+
+dropIn(SPOTS[0]);
+let running = false, last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (running && mapEl.hidden) {
+    acc += dt;
+    while (acc >= 1 / 120) { step(1 / 120); acc -= 1 / 120; }
+  }
+  poseRider(dt);
+  updateCamera(dt);
+  sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p);
+  sky.position.copy(camera.position);
+  updateParticles(dt);
+  updateLifts(now / 1000);
+  updateHud(dt);
+  updateAudio();
+  if (!window.__noRender) renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+$('loading').hidden = true;
+if (OSM) $('credits').textContent = `Elevation: AWS Terrain Tiles (SRTM-derived). ${PISTES.length} runs and ${LIFTS.length} lifts from © OpenStreetMap contributors (ODbL), fetched ${OSM.fetched || ''}. Press E at a lift base to ride it, hold W to fast-forward.`;
+const startBtn = $('start');
+startBtn.hidden = false; startBtn.focus();
+startBtn.addEventListener('click', () => { $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
+window.__ski = { S, PEAK_GEO, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+</script>
