@@ -5,12 +5,18 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "build:rider": "node tools/build_rider.mjs"
   },
   "dependencies": {
     "three": "0.170.0"
   },
   "devDependencies": {
-    "vite": "5.4.10"
+    "vite": "5.4.10",
+    "@gltf-transform/core": "4.1.1",
+    "@gltf-transform/extensions": "4.1.1",
+    "@gltf-transform/functions": "4.1.1",
+    "meshoptimizer": "0.21.0",
+    "sharp": "0.33.5"
   }
 }

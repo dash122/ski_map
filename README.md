@@ -36,6 +36,16 @@ python3 -m http.server 8000
 
 Runs are graded the way Japanese trail maps do it: green for beginner, red for intermediate, black for advanced and expert, dashed orange for off-piste.
 
+## Rider model
+
+`public/models/rider.glb` is a skinned humanoid that the page poses bone by bone (legs, hips, spine, arms and head) for carving, tucking, jumping and riding lifts, then dresses with a helmet, goggles and mitts. Any GLB with Mixamo-style bone names (`Hips`, `LeftUpLeg`, `LeftLeg`, `LeftFoot`, `LeftArm`, … with or without the `mixamorig` prefix) works:
+
+```sh
+npm run build:rider -- path/to/character.glb public/models/rider.glb
+```
+
+The current placeholder is the Ready Player Me sample avatar from the three.js examples (`examples/models/gltf/readyplayer.me.glb`, © Ready Player Me), restyled in snow colours.
+
 ## License and data
 
 Code: MIT. Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL). Elevation: AWS Terrain Tiles (SRTM and other public sources).
