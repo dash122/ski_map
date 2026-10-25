@@ -163,7 +163,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 </div>
 
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
 </script>
 <script type="module">
 import * as THREE from 'three';
@@ -451,7 +451,7 @@ const DEN = new Uint8Array(LW * LH);
 // ---------- Renderer & scene ----------
 const canvas = document.getElementById('gl');
 const MOBILE = matchMedia('(pointer: coarse)').matches;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE || devicePixelRatio < 2, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1574,7 +1574,7 @@ function dropIn(spot) {
   const down = downhillDir(spot.x, spot.z);
   S.f.copy(down).addScaledVector(n, -down.dot(n)).normalize();
   S.v.set(0, 0, 0); S.n.copy(n); S.air = false; S.crash = 0; S.lastY = S.p.y;
-  camPos.copy(S.p).addScaledVector(S.f, -8).add(new THREE.Vector3(0, 4, 0));
+  resetCamera();
   if (spot.name) toast(spot.name, 1.4);
 }
 
@@ -1691,33 +1691,163 @@ function land(ground) {
 }
 
 // ---------- Camera ----------
-const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+// Steadiness: 0 is tight and twitchy, 1 the default, 2 slow and cinematic. The camera follows a
+// low-passed copy of the rider's position, heading and slope normal, so terrain bumps, quick edge
+// changes and the physics substeps never reach the view directly.
+const CAM_STEADY = 1;
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), camAt = new THREE.Vector3(), camDir = new THREE.Vector3(0, 0, 1), camUp = new THREE.Vector3(0, 1, 0);
+function resetCamera() {
+  camAt.copy(S.p); camDir.set(S.f.x, 0, S.f.z).normalize(); camUp.copy(S.n);
+  camPos.copy(S.p).addScaledVector(camDir, -8).add({ x: 0, y: 4, z: 0 });
+  camLook.copy(S.p).add({ x: 0, y: 1, z: 0 });
+}
 function updateCamera(dt) {
+  const slow = 1 + CAM_STEADY, damp = rate => 1 - Math.exp(-dt * rate / slow);
   const hv = tmp.set(S.v.x, 0, S.v.z);
   // In the lift queue the camera stands off to the side of the line so you can watch your chair come round.
   const dir = S.ride ? tmp.copy(S.ride.dir) : liftQueue ? tmp.set(liftQueue.L.d0.z, 0, -liftQueue.L.d0.x) : hv.lengthSq() > 4 ? hv.normalize() : tmp.set(S.f.x, 0, S.f.z).normalize();
+  camDir.lerp(dir, damp(camMode === 2 ? 8 : 3)).normalize();
+  camAt.lerp(S.p, damp(camMode === 2 ? 30 : 14));
+  camUp.lerp(S.n, damp(6)).normalize();
   const want = tmp2;
-  const k = 1 - Math.exp(-dt * (camMode === 2 ? 30 : 4));
-  if (camMode === 0) want.copy(S.p).addScaledVector(dir, -7.5).add({ x: 0, y: 3.2, z: 0 });
-  else if (camMode === 1) want.copy(S.p).addScaledVector(dir, -4).add({ x: 0, y: 1.1, z: 0 });
-  else if (camMode === 2) want.copy(S.p).addScaledVector(S.n, 1.6).addScaledVector(dir, 0.25);
-  else want.copy(S.p).addScaledVector(dir, -38).add({ x: 18, y: 26, z: 0 });
-  camPos.lerp(want, k);
+  if (camMode === 0) want.copy(camAt).addScaledVector(camDir, -7.5).add({ x: 0, y: 3.2, z: 0 });
+  else if (camMode === 1) want.copy(camAt).addScaledVector(camDir, -4).add({ x: 0, y: 1.1, z: 0 });
+  else if (camMode === 2) want.copy(camAt).addScaledVector(camUp, 1.6).addScaledVector(camDir, 0.25);
+  else want.copy(camAt).addScaledVector(camDir, -38).add({ x: 18, y: 26, z: 0 });
+  camPos.lerp(want, damp(camMode === 2 ? 40 : 5));
   const floor = height(camPos.x, camPos.z) + (camMode === 2 ? 0.3 : 0.8);
-  if (camPos.y < floor) camPos.y = floor;
+  if (camPos.y < floor) camPos.y += (floor - camPos.y) * damp(20);
   camera.position.copy(camPos);
-  const look = tmp2.copy(S.p).addScaledVector(dir, camMode === 2 ? 12 : 3).add({ x: 0, y: camMode === 2 ? 0.4 : 1.0, z: 0 });
-  camLook.lerp(look, camMode === 2 ? 1 : 1 - Math.exp(-dt * 10));
+  const look = tmp2.copy(camAt).addScaledVector(camDir, camMode === 2 ? 12 : 3).add({ x: 0, y: camMode === 2 ? 0.4 : 1.0, z: 0 });
+  camLook.lerp(look, damp(camMode === 2 ? 20 : 8));
   camera.lookAt(camLook);
-  // Speed feel: wider lens and a little chatter at pace.
+  // Speed feel: a wider lens at pace, eased in.
   const sp = S.v.length();
   const fov = (camera.aspect < 1 ? 74 : 62) + Math.min(14, Math.max(0, sp - 8) * 0.45);
-  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
-  if (!S.air && !S.ride && sp > 15 && camMode !== 3) {
-    const a = (sp - 15) * 0.0009, t = performance.now() * 0.05;
-    camera.rotation.x += Math.sin(t * 1.3) * a; camera.rotation.z += Math.sin(t * 0.9 + 1) * a;
-  }
+  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * damp(3); camera.updateProjectionMatrix(); }
   rider.visible = camMode !== 2;
+}
+
+// ---------- Realistic rider: skinned glTF human, restyled in snow kit and posed bone by bone ----------
+// Loads lazily; the simple rider above stays until the model arrives (or if it fails to load).
+const AV = { ready: false };
+(async () => {
+  try {
+    const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
+      import('three/addons/loaders/GLTFLoader.js'), import('three/addons/libs/meshopt_decoder.module.js'),
+    ]);
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+    // Hosts that can't serve .glb get the same bytes as base64 in models/rider.json.
+    const gltf = await loader.loadAsync('models/rider.glb').catch(async () => {
+      const { data } = await (await fetch('models/rider.json')).json();
+      return loader.parseAsync(Uint8Array.from(atob(data), c => c.charCodeAt(0)).buffer, '');
+    });
+    const model = gltf.scene;
+    // Snow kit: olive shell jacket, black pants, brown boots; keep the fabric normal maps for folds.
+    const kit = {
+      Wolf3D_Outfit_Top: { color: 0x56613f, roughness: 0.85 },
+      Wolf3D_Outfit_Bottom: { color: 0x1d1f23, roughness: 0.9 },
+      Wolf3D_Outfit_Footwear: { color: 0x3a2e25, roughness: 0.7 },
+    };
+    model.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = true; o.frustumCulled = false;
+      if (/Beard/.test(o.name)) o.visible = false;              // clean-shaven, mid-20s
+      const k = kit[o.material.name];
+      if (k) { o.material.map = null; o.material.color.set(k.color); o.material.roughness = k.roughness; o.material.metalness = 0; o.material.needsUpdate = true; }
+    });
+    const names = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'HeadTop_End', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand'];
+    const B = {};
+    for (const n of names) B[n] = model.getObjectByName(n) || model.getObjectByName('mixamorig' + n) || model.getObjectByName('mixamorig:' + n);
+    if (names.some(n => !B[n])) throw new Error('skeleton is missing standard bones');
+    model.updateMatrixWorld(true);
+    const wp = n => B[n].getWorldPosition(new THREE.Vector3());
+    AV.thigh = wp('LeftUpLeg').distanceTo(wp('LeftLeg')); AV.shin = wp('LeftLeg').distanceTo(wp('LeftFoot'));
+    AV.upper = wp('LeftArm').distanceTo(wp('LeftForeArm')); AV.fore = wp('LeftForeArm').distanceTo(wp('LeftHand'));
+    AV.hipAbove = wp('Hips').y - wp('LeftUpLeg').y;
+    AV.hipHalf = Math.abs(wp('LeftUpLeg').x - wp('RightUpLeg').x) / 2;
+    AV.shoulderHalf = Math.abs(wp('LeftArm').x - wp('RightArm').x) / 2;
+    AV.ankle = wp('LeftFoot').y;
+    AV.rest = new Map();
+    model.traverse(o => { if (o.isBone) AV.rest.set(o, o.quaternion.clone()); });
+    AV.hipsRest = B.Hips.position.clone();
+
+    // Our own rider ships with helmet, goggles and gloves; other humanoids get them added here,
+    // placed in the rest pose then parented to bones so they follow the skeleton.
+    if (!model.getObjectByName('RiderGear')) {
+      const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o });
+      const head = wp('Head'), top = wp('HeadTop_End'), hc = head.clone().lerp(top, 0.5).add({ x: 0, y: 0, z: -0.012 }), hr = head.distanceTo(top) * 0.6;
+      const gear = (geo, mat, pos, parent) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.position.copy(pos); model.add(m); parent.attach(m); return m; };
+      gear(new THREE.SphereGeometry(hr * 1.08, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.6), M(0x2b2e33, { roughness: 0.4 }), hc, B.Head);
+      const gog = gear(new THREE.CylinderGeometry(hr * 1.04, hr * 1.04, hr * 0.42, 24, 1, true, -Math.PI * 0.32, Math.PI * 0.64), M(0xff8a3c, { roughness: 0.06, metalness: 0.9 }), hc.clone().add({ x: 0, y: -hr * 0.28, z: 0 }), B.Head);
+      gog.material.side = THREE.DoubleSide;
+      gear(new THREE.CylinderGeometry(hr * 1.06, hr * 1.06, hr * 0.16, 24, 1, true), M(0x111214), hc.clone().add({ x: 0, y: -hr * 0.28, z: 0 }), B.Head);
+      for (const s of ['Left', 'Right']) {
+        // Mitt over the whole hand: centred between the wrist and the middle knuckle.
+        const hp = wp(s + 'Hand'), knuckle = (model.getObjectByName(s + 'HandMiddle1') || B[s + 'Hand']).getWorldPosition(new THREE.Vector3());
+        const len = Math.max(0.09, hp.distanceTo(knuckle) * 1.9), mitt = gear(new THREE.CapsuleGeometry(0.048, len * 0.6, 4, 10), M(0x8a6a48, { roughness: 0.75 }), hp.clone().lerp(knuckle, 0.75), B[s + 'Hand']);
+        mitt.quaternion.copy(B[s + 'Hand'].getWorldQuaternion(new THREE.Quaternion()).invert().multiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), knuckle.clone().sub(hp).normalize())));
+        mitt.scale.set(1.15, 1, 0.8);
+      }
+    }
+    AV.B = B; AV.model = model;
+    // Swap: hide the simple rider's body, keep its board and bindings.
+    for (const c of body.children) c.visible = false;
+    body.add(model);
+    AV.ready = true;
+  } catch (err) { console.warn('rider model unavailable, using the simple rider', err); }
+})();
+
+const _aw = new THREE.Vector3(), _bw = new THREE.Vector3(), _tw = new THREE.Vector3(), _qa = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _pqi = new THREE.Quaternion();
+function rotateBoneWorld(bone, q) {           // apply a world-space rotation to a bone, keep children attached
+  bone.parent.getWorldQuaternion(_pq); _pqi.copy(_pq).invert();
+  bone.quaternion.premultiply(_pqi.multiply(q).multiply(_pq));
+  bone.updateMatrixWorld(true);
+}
+function aimBone(bone, child, targetLocal) {  // turn bone so `child` points at a body-local target
+  bone.getWorldPosition(_aw); child.getWorldPosition(_bw);
+  body.localToWorld(_tw.copy(targetLocal));
+  _qa.setFromUnitVectors(_bw.sub(_aw).normalize(), _tw.sub(_aw).normalize());
+  rotateBoneWorld(bone, _qa);
+}
+const AP = {}; for (const k of ['hip', 'hipL', 'hipR', 'knee', 'foot', 'toe', 'chest', 'sh', 'elb', 'hand', 'up']) AP[k] = new THREE.Vector3();
+function poseAvatar(c, fwd, tuck, seated) {
+  const B = AV.B;
+  for (const [b, q] of AV.rest) b.quaternion.copy(q);
+  B.Hips.position.copy(AV.hipsRest);
+  AV.model.updateMatrixWorld(true);
+  const leg = AV.thigh + AV.shin;
+  // Hips: low and a touch toward the heel edge; deeper when tucking or seated on a chair.
+  AP.hip.set(0, AV.ankle + 0.05 + leg * (seated ? 0.55 : 0.5 + 0.45 * c), -0.05 + fwd * 0.15 - Math.max(0, -S.steer) * 0.1);
+  const hipsWorld = body.localToWorld(_tw.copy(AP.hip).add({ x: 0, y: AV.hipAbove, z: 0 }));
+  B.Hips.position.copy(B.Hips.parent.worldToLocal(hipsWorld));
+  B.Hips.updateMatrixWorld(true);
+  // Chest leans over the toe edge as the rider crouches or carves toeside.
+  AP.chest.copy(AP.hip).add({ x: 0.02, y: 0.5 - fwd * 0.18, z: 0.06 + fwd * 0.4 });
+  aimBone(B.Spine, B.Neck, AP.chest);
+  // Legs: regular stance, left foot forward toward the nose (+X).
+  for (const [s, fx] of [['Left', 0.27], ['Right', -0.27]]) {
+    B[s + 'UpLeg'].getWorldPosition(_aw); body.worldToLocal(AP.hipL.copy(_aw));
+    AP.foot.set(fx, AV.ankle + 0.06, 0.0);
+    joint(AP.hipL, AP.foot, AV.thigh, AV.shin, KNEE_BEND, AP.knee);
+    aimBone(B[s + 'UpLeg'], B[s + 'Leg'], AP.knee);
+    aimBone(B[s + 'Leg'], B[s + 'Foot'], AP.foot);
+    aimBone(B[s + 'Foot'], B[s + 'ToeBase'], AP.toe.copy(AP.foot).add({ x: fx * 0.15, y: -0.06, z: 0.13 }));
+  }
+  // Arms out for balance; the lead hand follows the turn.
+  const sway = Math.sin(performance.now() * 0.002) * 0.03;
+  for (const [s, dir] of [['Left', 1], ['Right', -1]]) {
+    B[s + 'Arm'].getWorldPosition(_aw); body.worldToLocal(AP.sh.copy(_aw));
+    if (seated) AP.hand.copy(AP.sh).add({ x: dir * 0.08, y: -0.4, z: 0.32 });
+    else AP.hand.copy(AP.sh).add({ x: dir * (dir > 0 ? 0.42 : 0.34), y: -0.32 + (tuck ? 0.1 : 0) + sway * dir, z: 0.12 + S.steer * 0.18 * dir });
+    joint(AP.sh, AP.hand, AV.upper, AV.fore, ELBOW_BEND, AP.elb);
+    aimBone(B[s + 'Arm'], B[s + 'ForeArm'], AP.elb);
+    aimBone(B[s + 'ForeArm'], B[s + 'Hand'], AP.hand);
+  }
+  // Look down the board: head (and a little neck) turn toward the nose.
+  body.localToWorld(AP.up.set(0, 1, 0)).sub(body.localToWorld(_tw.set(0, 0, 0))).normalize();
+  rotateBoneWorld(B.Neck, _qa.setFromAxisAngle(AP.up, 0.5));
+  rotateBoneWorld(B.Head, _qa.setFromAxisAngle(AP.up, 0.85));
 }
 
 // ---------- Rider pose ----------
@@ -1767,6 +1897,7 @@ function poseRider(dt) {
   }
   limbs.head.position.copy(P.chest).add({ x: 0.03, y: 0.24, z: 0.03 });
   limbs.head.rotation.set(0, 0, -0.15 + fwd * 0.3);
+  if (AV.ready) poseAvatar(c, fwd, tuck, seated);
 }
 
 // ---------- Particles update ----------
@@ -2016,7 +2147,7 @@ $('credits').textContent = `Elevation: ${meta.source}, ${Math.round(CX)} m grid 
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
-window.__ski = { S, PEAK_GEO, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+window.__ski = { S, PEAK_GEO, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__sim = { renderer, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
 </script>

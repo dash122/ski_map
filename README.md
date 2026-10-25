@@ -51,6 +51,23 @@ At a base station, ride the lift (E or tap the prompt), step up to the loading l
 
 Runs are graded the way Japanese trail maps do it: green for beginner, red for intermediate, black for advanced and expert, dashed orange for off-piste.
 
+## Rider model
+
+`public/models/rider.glb` is a skinned humanoid that the page poses bone by bone (legs, hips, spine, arms and head) for carving, tucking, jumping and riding lifts.
+
+It's built from scratch by `tools/make_rider.py`: the [MakeHuman](http://www.makehumancommunity.org/) base mesh (CC0) shaped into a 1.80 m young East Asian man, smoothed with a Catmull-Clark pass and rigged with Mixamo bone names. The kit is modelled around the body in the style of a technical backcountry outfit (no brand marks): a long sage shell with the hood up over a helmet, tall collar and black zips, light grey cargo pants, black gloves and boots, and amber goggles. Fabrics get generated tileable normal maps (ripstop, twill, leather) and baked fold shading:
+
+```sh
+python3 tools/make_rider.py /tmp/rider_raw.glb      # downloads the MakeHuman assets on first run
+npm run build:rider -- /tmp/rider_raw.glb public/models/rider.glb
+```
+
+Any other GLB with Mixamo-style bone names (`Hips`, `LeftUpLeg`, `LeftLeg`, `LeftFoot`, `LeftArm`, … with or without the `mixamorig` prefix) works too, and gets a helmet, goggles and mitts added at runtime:
+
+```sh
+npm run build:rider -- path/to/character.glb public/models/rider.glb
+```
+
 ## License and data
 
 Code: MIT. Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL). Elevation: AWS Terrain Tiles (SRTM and other public sources).
