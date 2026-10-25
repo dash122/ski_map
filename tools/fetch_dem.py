@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Fetch AWS Terrain Tiles (terrarium) for the Niseko area and bake data/dem.json.
+"""Fetch AWS Terrain Tiles (terrarium) for the Niseko area and bake public/data/dem.json.
 
-    python3 tools/fetch_dem.py data/dem.json
+    python3 tools/fetch_dem.py public/data/dem.json
 """
 import math, io, urllib.request, numpy as np, json, sys, base64
 from PIL import Image

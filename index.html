@@ -20,32 +20,35 @@
   --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
-html, body { height: 100%; margin: 0; }
+html, body { height: 100%; margin: 0; touch-action: none; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 body { background: var(--ink); color: var(--snow); font-family: var(--body); overflow: hidden; }
 canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .hud { position: fixed; pointer-events: none; z-index: 2; }
 .panel { background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 6px; }
-#brand { top: calc(12px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 8px 12px; }
-#brand .name { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; }
-#brand .zone { font-size: 13px; color: var(--mist); }
-#stats { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 10px 14px; display: flex; gap: 18px; align-items: flex-end; font-variant-numeric: tabular-nums; }
-.stat .v { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 1; }
-.stat.big .v { font-size: 52px; color: var(--snow); }
-.stat .l { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mist); margin-top: 3px; }
-#mini { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 6px; }
-#mini canvas { display: block; width: 200px; height: 160px; border-radius: 3px; }
-#keys { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 10px 12px; font-size: 12px; color: var(--mist); line-height: 1.7; }
+/* Mobile first: HUD hugs the top edge, thumbs own the bottom. Desktop rules come after. */
+#brand { top: calc(10px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); padding: 6px 10px; }
+#brand .name { font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; }
+#brand .zone { font-size: 12px; color: var(--mist); max-width: 52vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#stats { top: calc(64px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); padding: 6px 10px; display: flex; gap: 12px; align-items: flex-end; font-variant-numeric: tabular-nums; }
+.stat .v { font-family: var(--display); font-weight: 600; font-size: 20px; line-height: 1; }
+.stat.big .v { font-size: 38px; color: var(--snow); }
+.stat .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mist); margin-top: 3px; }
+.stat:nth-child(n+3) { display: none; }
+#mini { top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); padding: 4px; }
+#mini canvas { display: block; width: 112px; height: 90px; border-radius: 3px; }
+#tools { top: calc(110px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); display: flex; gap: 6px; pointer-events: auto; }
+#keys { display: none; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 10px 12px; font-size: 12px; color: var(--mist); line-height: 1.7; }
 kbd { font-family: var(--display); font-weight: 600; color: var(--snow); background: rgba(255,255,255,0.12); border-radius: 3px; padding: 0 5px; }
-#toast { top: 32%; left: 50%; transform: translateX(-50%); font-family: var(--display); font-weight: 700; font-size: 44px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); text-shadow: 0 2px 18px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.25s; white-space: nowrap; }
+#toast { top: 30%; left: 50%; transform: translateX(-50%); font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); text-shadow: 0 2px 18px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.25s; white-space: nowrap; }
 #toast.on { opacity: 1; }
-#prompt { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); pointer-events: auto; background: var(--signal); color: var(--ink); border: 0; }
+#prompt { bottom: calc(170px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); pointer-events: auto; background: var(--signal); color: var(--ink); border: 0; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(255,255,255,0.6); vertical-align: 0; }
 
 /* Intro card and full map share the modal layer */
 .modal { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(8, 16, 26, 0.55); padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-#intro .card { max-width: 440px; padding: 24px 26px; }
-#intro h1 { font-family: var(--display); font-weight: 700; font-size: 40px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0; line-height: 1; text-wrap: balance; }
+#intro .card { max-width: 440px; padding: 20px 22px; max-height: 100%; overflow-y: auto; }
+#intro h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 9vw, 40px); letter-spacing: 0.08em; text-transform: uppercase; margin: 0; line-height: 1; text-wrap: balance; }
 #intro .sub { color: var(--mist); margin: 6px 0 16px; font-size: 14px; }
 #intro dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 18px; font-size: 14px; }
 #intro dt { text-align: right; }
@@ -64,18 +67,38 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #map .close { position: absolute; right: 8px; top: 8px; }
 .btn { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--snow); background: var(--panel); border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
 
-#touch { position: fixed; inset: auto 0 0 0; z-index: 3; display: none; justify-content: space-between; align-items: flex-end; padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); pointer-events: none; }
-#touch .grp { display: flex; gap: 10px; pointer-events: auto; }
-#touch button { width: 64px; height: 64px; border-radius: 50%; font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 0.06em; color: var(--snow); background: rgba(13,27,42,0.55); border: 1px solid rgba(255,255,255,0.25); touch-action: none; user-select: none; -webkit-user-select: none; }
-@media (pointer: coarse) {
-  #touch { display: flex; }
-  #keys { display: none; }
-  #stats { gap: 12px; }
-  .stat.big .v { font-size: 40px; }
-  #mini canvas { width: 140px; height: 112px; }
+#touch { position: fixed; inset: auto 0 0 0; z-index: 3; display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); pointer-events: none; }
+#pad { pointer-events: auto; touch-action: none; width: 52vw; max-width: 340px; height: 40vh; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 6px; user-select: none; -webkit-user-select: none; }
+#pad .track { position: relative; width: 168px; height: 54px; border-radius: 27px; background: rgba(13,27,42,0.45); border: 1px solid rgba(255,255,255,0.25); }
+#knob { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; margin: -21px; border-radius: 50%; background: var(--snow); opacity: 0.85; transition: transform 0.15s; }
+#pad.on #knob { transition: none; }
+#pad span { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--snow); opacity: 0.7; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+#touch .grp { display: grid; grid-template-columns: auto auto; gap: 10px; align-items: center; pointer-events: auto; }
+#touch button { width: 60px; height: 60px; border-radius: 50%; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); background: rgba(13,27,42,0.55); border: 1px solid rgba(255,255,255,0.25); touch-action: none; user-select: none; -webkit-user-select: none; }
+#touch #tJ { grid-column: 2; grid-row: 1 / span 2; width: 84px; height: 84px; background: rgba(255,106,61,0.85); color: var(--ink); border: 0; font-size: 15px; }
+#intro dl.desk-only { display: none; }
+@media (orientation: landscape) and (pointer: coarse) { #pad { height: 55vh; } #stats { top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); } }
+
+/* Desktop and laptops: keyboard, bigger HUD. */
+@media (hover: hover) and (pointer: fine) {
+  #touch, #intro dl.touch-only { display: none; }
+  #intro dl.desk-only { display: grid; }
+  #keys { display: block; }
+  #brand { top: calc(12px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 8px 12px; }
+  #brand .name { font-size: 20px; }
+  #brand .zone { font-size: 13px; max-width: 40vw; }
+  #stats { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 10px 14px; gap: 18px; }
+  .stat:nth-child(n+3) { display: block; }
+  .stat .v { font-size: 30px; }
+  .stat.big .v { font-size: 52px; }
+  .stat .l { font-size: 11px; }
+  #mini { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 6px; }
+  #mini canvas { width: 200px; height: 160px; }
+  #tools { top: calc(190px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
+  #toast { font-size: 44px; top: 32%; }
+  #prompt { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 }
-@media (max-width: 520px) { .stat:not(.big):nth-child(n+4) { display: none; } #toast { font-size: 32px; } }
-@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+@media (prefers-reduced-motion: reduce) { #toast, #knob { transition: none; } }
 </style>
 
 <canvas id="gl"></canvas>
@@ -97,16 +120,24 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 <div class="hud" id="toast"></div>
 <button class="hud btn" id="prompt" hidden></button>
 
+<div class="hud" id="tools"><button class="btn" id="tM">Map</button><button class="btn" id="tC">Cam</button></div>
 <div id="touch">
-  <div class="grp"><button id="tL" aria-label="Carve left">◀</button><button id="tR" aria-label="Carve right">▶</button></div>
-  <div class="grp"><button id="tB">Brake</button><button id="tT">Tuck</button><button id="tJ">Jump</button><button id="tM">Map</button></div>
+  <div id="pad" aria-label="Steering: drag left or right"><span>Drag to carve</span><div class="track"><div id="knob"></div></div></div>
+  <div class="grp"><button id="tB">Brake</button><button id="tJ">Jump</button><button id="tT">Tuck</button></div>
 </div>
 
 <div class="modal" id="intro">
   <div class="card panel">
     <h1>Slop Niseko</h1>
     <p class="sub">Snowboard the real terrain of Mt. Niseko Annupuri, Hokkaido.</p>
-    <dl>
+    <dl class="touch-only">
+      <dt>Drag</dt><dd>Slide your left thumb sideways to carve</dd>
+      <dt>Tuck</dt><dd>Hold for speed, or to skate on the flats</dd>
+      <dt>Brake</dt><dd>Hold to skid</dd>
+      <dt>Jump</dt><dd>Ollie, then drag to spin</dd>
+      <dt>Map</dt><dd>Tap anywhere on the trail map to drop in</dd>
+    </dl>
+    <dl class="desk-only">
       <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>Carve left and right</dd>
       <dt><kbd>W</kbd></dt><dd>Tuck for speed, skate on the flats</dd>
       <dt><kbd>S</kbd></dt><dd>Skid to brake</dd>
@@ -124,7 +155,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     <canvas id="bigmap" width="1280" height="1024"></canvas>
     <div id="labels"></div>
     <div class="me" id="me"></div>
-    <div class="cap">Click to drop in · 100 m contours</div>
+    <div class="cap">Tap or click to drop in · 100 m contours</div>
     <button class="btn close" id="mapClose">Close</button>
   </div>
 </div>
@@ -239,8 +270,23 @@ if (OSM) {
   for (const l of OSM.lifts || []) {
     let pts = worldPts(l.c); if (pts.length < 2) continue;
     if (height(pts[0].x, pts[0].z) > height(pts.at(-1).x, pts.at(-1).z)) pts = pts.reverse(); // ride uphill
-    LIFTS.push({ name: l.n || 'Lift', type: l.t || '', pts });
+    if (l.t !== 'zip_line') LIFTS.push({ name: l.n || 'Lift', type: l.t || '', pts });
   }
+  // Drop-in spots at the top of the highest lift on each resort's face of the mountain.
+  RESORTS.forEach((r, ri) => {
+    const ra = Math.atan2(r.z - PEAK.z, r.x - PEAK.x);
+    let best = null, bh = -1;
+    for (const L of LIFTS) {
+      const top = L.pts.at(-1);
+      let da = Math.abs(Math.atan2(top.z - PEAK.z, top.x - PEAK.x) - ra); if (da > Math.PI) da = 2 * Math.PI - da;
+      const h = height(top.x, top.z);
+      if (da < 0.5 && Math.hypot(top.x - r.x, top.z - r.z) < 5000 && h > bh) { bh = h; best = L; }
+    }
+    if (best) {
+      const [a, b] = [best.pts.at(-2), best.pts.at(-1)], d = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+      SPOTS[ri + 1] = { name: `${r.name} · top of ${best.name}`, x: b.x + (b.x - a.x) / d * 20, z: b.z + (b.z - a.z) / d * 20 };
+    }
+  });
 }
 function onPiste(x, z) {
   if (!pisteData) return false;
@@ -262,8 +308,9 @@ function pisteAt(x, z) {
 
 // ---------- Renderer & scene ----------
 const canvas = document.getElementById('gl');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const MOBILE = matchMedia('(pointer: coarse)').matches;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE || devicePixelRatio < 2, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -272,15 +319,23 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const FOG = new THREE.Color(0xc9d8e6);
-scene.fog = new THREE.FogExp2(FOG, 0.00011);
+scene.fog = new THREE.FogExp2(FOG, 0.000055);
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 40000);
 
 // Sky dome with a winter gradient.
 const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: new THREE.Color(0x3d6ea8) }, horizon: { value: FOG } },
+  uniforms: { top: { value: new THREE.Color(0x2f62a3) }, horizon: { value: FOG }, sunDir: { value: new THREE.Vector3(-0.45, 0.42, 0.78).normalize() } },
   vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
-  fragmentShader: 'uniform vec3 top, horizon; varying vec3 vP; void main(){ float h = clamp(normalize(vP).y * 3.0, 0., 1.); gl_FragColor = vec4(mix(horizon, top, pow(h, 0.7)), 1.); }',
+  fragmentShader: `uniform vec3 top, horizon, sunDir; varying vec3 vP;
+    void main(){
+      vec3 d = normalize(vP);
+      float h = clamp(d.y * 3.0, 0., 1.);
+      vec3 c = mix(horizon, top, pow(h, 0.7));
+      float s = max(dot(d, sunDir), 0.);
+      c += vec3(1.0, 0.86, 0.66) * (pow(s, 8.) * 0.25 + smoothstep(0.9993, 0.9997, s) * 3.);   // glow and disc
+      gl_FragColor = vec4(c, 1.);
+    }`,
 }));
 scene.add(sky);
 
@@ -288,12 +343,29 @@ scene.add(new THREE.HemisphereLight(0xcfe3ff, 0xdfe6ee, 0.95));
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.9);
 const SUN_DIR = new THREE.Vector3(-0.45, 0.42, 0.78).normalize(); // low winter sun from the south-west
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.setScalar(MOBILE ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 400 });
 sun.shadow.bias = -0.0005;
 scene.add(sun, sun.target);
 
 // Fine snow grain texture so speed reads at close range.
+function snowNormalTexture() {
+  // Wind-packed snow relief: soft ripples plus fine grain, turned into a normal map.
+  const N = 256, hgt = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++)
+    hgt[y * N + x] = Math.sin((x + Math.sin(y * 0.07) * 9) * 0.098) * 0.6 + vnoise(x / 9, y / 9) * 0.9 + Math.random() * 0.25;
+  const c = document.createElement('canvas'); c.width = c.height = N;
+  const g = c.getContext('2d'), img = g.createImageData(N, N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const dx = hgt[y * N + (x + 1) % N] - hgt[y * N + (x + N - 1) % N], dy = hgt[((y + 1) % N) * N + x] - hgt[((y + N - 1) % N) * N + x];
+    const l = Math.hypot(dx, dy, 2), o = (y * N + x) * 4;
+    img.data[o] = (-dx / l * 0.5 + 0.5) * 255; img.data[o + 1] = (-dy / l * 0.5 + 0.5) * 255; img.data[o + 2] = (2 / l * 0.5 + 0.5) * 255; img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
 function grainTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 256;
   const g = c.getContext('2d'), img = g.createImageData(256, 256);
@@ -312,20 +384,22 @@ function grainTexture() {
 
 // ---------- Terrain mesh ----------
 {
-  const pos = new Float32Array(GX * GY * 3), col = new Float32Array(GX * GY * 3), uv = new Float32Array(GX * GY * 2);
+  // Phones get every other grid point; physics still samples the full grid.
+  const ST = MOBILE && GX > 700 ? 2 : 1, MX = Math.floor((GX - 1) / ST) + 1, MZ = Math.floor((GY - 1) / ST) + 1;
+  const pos = new Float32Array(MX * MZ * 3), col = new Float32Array(MX * MZ * 3), uv = new Float32Array(MX * MZ * 2);
   const n = new THREE.Vector3();
-  for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) {
-    const k = j * GX + i, x = i * CX - WIDTH / 2, z = j * CZ - DEPTH / 2, h = H[k];
+  for (let j = 0; j < MZ; j++) for (let i = 0; i < MX; i++) {
+    const k = j * MX + i, x = i * ST * CX - WIDTH / 2, z = j * ST * CZ - DEPTH / 2, h = H[j * ST * GX + i * ST];
     pos.set([x, h, z], k * 3); uv.set([x / 7, z / 7], k * 2);
     normalAt(x, z, n);
     const rock = THREE.MathUtils.smoothstep(1 - n.y, 0.32, 0.5) * 0.55;  // wind-scoured cliffs
     const lowTint = THREE.MathUtils.smoothstep(600 - h, 0, 500) * 0.03;   // valley snow slightly warmer
     col.set([0.95 - rock * 0.5 + lowTint, 0.965 - rock * 0.5 + lowTint * 0.6, 1.0 - rock * 0.45], k * 3);
   }
-  const idx = new Uint32Array((GX - 1) * (GY - 1) * 6);
+  const idx = new Uint32Array((MX - 1) * (MZ - 1) * 6);
   let p = 0;
-  for (let j = 0; j < GY - 1; j++) for (let i = 0; i < GX - 1; i++) {
-    const a = j * GX + i, b = a + 1, c = a + GX, d = c + 1;
+  for (let j = 0; j < MZ - 1; j++) for (let i = 0; i < MX - 1; i++) {
+    const a = j * MX + i, b = a + 1, c = a + MX, d = c + 1;
     idx[p++] = a; idx[p++] = c; idx[p++] = b; idx[p++] = b; idx[p++] = c; idx[p++] = d;
   }
   const geo = new THREE.BufferGeometry();
@@ -334,7 +408,7 @@ function grainTexture() {
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeVertexNormals();
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: grainTexture(), roughness: 0.82, metalness: 0 });
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: grainTexture(), normalMap: snowNormalTexture(), normalScale: new THREE.Vector2(0.22, 0.22), roughness: 0.78, metalness: 0 });
   if (pisteData) {
     // Groomed runs: smoother, slightly bluer snow with faint corduroy, from the OSM piste mask.
     const maskTex = new THREE.CanvasTexture(pisteCanvas);
@@ -353,6 +427,40 @@ function grainTexture() {
   terrain.receiveShadow = true;
   scene.add(terrain);
 }
+
+// ---------- Horizon: Mt. Yotei and the wider Niseko range from a coarse DEM ----------
+try {
+  const far = await (await fetch('data/far.json')).json();
+  const fr = new Uint16Array(Uint8Array.from(atob(far.data), c => c.charCodeAt(0)).buffer);
+  const fgx = far.gx, fgy = far.gy, n = fgx * fgy;
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  const inset = 0.003;
+  for (let j = 0; j < fgy; j++) for (let i = 0; i < fgx; i++) {
+    const k = j * fgx + i, lon = far.w + i / (fgx - 1) * (far.e - far.w), lat = far.n - j / (fgy - 1) * (far.n - far.s);
+    const { x, z } = toWorld(lon, lat);
+    let h = fr[k] * far.scale;
+    const inside = lon > meta.w + inset && lon < meta.e - inset && lat > meta.s + inset && lat < meta.n - inset;
+    if (inside) h -= 80;                                   // tucked under the detailed terrain
+    pos.set([x, h, z], k * 3);
+    const sea = fr[k] === 0;
+    // Hokkaido in winter: snowfields, darker forested mid-slopes, open sea to the north-west.
+    const forest = !sea && h > 120 && h < 1100 ? 0.12 * THREE.MathUtils.smoothstep(vnoise(i / 6, j / 6), 0.35, 0.7) : 0;
+    if (sea) col.set([0.19, 0.27, 0.36], k * 3);
+    else col.set([0.94 - forest * 2.2, 0.955 - forest * 1.8, 0.99 - forest * 1.6], k * 3);
+  }
+  const idx = new Uint32Array((fgx - 1) * (fgy - 1) * 6);
+  let p = 0;
+  for (let j = 0; j < fgy - 1; j++) for (let i = 0; i < fgx - 1; i++) {
+    const a = j * fgx + i, b = a + 1, c = a + fgx, d = c + 1;
+    idx[p++] = a; idx[p++] = c; idx[p++] = b; idx[p++] = b; idx[p++] = c; idx[p++] = d;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  geo.computeVertexNormals();
+  scene.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 })));
+} catch (err) { console.warn('horizon terrain unavailable', err); }
 
 // ---------- Trees (snow-loaded firs and birch, placed by elevation, slope and patchy noise) ----------
 function hash2(x, y) {
@@ -416,7 +524,7 @@ const treeGrid = new Map(); // "ci,cj" -> [x, z, r, x, z, r, ...]
       normalAt(jx, jz, n);
       if (n.y < 0.8 || onPiste(jx, jz)) continue;
       const density = THREE.MathUtils.smoothstep(forest, 0.42, 0.62) * THREE.MathUtils.smoothstep(treeline - h, 0, 120);
-      if (hash2(jx * 13, jz * 17) > density * 0.24) continue;
+      if (hash2(jx * 13, jz * 17) > density * (MOBILE ? 0.15 : 0.24)) continue;
       const birch = h < 650 && hash2(jx * 3, jz * 29) < 0.35;
       const s = 0.7 + hash2(jx * 19, jz * 23) * 0.9;
       (birch ? birches : firs).push([jx, h - 0.3, jz, s, hash2(jx, jz) * Math.PI * 2]);
@@ -452,30 +560,94 @@ function treeHit(x, z) {
 }
 
 // ---------- Rider ----------
-const rider = new THREE.Group();     // oriented to the board: +X along board, +Y board normal, +Z toe side
-const body = new THREE.Group();      // leans and crouches inside the rider frame
+// Kenta, 25, from Sapporo: baggy Burton-style shell kit, helmet and goggles, camber board with highback bindings.
+const rider = new THREE.Group();     // oriented to the board: +X along board (nose), +Y board normal, +Z toe side
+const body = new THREE.Group();      // angulates inside the rider frame; limbs are posed every frame
 rider.add(body);
+const limbs = {};
 {
-  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
-  const jacket = M(0xff6a3d), pants = M(0x22324a), white = M(0xf2f4f6), dark = M(0x15191f);
-  const add = (geo, mat, x, y, z, parent = body) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; };
-  const board = add(new THREE.BoxGeometry(1.55, 0.03, 0.29), M(0x1f6fb2, { roughness: 0.4 }), 0, 0.03, 0, rider);
-  add(new THREE.BoxGeometry(1.3, 0.035, 0.25), white, 0, 0.05, 0, rider).scale.set(1, 0.5, 1);
-  board.scale.set(1, 1, 1);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, ...o });
+  const shell = M(0x4f5a3a), shellPanel = M(0xc8b48a), pantsM = M(0x1d1f22, { roughness: 0.9 }), skin = M(0xd9a982, { roughness: 0.6 });
+  const helmetM = M(0x2b2e33, { roughness: 0.45 }), lens = M(0xff8a3c, { roughness: 0.08, metalness: 0.9 }), strap = M(0x111214);
+  const mitt = M(0x8a6a48, { roughness: 0.7 }), bootM = M(0x3b2f26, { roughness: 0.7 }), bind = M(0x16181b, { roughness: 0.5 }), gaiter = M(0x2a2d31);
+  const mesh = (geo, mat, parent = body) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; parent.add(m); return m; };
+
+  // Board: rounded outline, nose and tail kick, top-sheet graphic.
+  const Lh = 0.78, Wh = 0.15, rr = 0.15, shape = new THREE.Shape();
+  shape.moveTo(-Lh + rr, -Wh); shape.lineTo(Lh - rr, -Wh); shape.quadraticCurveTo(Lh, -Wh, Lh, 0); shape.quadraticCurveTo(Lh, Wh, Lh - rr, Wh);
+  shape.lineTo(-Lh + rr, Wh); shape.quadraticCurveTo(-Lh, Wh, -Lh, 0); shape.quadraticCurveTo(-Lh, -Wh, -Lh + rr, -Wh);
+  const boardGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.018, bevelEnabled: false, curveSegments: 12 }).rotateX(-Math.PI / 2);
+  const bp = boardGeo.attributes.position;
+  for (let i = 0; i < bp.count; i++) { const ax = Math.abs(bp.getX(i)); if (ax > 0.58) bp.setY(i, bp.getY(i) + (ax - 0.58) ** 2 * 2.2); }
+  boardGeo.computeVertexNormals();
+  const gc = document.createElement('canvas'); gc.width = 512; gc.height = 128;
+  {
+    const g = gc.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, 512, 0);
+    grd.addColorStop(0, '#16263a'); grd.addColorStop(0.5, '#22405e'); grd.addColorStop(1, '#16263a');
+    g.fillStyle = grd; g.fillRect(0, 0, 512, 128);
+    for (let i = 0; i < 40; i++) { g.strokeStyle = `rgba(255,255,255,${0.02 + Math.random() * 0.03})`; g.beginPath(); g.moveTo(0, Math.random() * 128); g.bezierCurveTo(170, Math.random() * 128, 340, Math.random() * 128, 512, Math.random() * 128); g.stroke(); }
+    g.fillStyle = '#ff6a3d'; g.beginPath(); g.moveTo(300, 0); g.lineTo(340, 0); g.lineTo(250, 128); g.lineTo(210, 128); g.fill();
+    g.fillStyle = '#e9e2d0'; g.beginPath(); g.moveTo(350, 0); g.lineTo(362, 0); g.lineTo(272, 128); g.lineTo(260, 128); g.fill();
+    g.fillStyle = '#e9e2d0'; g.font = 'bold 34px "Barlow Condensed", sans-serif'; g.textBaseline = 'middle'; g.fillText('NISEKO 1308', 40, 64);
+  }
+  const gtex = new THREE.CanvasTexture(gc); gtex.colorSpace = THREE.SRGBColorSpace;
+  gtex.repeat.set(1 / (2 * Lh), 1 / (2 * Wh)); gtex.offset.set(0.5, 0.5);
+  mesh(boardGeo, [M(0xffffff, { map: gtex, roughness: 0.35 }), M(0x111111, { roughness: 0.3 })], rider).position.y = 0.01;
+
+  // Bindings with highbacks on the heel side, boots, and pant cuffs stacked over them.
   for (const sx of [-0.27, 0.27]) {
-    add(new THREE.BoxGeometry(0.28, 0.12, 0.13), dark, sx, 0.1, 0);                 // boots
-    const leg = add(new THREE.CylinderGeometry(0.08, 0.075, 0.82, 8), pants, sx * 0.62, 0.52, -0.04);
-    leg.rotation.z = sx > 0 ? 0.33 : -0.33;
+    mesh(new THREE.BoxGeometry(0.2, 0.03, 0.27), bind, rider).position.set(sx, 0.045, 0);
+    const hb = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.24, 12, 1, true, Math.PI * 0.6, Math.PI * 0.8), bind, rider);
+    hb.position.set(sx, 0.17, -0.02); hb.rotation.y = Math.PI;
+    mesh(new THREE.BoxGeometry(0.13, 0.04, 0.29), strap, rider).position.set(sx, 0.16, 0.02);     // ankle strap
+    const boot = mesh(new THREE.CapsuleGeometry(0.075, 0.18, 4, 10).rotateX(Math.PI / 2), bootM);
+    boot.scale.set(1, 0.9, 1); boot.position.set(sx, 0.11, 0.03);
   }
-  add(new THREE.BoxGeometry(0.42, 0.56, 0.26), jacket, 0, 1.12, -0.02);
-  add(new THREE.SphereGeometry(0.13, 16, 12), white, 0.02, 1.55, 0);                  // helmet
-  add(new THREE.BoxGeometry(0.1, 0.07, 0.2), M(0xffb347, { roughness: 0.15, metalness: 0.3 }), 0.12, 1.53, 0); // goggles face down the board
-  for (const sx of [-1, 1]) {
-    const arm = add(new THREE.CylinderGeometry(0.055, 0.05, 0.62, 8), jacket, sx * 0.33, 1.06, 0.02);
-    arm.rotation.z = sx * 1.1;
+  const seg = (r0, r1, mat, rs = 12) => mesh(new THREE.CylinderGeometry(r1, r0, 1, rs).translate(0, 0.5, 0), mat);
+  const ball = (r, mat) => mesh(new THREE.SphereGeometry(r, 12, 10), mat);
+  for (const s of ['F', 'B']) {
+    limbs['thigh' + s] = seg(0.105, 0.095, pantsM); limbs['shin' + s] = seg(0.095, 0.105, pantsM);   // baggy, flared at the cuff
+    limbs['knee' + s] = ball(0.097, pantsM);
+    limbs['arm' + s] = seg(0.075, 0.068, shell); limbs['fore' + s] = seg(0.068, 0.072, shell);
+    limbs['elbow' + s] = ball(0.07, shell);
+    const h = new THREE.Group(); body.add(h); limbs['hand' + s] = h;
+    mesh(new THREE.SphereGeometry(0.065, 10, 8).scale(1, 0.8, 1.25), mitt, h);
+    mesh(new THREE.CylinderGeometry(0.07, 0.072, 0.07, 10), mitt, h).position.y = -0.05;            // mitt cuff
   }
+  limbs.pelvis = ball(0.15, pantsM); limbs.pelvis.scale.set(1.25, 0.8, 0.95);
+  // Jacket: long baggy shell with a contrast chest panel and a hood resting on the back.
+  limbs.torso = new THREE.Group(); body.add(limbs.torso);
+  const tor = mesh(new THREE.CylinderGeometry(0.2, 0.23, 1, 16).translate(0, 0.5, 0), shell, limbs.torso); tor.scale.set(1.1, 1, 0.78);
+  const pan = mesh(new THREE.CylinderGeometry(0.202, 0.2, 0.3, 16, 1, true, -0.9, 1.8).translate(0, 0.62, 0), shellPanel, limbs.torso); pan.scale.set(1.1, 1, 0.79);
+  mesh(new THREE.SphereGeometry(0.2, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), shell, limbs.torso).scale.set(1.1, 0.45, 0.8); // shoulders
+  limbs.torso.children.at(-1).position.y = 1;
+  const hood = mesh(new THREE.TorusGeometry(0.11, 0.055, 8, 16), shell, limbs.torso); hood.position.set(0, 1.02, -0.11); hood.rotation.x = 0.9;
+  // Head: helmet, goggles with strap, neck gaiter, a bit of face and hair.
+  limbs.head = new THREE.Group(); body.add(limbs.head);
+  mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.1, 10), gaiter, limbs.head).position.y = -0.12;
+  mesh(new THREE.SphereGeometry(0.105, 16, 12), skin, limbs.head).scale.set(0.95, 1.1, 0.95);       // face
+  mesh(new THREE.SphereGeometry(0.04, 8, 6), skin, limbs.head).position.set(0.1, -0.02, 0);         // nose
+  mesh(new THREE.SphereGeometry(0.1, 12, 8).scale(1, 0.55, 1), gaiter, limbs.head).position.set(0.02, -0.08, 0); // gaiter over chin
+  const hair = mesh(new THREE.SphereGeometry(0.108, 12, 8, 0, Math.PI * 2, Math.PI * 0.35, Math.PI * 0.25), M(0x121212, { roughness: 0.9 }), limbs.head); hair.rotation.z = 0.3;
+  const helm = mesh(new THREE.SphereGeometry(0.135, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.58), helmetM, limbs.head); helm.position.y = 0.02;
+  const gog = mesh(new THREE.CylinderGeometry(0.128, 0.128, 0.065, 20, 1, true, Math.PI * 0.18, Math.PI * 0.64), lens, limbs.head); gog.position.set(0, 0.02, 0); gog.rotation.y = -Math.PI / 2;
+  mesh(new THREE.CylinderGeometry(0.133, 0.133, 0.03, 20, 1, true), strap, limbs.head).position.y = 0.02;
 }
 scene.add(rider);
+const _ya = new THREE.Vector3(0, 1, 0), _sd = new THREE.Vector3();
+function setSeg(m, a, b) {
+  _sd.subVectors(b, a); const len = _sd.length();
+  m.position.copy(a); m.quaternion.setFromUnitVectors(_ya, _sd.divideScalar(len || 1)); m.scale.set(1, len, 1);
+}
+// Two-bone IK: joint between a and c, pushed toward `bend`.
+const _mid = new THREE.Vector3(), _ax = new THREE.Vector3(), _bd = new THREE.Vector3();
+function joint(a, c, l1, l2, bend, out) {
+  _ax.subVectors(c, a); const d = Math.min(_ax.length(), l1 + l2 - 1e-3); _ax.normalize();
+  const along = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - along * along));
+  _bd.copy(bend).addScaledVector(_ax, -bend.dot(_ax)).normalize();
+  return out.copy(a).addScaledVector(_ax, along).addScaledVector(_bd, h);
+}
 
 // ---------- Lifts: towers, cables, stations and moving chairs ----------
 const CHAIR_SPACING = 28, LIFT_SPEED = 5;   // metres between chairs; detachable chairs run about 5 m/s
@@ -592,6 +764,40 @@ function rideStep(dt) {
   }
 }
 
+// ---------- Board tracks in the snow ----------
+const TRAIL_N = 6000;
+const trail = { pos: new Float32Array(TRAIL_N * 6), nrm: new Float32Array(TRAIL_N * 6), col: new Float32Array(TRAIL_N * 8), w: 0, last: null };
+{
+  const idx = new Uint32Array((TRAIL_N - 1) * 6);
+  for (let k = 0; k < TRAIL_N - 1; k++) idx.set([k * 2, k * 2 + 1, k * 2 + 2, k * 2 + 1, k * 2 + 3, k * 2 + 2], k * 6);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(trail.pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(trail.nrm, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(trail.col, 4));
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  trail.geo = g;
+  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, side: THREE.DoubleSide }));
+  m.frustumCulled = false; m.receiveShadow = true;
+  scene.add(m);
+}
+function layTrack(width, depth) {
+  const p = S.p, n = S.n;
+  const start = !trail.last;
+  if (!start && trail.last.distanceToSquared(p) < 0.36) return;
+  const i = trail.w, a = Math.min(0.55, 0.25 + depth);
+  const r = right.copy(S.f).cross(n).normalize();
+  for (const [o, s] of [[0, -1], [1, 1]]) {
+    trail.pos.set([p.x + r.x * s * width / 2, height(p.x + r.x * s * width / 2, p.z + r.z * s * width / 2) + 0.02, p.z + r.z * s * width / 2], (i * 2 + o) * 3);
+    trail.nrm.set([n.x, n.y, n.z], (i * 2 + o) * 3);
+    trail.col.set([0.6, 0.67, 0.82, start ? 0 : a], (i * 2 + o) * 4);
+  }
+  const nx = (i + 1) % TRAIL_N;              // the oldest point fades so the ring never bridges
+  trail.col[(nx * 2) * 4 + 3] = 0; trail.col[(nx * 2 + 1) * 4 + 3] = 0;
+  trail.w = nx;
+  if (nx === 0) { trail.last = null; } else (trail.last ||= new THREE.Vector3()).copy(p);
+  for (const k of ['position', 'normal', 'color']) trail.geo.attributes[k].needsUpdate = true;
+}
+
 // ---------- Particles: snowfall and carving spray ----------
 function dotTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 32;
@@ -601,7 +807,7 @@ function dotTexture() {
   return new THREE.CanvasTexture(c);
 }
 const DOT = dotTexture();
-const SNOW_N = 4000, SNOW_R = 70;
+const SNOW_N = MOBILE ? 1500 : 4000, SNOW_R = 70;
 const snowPos = new Float32Array(SNOW_N * 3);
 for (let i = 0; i < SNOW_N * 3; i++) snowPos[i] = (Math.random() - 0.5) * SNOW_R * 2;
 const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
@@ -624,7 +830,7 @@ function emitSpray(p, dir, amount) {
 
 // ---------- Input ----------
 const keys = new Set();
-const touch = { L: false, R: false, B: false, T: false };
+const touch = { steer: 0, B: false, T: false };
 addEventListener('keydown', e => {
   if (e.repeat) return;
   const k = e.key.toLowerCase();
@@ -644,7 +850,22 @@ const hold = (id, f) => {
   el.addEventListener('pointerdown', e => { e.preventDefault(); touch[f] = true; el.setPointerCapture(e.pointerId); });
   for (const ev of ['pointerup', 'pointercancel']) el.addEventListener(ev, () => { touch[f] = false; });
 };
-hold('tL', 'L'); hold('tR', 'R'); hold('tB', 'B'); hold('tT', 'T');
+hold('tB', 'B'); hold('tT', 'T');
+// Steer pad: drag sideways from wherever the thumb lands; distance sets how hard you carve.
+{
+  const pad = document.getElementById('pad'), knob = document.getElementById('knob');
+  let id = null, x0 = 0;
+  const range = () => Math.min(90, innerWidth * 0.18);
+  pad.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; x0 = e.clientX; pad.setPointerCapture(id); pad.classList.add('on'); });
+  pad.addEventListener('pointermove', e => {
+    if (e.pointerId !== id) return;
+    touch.steer = Math.max(-1, Math.min(1, (e.clientX - x0) / range()));
+    knob.style.transform = `translateX(${touch.steer * 60}px)`;
+  });
+  const end = e => { if (e.pointerId !== id) return; id = null; touch.steer = 0; knob.style.transform = ''; pad.classList.remove('on'); };
+  pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
+}
+document.getElementById('tC').addEventListener('click', () => { camMode = (camMode + 1) % CAM_MODES.length; toast(CAM_MODES[camMode], 0.8); });
 document.getElementById('tJ').addEventListener('pointerdown', e => { e.preventDefault(); wantJump = true; });
 document.getElementById('tM').addEventListener('click', () => toggleMap());
 
@@ -662,6 +883,7 @@ function dropIn(spot) {
   lastDrop = spot;
   const n = normalAt(spot.x, spot.z, new THREE.Vector3());
   S.p.set(spot.x, height(spot.x, spot.z), spot.z);
+  trail.last = null;
   const down = new THREE.Vector3(n.x, 0, n.z);
   if (down.lengthSq() < 1e-6) down.set(1, 0, 0);
   S.f.copy(down.normalize()); S.f.y = 0;
@@ -675,7 +897,7 @@ const HALF_W = WIDTH / 2 - 30, HALF_D = DEPTH / 2 - 30;
 
 function step(dt) {
   if (S.ride) { rideStep(dt); wantJump = false; return; }
-  const steerIn = (keys.has('d') || keys.has('arrowright') || touch.R ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') || touch.L ? 1 : 0);
+  const steerIn = Math.max(-1, Math.min(1, (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0) + touch.steer));
   const tuck = keys.has('w') || keys.has('arrowup') || touch.T;
   const brake = keys.has('s') || keys.has('arrowdown') || touch.B;
   S.steer += (steerIn - S.steer) * Math.min(1, dt * 7);
@@ -725,9 +947,11 @@ function step(dt) {
 
     if (Math.abs(vl) > 1.8 || (brake && sp > 3)) emitSpray(S.p, right.clone().multiplyScalar(-Math.sign(vl || 1)), Math.min(6, Math.abs(vl) * 0.6 + (brake ? 3 : 0)));
 
+    layTrack(brake ? 0.5 : 0.18 + Math.min(0.25, Math.abs(vl) * 0.04), Math.min(0.3, sp / 60));
     if (wantJump && control) { S.v.addScaledVector(n, 4.8); S.v.y += 1.0; S.air = true; S.airTime = 0; S.spin = 0; }
   } else {
     S.v.y -= G * dt;
+    trail.last = null;
     const sp = S.v.length();
     S.v.multiplyScalar(1 - 0.0022 * sp * dt);
     const yaw = -S.steer * control * 6.5 * dt;   // spins
@@ -797,11 +1021,22 @@ function updateCamera(dt) {
   const look = tmp2.copy(S.p).addScaledVector(dir, camMode === 2 ? 12 : 3).add({ x: 0, y: camMode === 2 ? 0.4 : 1.0, z: 0 });
   camLook.lerp(look, camMode === 2 ? 1 : 1 - Math.exp(-dt * 10));
   camera.lookAt(camLook);
+  // Speed feel: wider lens and a little chatter at pace.
+  const sp = S.v.length();
+  const fov = (camera.aspect < 1 ? 74 : 62) + Math.min(14, Math.max(0, sp - 8) * 0.45);
+  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
+  if (!S.air && !S.ride && sp > 15 && camMode !== 3) {
+    const a = (sp - 15) * 0.0009, t = performance.now() * 0.05;
+    camera.rotation.x += Math.sin(t * 1.3) * a; camera.rotation.z += Math.sin(t * 0.9 + 1) * a;
+  }
   rider.visible = camMode !== 2;
 }
 
 // ---------- Rider pose ----------
 const basis = new THREE.Matrix4(), side = new THREE.Vector3(), upv = new THREE.Vector3();
+const P = {}; for (const k of ['footF', 'footB', 'hip', 'hipF', 'hipB', 'knee', 'chest', 'shF', 'shB', 'handF', 'handB', 'elb']) P[k] = new THREE.Vector3();
+const KNEE_BEND = new THREE.Vector3(0, 0.2, 1), ELBOW_BEND = new THREE.Vector3(0, -1, -0.3);
+let crouchS = 1;
 function poseRider(dt) {
   upv.copy(S.n);
   const f = tmp.copy(S.f).addScaledVector(upv, -S.f.dot(upv)).normalize();
@@ -810,13 +1045,40 @@ function poseRider(dt) {
   rider.quaternion.setFromRotationMatrix(basis);
   rider.position.copy(S.p);
   const speed = S.v.length();
-  const targetLean = S.air ? 0 : S.steer * Math.min(1, speed / 14) * 0.55;
+  // Angulation into the turn, more with speed.
+  const targetLean = S.air ? 0 : S.steer * Math.min(1, speed / 14) * 0.5;
   S.lean += (targetLean - S.lean) * Math.min(1, dt * 8);
-  body.rotation.x = S.lean;
+  body.rotation.x = S.crash > 0 ? Math.sin(S.crash * 9) * 0.5 : S.lean;
   const tuck = keys.has('w') || touch.T;
-  const crouch = S.crash > 0 || (S.ride && !S.ride.L.surface) ? 0.62 : tuck ? 0.8 : 1;
-  body.scale.y += (crouch - body.scale.y) * Math.min(1, dt * 8);
-  if (S.crash > 0) body.rotation.x = Math.sin(S.crash * 9) * 0.5;
+  const seated = S.ride && !S.ride.L.surface;
+  const target = S.crash > 0 ? 0.6 : seated ? 0.62 : S.air ? 0.72 : tuck ? 0.68 : 0.9 - Math.abs(S.steer) * 0.08;
+  crouchS += (target - crouchS) * Math.min(1, dt * 8);
+  const c = crouchS, fwd = (1 - c) * 0.5 + Math.max(0, S.steer) * 0.12;   // chest drops toward the toe side
+  P.footF.set(0.27, 0.16, 0.02); P.footB.set(-0.27, 0.16, 0.02);
+  P.hip.set(0, 0.42 + 0.62 * c, -0.04 + fwd * 0.2 - Math.max(0, -S.steer) * 0.12);
+  P.hipF.copy(P.hip).x += 0.1; P.hipB.copy(P.hip).x -= 0.1;
+  for (const s of ['F', 'B']) {
+    joint(P['hip' + s], P['foot' + s], 0.46, 0.46, KNEE_BEND, P.knee);
+    setSeg(limbs['thigh' + s], P['hip' + s], P.knee); setSeg(limbs['shin' + s], P.knee, P['foot' + s]);
+    limbs['knee' + s].position.copy(P.knee);
+  }
+  P.chest.copy(P.hip).add({ x: 0.02, y: 0.56 - fwd * 0.2, z: 0.05 + fwd * 0.45 });
+  setSeg(limbs.torso, P.hip, P.chest); limbs.torso.scale.y *= 0.92;
+  limbs.pelvis.position.copy(P.hip);
+  P.shF.copy(P.chest).add({ x: 0.2, y: -0.05, z: 0 }); P.shB.copy(P.chest).add({ x: -0.2, y: -0.05, z: 0 });
+  // Arms out for balance; lead hand follows the turn.
+  const sway = Math.sin(performance.now() * 0.002) * 0.03;
+  P.handF.copy(P.shF).add({ x: 0.4, y: -0.3 + sway + (tuck ? 0.1 : 0), z: 0.12 + S.steer * 0.18 });
+  P.handB.copy(P.shB).add({ x: -0.32, y: -0.36 - sway, z: 0.1 - S.steer * 0.12 });
+  if (seated) { P.handF.copy(P.shF).add({ x: 0.1, y: -0.35, z: 0.3 }); P.handB.copy(P.shB).add({ x: -0.1, y: -0.35, z: 0.3 }); }
+  for (const s of ['F', 'B']) {
+    joint(P['sh' + s], P['hand' + s], 0.3, 0.28, ELBOW_BEND, P.elb);
+    setSeg(limbs['arm' + s], P['sh' + s], P.elb); setSeg(limbs['fore' + s], P.elb, P['hand' + s]);
+    limbs['elbow' + s].position.copy(P.elb);
+    limbs['hand' + s].position.copy(P['hand' + s]); limbs['hand' + s].quaternion.copy(limbs['fore' + s].quaternion);
+  }
+  limbs.head.position.copy(P.chest).add({ x: 0.03, y: 0.24, z: 0.03 });
+  limbs.head.rotation.set(0, 0, -0.15 + fwd * 0.3);
 }
 
 // ---------- Particles update ----------

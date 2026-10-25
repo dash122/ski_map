@@ -25,14 +25,15 @@ jobs:
             if curl -fsS --retry 3 --retry-delay 20 --data-urlencode "data@tools/niseko.overpassql" "$url" -o tools/data/osm_niseko.json; then break; fi
           done
           test -s tools/data/osm_niseko.json
-      - name: Build data/osm.json
-        run: python3 tools/build_osm.py tools/data/osm_niseko.json data/osm.json
+      - name: Build public/data/osm.json
+        run: python3 tools/build_osm.py tools/data/osm_niseko.json public/data/osm.json
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tools/data/osm_niseko.json data/osm.json
+          git add tools/data/osm_niseko.json public/data/osm.json
           if ! git diff --cached --quiet; then
             git commit -m "Update OSM ski data"
+            git pull --rebase origin "$GITHUB_REF_NAME"
             git push
           fi

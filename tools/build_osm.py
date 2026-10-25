@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Convert an Overpass `out geom` response into the compact data/osm.json the page loads.
+"""Convert an Overpass `out geom` response into the compact public/data/osm.json the page loads.
 
-    python3 tools/build_osm.py tools/data/osm_niseko.json data/osm.json
+    python3 tools/build_osm.py tools/data/osm_niseko.json public/data/osm.json
 """
 import json, sys, datetime
 

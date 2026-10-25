@@ -1,2 +1,4 @@
 tools/data/*.tmp
 .DS_Store
+node_modules/
+dist/
