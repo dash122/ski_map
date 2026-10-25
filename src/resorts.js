@@ -3,7 +3,8 @@
 // flora: what grows where, for the trees (defaults are Niseko's: Sakhalin fir and birch, treeline about 880 m).
 //   treeline m · conifer share above the lowlands · low: below this, white birch and larch plantations ·
 //   rime: snow-monster firs at the treeline (Japan) · larch: share of the broadleaf slot that is larch ·
-//   cover: extra wood where OSM maps none · firBias: distant canopy reads as conifer
+//   cover: extra wood where OSM maps none · firBias: distant canopy reads as conifer ·
+//   conifers: sakhalin | maries | sugi | douglas | spruce · broadleaf: birch | beech
 export const RESORTS = {
   niseko: {
     id: 'niseko', continent: 'asia', country: 'JP', area: '北海道', label: '二世古 Niseko United', data: 'data/',
@@ -23,7 +24,7 @@ export const RESORTS = {
     volcano: { lon: 140.811, lat: 42.826 },
   },
   appi: {
-    flora: { treeline: 1250, conifer: 0.4, low: 600 },
+    flora: { treeline: 1250, conifer: 0.45, low: 600, conifers: 'maries', broadleaf: 'beech' },   // Maries fir and beech, rime at the top
     id: 'appi', continent: 'asia', country: 'JP', area: '東北', label: '安比高原 Appi Kogen', data: 'data/appi/',
     title: '安比高原滑雪', brand: '安比高原', mountain: '前森山',
     code: 'HNA', name: '安比高原', en: 'Appi Kogen', region: '岩手縣 · 前森山', thumb: 'thumbs/appi.webp',
@@ -41,7 +42,7 @@ export const RESORTS = {
     volcano: { lon: 141.0007, lat: 39.8528 },
   },
   gala: {
-    flora: { treeline: 1300, conifer: 0.3, low: 500 },
+    flora: { treeline: 1300, conifer: 0.35, low: 0, conifers: 'sugi', broadleaf: 'beech', rime: false },   // Japanese cedar and beech
     id: 'gala', continent: 'asia', country: 'JP', area: '新潟', label: 'GALA湯澤 Gala Yuzawa', data: 'data/gala/',
     title: 'GALA湯澤滑雪', brand: 'GALA湯澤', mountain: '高津倉山',
     code: 'KIJ', name: 'GALA湯澤', en: 'Gala Yuzawa', region: '新潟縣 · 高津倉山', thumb: 'thumbs/gala.webp',
@@ -96,7 +97,7 @@ export const RESORTS = {
     volcano: { lon: 140.811, lat: 42.826 },
   },
   cypress: {
-    flora: { treeline: 1750, conifer: 0.93, low: 0, rime: false, cover: 0.16, firBias: 0.35 },
+    flora: { treeline: 1750, conifer: 0.93, low: 0, rime: false, cover: 0.16, firBias: 0.35, conifers: 'douglas', broadleaf: 'beech' },   // Douglas fir, hemlock, red alder
     id: 'cypress', continent: 'north-america', country: 'CA', area: '卑詩省', label: '賽普勒斯山 Cypress Mountain', data: 'data/cypress/',
     title: '賽普勒斯山滑雪', brand: '賽普勒斯山', mountain: '賽普勒斯山',
     code: 'YVR', name: '賽普勒斯山', en: 'Cypress Mountain', region: '卑詩省 · 西溫哥華', thumb: 'thumbs/cypress.webp',
@@ -112,7 +113,7 @@ export const RESORTS = {
     volcano: { lon: -123.0043, lat: 49.8503 },
   },
   chaserrugg: {
-    flora: { treeline: 1950, conifer: 0.82, low: 0, rime: false, larch: 0.75, cover: 0.08, firBias: 0.25 },
+    flora: { treeline: 1950, conifer: 0.82, low: 0, rime: false, larch: 0.75, cover: 0.08, firBias: 0.25, conifers: 'spruce' },   // Norway spruce and European larch
     id: 'chaserrugg', continent: 'europe', country: 'CH', area: '聖加侖州', label: 'Chäserrugg 托根堡', data: 'data/chaserrugg/',
     title: 'Chäserrugg 滑雪', brand: 'Chäserrugg', mountain: 'Chäserrugg',
     code: 'ZRH', name: 'Chäserrugg', en: 'Toggenburg', region: '瑞士 · 聖加侖州', thumb: 'thumbs/chaserrugg.webp',
