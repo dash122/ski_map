@@ -40,7 +40,7 @@ Runs are graded the way Japanese trail maps do it: green for beginner, red for i
 
 `public/models/rider.glb` is a skinned humanoid that the page poses bone by bone (legs, hips, spine, arms and head) for carving, tucking, jumping and riding lifts.
 
-It's built from scratch by `tools/make_rider.py`: the [MakeHuman](http://www.makehumancommunity.org/) base mesh (CC0) shaped into a young East Asian man, rigged with Mixamo bone names, and dressed in a colour-blocked shell jacket, baggy pants, neck gaiter, gloves, boots, helmet and goggles modelled around the body:
+It's built from scratch by `tools/make_rider.py`: the [MakeHuman](http://www.makehumancommunity.org/) base mesh (CC0) shaped into a 1.80 m young East Asian man, smoothed with a Catmull-Clark pass and rigged with Mixamo bone names. The kit is modelled around the body in the style of a technical backcountry outfit (no brand marks): a long sage shell with the hood up over a helmet, tall collar and black zips, light grey cargo pants, black gloves and boots, and amber goggles. Fabrics get generated tileable normal maps (ripstop, twill, leather) and baked fold shading:
 
 ```sh
 python3 tools/make_rider.py /tmp/rider_raw.glb      # downloads the MakeHuman assets on first run
