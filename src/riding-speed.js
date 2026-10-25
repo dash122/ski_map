@@ -1,5 +1,5 @@
 // Gameplay tuning in SI units, shared by the player and autonomous riders.
-export const RIDING = Object.freeze({ cruise: 11, tuck: 15.5, snowFriction: 0.055, aero: 0.012, tuckAero: 0.007 });
+export const RIDING = Object.freeze({ cruise: 13, tuck: 18, snowFriction: 0.03, aero: 0.012, tuckAero: 0.007 });
 
 export function ridingResistance(speed, normalGravity, { tuck = false, brake = false, steer = 0 } = {}) {
   // Edge engagement and controlled skidding shed energy throughout a linked turn.
