@@ -1,6 +1,7 @@
 // Home screen: pick an outfit and a resort, like choosing a level. Resolves with the chosen resort.
 import { RESORTS, CONTINENTS, COUNTRIES } from './resorts.js';
 import { RIDERS, pref, record } from './riders.js';
+import { bindGraphicsPicker } from './graphics.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 
@@ -32,6 +33,7 @@ export function chooseResort() {
   for (const b of stance) b.addEventListener('click', () => { goofy = b.dataset.s === 'goofy'; pref.set('stance', goofy ? 'goofy' : 'regular'); sync(); });
   for (const b of skills) b.addEventListener('click', () => { skill = b.dataset.k; pref.set('skill', skill); sync(); });
   sync();
+  bindGraphicsPicker(document.querySelectorAll('#homeGfx button'));
 
   const last = pref.get('lastResort');
   return new Promise(resolve => {
