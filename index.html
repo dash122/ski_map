@@ -1474,12 +1474,13 @@ if (LANDW.buildings.length) {
     if (ny < 0) arr.push(a.x, a.y, a.z, d.x, d.y, d.z, b.x, b.y, b.z); else arr.push(a.x, a.y, a.z, b.x, b.y, b.z, d.x, d.y, d.z);
   };
   // Buildings that house a lift terminal are modelled as its station; ones that only clash with a terminal's
-  // loading area give way to it (src/base-landmarks.js terminalRelation). The Ace summit has its own mapped model.
+  // loading area give way to it (src/base-landmarks.js terminalRelation). The Ace summit and Cheers have their own models.
   const ends = liftEnds(LIFTS);
   for (const B of LANDW.buildings) {
     let pts = B.pts;
     if (pts.length < 3) continue;
     if (aceSummit && insidePolygon(aceSummit.x, aceSummit.z, pts)) continue;
+    if (RESORT.id === 'gala' && B.name === 'Rest House "Cheers"') continue;   // hand-made in src/housed-stations.js
     const profile = baseLandmarkProfile(B.name, RESORT.id), relation = terminalRelation(B, ends);
     const station = profile?.station || relation === 'station';
     if (!station && relation === 'clash') continue;
