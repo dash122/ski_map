@@ -9,6 +9,8 @@ export const RESTAURANTS = [
   { match: 'Ichimura', name: 'Ichimura Soba', color: 0x76624a, accent: 0x414b38, style: 'soba', source: 'https://niseko.co.jp/shops/ichimura/?season=summer' },
   { match: 'Rin', name: 'Rin', color: 0x5a4334, accent: 0xa45036, style: 'izakaya', source: 'https://www.niseko-rin.com/english.html' },
   { match: 'Ezo Seafood', name: 'Ezo Seafoods Fresh', color: 0xabb8ba, accent: 0x23525b, style: 'seafood', source: 'https://ezoseafoods.com/pages/about-us' },
+  // Cypress: the log lodge (1926) on the Hollyburn cross-country trails.
+  { match: 'Hollyburn Lodge', name: 'Hollyburn Lodge', color: 0x6a4a33, accent: 0x7a2e22, style: 'lodge', source: 'https://hollyburnheritage.ca/mtn-lodges/history-hollyburn-lodge-don-grant/' },
 ];
 
 export const restaurantProfile = name => RESTAURANTS.find(p => p.match === name);
@@ -55,7 +57,7 @@ export function createRestaurantDetails({ scene, pts, base, top, profile }) {
   const canopyY = base + entranceHeight;
   box(width + 0.5, 0.24, 2.1, 0, canopyY, 0.8, accent);
   box(width + 0.6, 0.15, 2.2, 0, canopyY + 0.19, 0.8, snow);
-  if (profile.style !== 'glass' && profile.style !== 'seafood') {
+  if (['izakaya', 'sushi', 'soba'].includes(profile.style)) {
     // Split fabric noren over the entrance.
     for (const x of [-0.48, 0, 0.48]) box(0.44, 0.7, 0.08, x, base + 2.3, 0.85, accent);
   }

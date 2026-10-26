@@ -100,6 +100,13 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 .stance small { color: var(--mist); font-family: var(--display); letter-spacing: 0.12em; text-transform: uppercase; margin-left: 4px; }
 .stance button[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.14); }
 #homeSkill { grid-template-columns: repeat(3, 1fr); }
+.stance.gfx { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.stance.gfx button { padding: 9px 2px; font: inherit; font-size: 14px; color: var(--snow); cursor: pointer; display: grid; justify-items: center; gap: 2px; -webkit-tap-highlight-color: transparent; }
+.stance.gfx small { margin-left: 0; font-size: 9px; letter-spacing: 0.08em; }
+.gfx-hint { color: var(--mist); font-size: 12px; line-height: 1.5; margin: 8px 0 0; }
+.pause-sub { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.14em; margin: 18px 0 0; }
+.pause-sub span { color: var(--mist); text-transform: uppercase; font-weight: 600; letter-spacing: 0.3em; font-size: 11px; margin-left: 6px; }
+#pGfxApply { width: 100%; margin-top: 10px; padding: 12px 14px; font-size: 15px; }
 .resorts { display: grid; gap: 12px; }
 .resorts .continent { margin: 14px 0 0; font-size: 22px; font-weight: 700; letter-spacing: 0.08em; }
 .resorts .continent:first-child { margin-top: 0; }
@@ -182,6 +189,9 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #pad .track { position: relative; width: 168px; height: 54px; border-radius: 27px; background: rgba(13,27,42,0.45); border: 1px solid rgba(255,255,255,0.25); }
 #knob { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; margin: -21px; border-radius: 50%; background: var(--snow); opacity: 0.85; transition: transform 0.15s; }
 #pad.on #knob { transition: none; }
+/* On foot the pad is a joystick: push up to walk, down to step back, sideways to turn. */
+#pad.walk .track { width: 132px; height: 132px; border-radius: 50%; }
+#touch.walking .grp { display: none; }
 #pad span { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--snow); opacity: 0.7; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
 #touch .grp { display: grid; grid-template-columns: auto auto; gap: 10px; align-items: center; pointer-events: auto; }
 #touch button { width: 60px; height: 60px; border-radius: 50%; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); background: rgba(13,27,42,0.55); border: 1px solid rgba(255,255,255,0.25); touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -338,6 +348,9 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     <div class="stance" id="homeSkill" role="radiogroup" aria-label="滑行程度">
       <button type="button" role="radio" data-k="beginner">初級 <small>Beginner</small></button><button type="button" role="radio" data-k="intermediate">中級 <small>Intermediate</small></button><button type="button" role="radio" data-k="advanced">高級 <small>Advanced</small></button>
     </div>
+    <h2>畫質 <span>Graphics</span></h2>
+    <div class="stance gfx" id="homeGfx" role="radiogroup" aria-label="畫質"><button type="button" role="radio" data-g="auto">自動 <small>Auto</small></button><button type="button" role="radio" data-g="low">低 <small>Low</small></button><button type="button" role="radio" data-g="medium">中 <small>Medium</small></button><button type="button" role="radio" data-g="high">高 <small>High</small></button><button type="button" role="radio" data-g="ultra">極致 <small>Ultra</small></button></div>
+    <p class="gfx-hint">「自動」在手機上使用「中」，電腦上使用「高」。舊手機若不流暢請選「低」。</p>
     <h2>雪場 <span>Resorts</span></h2>
     <div class="resorts" id="homeResorts"></div>
   </div>
@@ -383,7 +396,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 <label class="hud panel" id="liftSpeed" hidden>纜車速度 <select id="liftSpeedSelect" aria-label="纜車速度"></select></label>
 </div>
 <div id="touch">
-  <div id="pad" aria-label="左右拖曳轉彎"><span>拖曳轉彎</span><div class="track"><div id="knob"></div></div></div>
+  <div id="pad" aria-label="左右拖曳轉彎"><span id="padLabel">拖曳轉彎</span><div class="track"><div id="knob"></div></div></div>
   <div class="grp"><button id="tB">煞車</button><button id="tJ">跳躍</button><button id="tT">壓低</button></div>
 </div>
 
@@ -395,6 +408,9 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
       <button class="btn" id="pRestart" type="button">重新開始</button>
       <button class="btn" id="pHome" type="button">回主畫面 · 選擇其他雪場</button>
     </div>
+    <h2 class="pause-sub">畫質 <span>Graphics</span></h2>
+    <div class="stance gfx" id="pauseGfx" role="radiogroup" aria-label="畫質"><button type="button" role="radio" data-g="auto">自動 <small>Auto</small></button><button type="button" role="radio" data-g="low">低 <small>Low</small></button><button type="button" role="radio" data-g="medium">中 <small>Medium</small></button><button type="button" role="radio" data-g="high">高 <small>High</small></button><button type="button" role="radio" data-g="ultra">極致 <small>Ultra</small></button></div>
+    <button class="btn" id="pGfxApply" type="button" hidden>重新載入以套用畫質</button>
   </div>
 </div>
 
@@ -449,6 +465,7 @@ import { courseSegments, courseWidth, isConnectorName, measureCourseWidth, publi
 import { ridingResistance, SKILLS } from './src/riding-speed.js';
 import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
 import { createRenderQuality } from './src/render-quality.js';
+import { graphicsPreset, bindGraphicsPicker } from './src/graphics.js';
 import { chunkGeometry, chunkInstances, createNearbyShadows } from './src/spatial-rendering.js';
 import { trailRoutes, alongTrail, createTrailSigns } from './src/trail-signs.js';
 import { currentResort } from './src/resorts.js';
@@ -456,10 +473,12 @@ import { RIDERS, pref, record, saveRecord } from './src/riders.js';
 import { chooseResort } from './src/home.js';
 import { createLoading } from './src/loading.js';
 import { createLiftLighting } from './src/lift-lighting.js';
-import { createBaseLandmarks, keepBesideTerminal, namePoiBuildings } from './src/base-landmarks.js';
+import { createBaseLandmarks, keepBesideTerminal, namePoiBuildings, baseLandmarkProfile } from './src/base-landmarks.js';
 
 // ---------- Resort: the home screen picks one; ?resort=appi deep-links past it. Everything below reads its data the same way ----------
 const RESORT = new URLSearchParams(location.search).has('resort') ? currentResort() : await chooseResort(), DATA = RESORT.data;
+// Read after the home screen, which can change it; everything below bakes it into geometry and textures.
+const GFX = graphicsPreset();
 const load = createLoading(RESORT);
 document.title = RESORT.title;
 document.querySelector('#brand .name').textContent = RESORT.brand;
@@ -563,8 +582,8 @@ const SPOTS = [{ name: `${RESORT.summit} summit`, ...flatNear(PEAK.x + 30, PEAK.
 // Rasterised once into masks the trees, terrain shader and trail map share. Without the file, forests fall back to noise.
 let LAND = null;
 try { const r = await load.fetch(DATA + 'land.json', '下載建築、道路與樹林', 40); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
-const LOW_END = matchMedia('(pointer: coarse)').matches;
-const LW = LOW_END ? 1024 : 2048, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
+const LOW_END = GFX.lowEnd;
+const LW = GFX.landMask, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
 const LANDW = { areas: {}, lines: {}, buildings: [], labels: [], pois: [] };
 if (LAND) {
   const [ow, on] = LAND.origin, Q = LAND.q;
@@ -673,7 +692,8 @@ if (OSM) {
   const SURFACE_LIFT_TYPES = /t-bar|j-bar|platter|drag_lift|magic_carpet|rope_tow/;
   const topSpot = L => {
     const [a, b] = [L.pts.at(-2), L.pts.at(-1)], d = Math.hypot(b.x - a.x, b.z - a.z) || 1, out = /gondola|cable_car/.test(L.type) ? 34 : 16;
-    return { name: `Top of ${L.name}`, top: height(b.x, b.z), ...flatNear(b.x + (b.x - a.x) / d * out, b.z + (b.z - a.z) / d * out, 14) };
+    // Refined to a clear, rideable exit beside the terminal once the stations, trees and buildings exist (liftExits).
+    return { name: `Top of ${L.name}`, top: height(b.x, b.z), lift: L, ...flatNear(b.x + (b.x - a.x) / d * out, b.z + (b.z - a.z) / d * out, 14) };
   };
   RESORTS.forEach((r, ri) => {
     const ra = Math.atan2(r.z - PEAK.z, r.x - PEAK.x);
@@ -741,7 +761,7 @@ function pisteEdge(x, z) {
 }
 let edgeNow = null;
 
-const TREE_R = LOW_END ? 750 : 1700, TREE_CHUNK = LOW_END ? 200 : 400;   // smaller mobile chunks bound streaming work
+const TREE_R = GFX.treeR, TREE_CHUNK = GFX.treeChunk;   // smaller mobile chunks bound streaming work
 const HAS_SKI = PISTES.length > 0;
 const ROAD_W = { road1: 9, road2: 7, road3: 5, track: 3.5 };
 // Woodland shoulders share the piste exclusion mask, so trees stay outside runs.
@@ -833,16 +853,16 @@ const DEN = new Uint8Array(LW * LH);
 // ---------- Renderer & scene ----------
 const canvas = document.getElementById('gl');
 const MOBILE = matchMedia('(pointer: coarse)').matches;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: GFX.antialias, powerPreference: 'high-performance' });
 // iOS kills the tab when GPU memory runs out; let the context restore instead of a blank canvas.
 canvas.addEventListener('webglcontextlost', e => e.preventDefault());
-const renderQuality = createRenderQuality({ mobile: MOBILE, pixelRatio: devicePixelRatio,
+const renderQuality = createRenderQuality({ range: GFX.ratio, pixelRatio: devicePixelRatio,
   apply: ratio => renderer.setPixelRatio(ratio) });
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = MOBILE ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = { basic: THREE.BasicShadowMap, pcf: THREE.PCFShadowMap, soft: THREE.PCFSoftShadowMap }[GFX.shadows];
 
 const scene = new THREE.Scene();
 const TRAIL_ROUTES = trailRoutes(PISTES, height);
@@ -851,7 +871,7 @@ createTrailSigns({ THREE, scene, routes: TRAIL_ROUTES, height, diffOf, scale: ma
 // Real resorts mark an open run edge with the odd pole, not a fence: where trees already line the run there are none.
 // Poles stand about every 55 m along open edges, tipped in the run's grade colour.
 {
-  const gap = MOBILE ? 80 : 55, spots = [], tip = new THREE.Color();
+  const gap = GFX.poleGap, spots = [], tip = new THREE.Color();
   for (const p of PISTES) {
     if (p.area || p.diff === 'freeride') continue;
     let next = gap / 2;
@@ -918,10 +938,10 @@ const ambient = new THREE.HemisphereLight(0xcfe3ff, 0xdfe6ee, 0.95); scene.add(a
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.9);
 const SUN_DIR = new THREE.Vector3(-0.45, 0.42, 0.78).normalize(); // low winter sun from the south-west
 sun.castShadow = true;
-sun.shadow.mapSize.setScalar(MOBILE ? 1024 : 2048);
+sun.shadow.mapSize.setScalar(GFX.shadowMap);
 Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 400 });
 sun.shadow.bias = -0.0005;
-const nearbyShadows = createNearbyShadows(MOBILE ? 90 : 140);
+const nearbyShadows = createNearbyShadows(GFX.shadowRange);
 scene.add(sun, sun.target);
 
 // Fine snow grain texture so speed reads at close range.
@@ -939,7 +959,7 @@ function snowNormalTexture() {
   }
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(MOBILE ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(GFX.anisotropy, renderer.capabilities.getMaxAnisotropy());
   return t;
 }
 function grainTexture() {
@@ -954,7 +974,7 @@ function grainTexture() {
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = Math.min(MOBILE ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
+  t.anisotropy = Math.min(GFX.anisotropy, renderer.capabilities.getMaxAnisotropy());
   return t;
 }
 
@@ -1061,8 +1081,8 @@ try {
     if (sea) col.set([0.19, 0.27, 0.36], k * 3);
     else col.set([0.94 - forest * 2.2, 0.955 - forest * 1.8, 0.99 - forest * 1.6], k * 3);
   }
-  // Phones skip every other horizon vertex: it sits kilometres away, so the detail is invisible.
-  const FS = MOBILE ? 2 : 1, idx = new Uint32Array(Math.ceil((fgx - 1) / FS) * Math.ceil((fgy - 1) / FS) * 6);
+  // Low skips every other horizon vertex: it sits kilometres away, so the detail is barely visible.
+  const FS = GFX.horizonStep, idx = new Uint32Array(Math.ceil((fgx - 1) / FS) * Math.ceil((fgy - 1) / FS) * 6);
   let p = 0;
   for (let j = 0; j < fgy - 1; j += FS) for (let i = 0; i < fgx - 1; i += FS) {
     const si = Math.min(FS, fgx - 1 - i), sj = Math.min(FS, fgy - 1 - j);
@@ -1239,7 +1259,7 @@ function juhyoGeometry() {
 }
 // Bare deciduous trees as crossed cards: Erman's birch, Japanese white birch, larch, beech. One atlas, a column each.
 function treeAtlas() {
-  const W = 128, Hh = 256, R = LOW_END ? 1 : 2, c = document.createElement('canvas'); c.width = W * 4 * R; c.height = Hh * R;
+  const W = 128, Hh = 256, R = GFX.level === 'low' ? 1 : 2, c = document.createElement('canvas'); c.width = W * 4 * R; c.height = Hh * R;
   const g = c.getContext('2d');
   g.scale(R, R);
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -1319,7 +1339,7 @@ cardMat.customProgramCacheKey = () => 'treecard';
 const TREE_CELL = 10;
 const treeGrid = new Map(); // "ci,cj" -> [x, z, r, ...]
 const chunks = new Map();
-const TREE_STEP = LOW_END ? 6.5 : 5, TREE_KEEP = LOW_END ? 0.5 : 0.62, NEAR_LOD = LOW_END ? 260 : 420;
+const TREE_STEP = GFX.treeStep, TREE_KEEP = GFX.treeKeep, NEAR_LOD = GFX.nearLod;
 let treeCount = 0;
 function buildChunk(ci, cj) {
   const fir = [], rime = [], card = [];
@@ -1508,13 +1528,15 @@ if (LANDW.buildings.length) {
   for (const B of LANDW.buildings) {
     let pts = B.pts;
     if (pts.length < 3) continue;
-    if (ends.some(e => pts.some(p => Math.hypot(p.x - e.x, p.z - e.z) < 30) || Math.hypot(pts[0].x - e.x, pts[0].z - e.z) < 30) && !keepBesideTerminal(B, ends)) continue;
+    const station = baseLandmarkProfile(B.name, RESORT.id)?.station;   // a station building that houses its terminal
+    if (!station && ends.some(e => pts.some(p => Math.hypot(p.x - e.x, p.z - e.z) < 30) || Math.hypot(pts[0].x - e.x, pts[0].z - e.z) < 30) && !keepBesideTerminal(B, ends)) continue;
     // Counter-clockwise seen from above (x east, z south), so walls face out.
     let area = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; area += p.x * q.z - q.x * p.z; }
     if (area > 0) pts = [...pts].reverse();
     area = Math.abs(area) / 2;
     let gmin = Infinity, gmax = -Infinity;
     for (const p of pts) { const h = height(p.x, p.z); gmin = Math.min(gmin, h); gmax = Math.max(gmax, h); }
+    if (station) { baseLandmarks.station(pts, gmin, gmax, baseLandmarkProfile(B.name, RESORT.id)); continue; }
     const hotel = hotelProfile(B.name);
     const restaurant = restaurantProfile(B.name);
     const y0 = gmin - 1, top = gmax + (hotel?.height ?? B.h);
@@ -1598,6 +1620,13 @@ if (LANDW.buildings.length) {
   LANDMARKS.sort((a, b) => Number(b.hotel) - Number(a.hotel) || b.area - a.area);
   console.log(`buildings: ${LANDW.buildings.length}, ${(wallPos.length + roofPos.length) / 9} triangles`);
 }
+// Signature landmarks without OSM footprints (statues, monuments, unmapped restaurants), beside their lift or building.
+const { createSignatureLandmarks } = await import('./src/signature-landmarks.js');
+const signatureLandmarks = createSignatureLandmarks({
+  scene, resort: RESORT.id, lifts: LIFTS, buildings: LANDW.buildings, height,
+  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints],
+});
+LANDMARKS.push(...signatureLandmarks.landmarks);
 
 // ---------- Mapped road surfaces and lamps ----------
 await load.at(72, '鋪設道路與路燈');
@@ -1796,6 +1825,7 @@ await load.at(78, '架設纜車');
 // six-packs and gondolas run about 5 m/s and slow to walking pace in the terminals, so carriers bunch up there.
 // OSM ride times (aerialway:duration) refine the line speed when they're plausible for the type.
 const SURFACE_LIFT = /t-bar|j-bar|platter|drag_lift|magic_carpet|rope_tow/;
+const DRAG_LIFT = /t-bar|j-bar|platter|drag_lift/;   // hangers on an overhead cable, unlike a low rope tow
 const CABLE_SIDE = 2.6;                      // half the gap between up and down cables (bullwheel radius)
 const STATION_V = 0.85;                      // detachable grips in the terminal, m/s
 const LIFT_TYPES = {                         // line speed m/s [default, min, max], seconds between carriers
@@ -1803,6 +1833,8 @@ const LIFT_TYPES = {                         // line speed m/s [default, min, ma
   detach: { v: [5.0, 4.0, 5.5], gap: 7, label: '高速吊椅' },
   gondola: { v: [5.5, 4.5, 6.0], gap: 10, label: '吊艙纜車' },
   surface: { v: [2.8, 2.0, 3.5], gap: 0, label: '地面牽引纜車' },
+  tbar: { v: [2.8, 2.2, 3.5], gap: 9, label: 'T 型拖牽' },
+  platter: { v: [3.0, 2.2, 4.0], gap: 6, label: '碟型拖牽' },
   carpet: { v: [0.7, 0.5, 1.0], gap: 0, label: '魔毯' },
 };
 function liftPoint(L, s, side = 0, out = new THREE.Vector3()) {
@@ -1846,22 +1878,25 @@ function carrierPose(L, tau, pos, dir) {
   const s = L.total - sAtTime(L, tau - Tl - Tt); liftPoint(L, s, -R, pos); liftPoint(L, s - 1, -R, _lp);
   dir.set(_lp.x - pos.x, 0, _lp.z - pos.z).normalize(); return s;
 }
-const chairMeshes = [];
+const chairMeshes = [], dragMeshes = [];
+let dragRiders = null;
 let liftTime = 0;
 if (LIFTS.length) {
-  const towers = [], cable = [], chairTerms = [], gondTerms = [], huts = [], belts = [];
+  const towers = [], cable = [], chairTerms = [], gondTerms = [], housedTerms = [], dragTerms = [], huts = [], belts = [];
   for (const L of LIFTS) {
     L.surface = SURFACE_LIFT.test(L.type);
+    L.drag = DRAG_LIFT.test(L.type);
     L.gondola = /gondola|cable_car/.test(L.type);
     L.occ = parseInt(L.raw.o) || (L.gondola ? 8 : L.type === 'mixed_lift' ? 6 : 2);
     L.bubble = L.raw.b === 'yes';
     L.detach = L.gondola || (!L.surface && L.raw.dt !== 'no' && (L.raw.dt === 'yes' || L.occ >= 4 || L.bubble));
-    L.kind = L.type === 'magic_carpet' ? 'carpet' : L.surface ? 'surface' : L.gondola ? 'gondola' : L.detach ? 'detach' : 'fixed';
+    L.kind = L.type === 'magic_carpet' ? 'carpet' : L.drag ? (L.type === 'platter' ? 'platter' : 'tbar') : L.surface ? 'surface' : L.gondola ? 'gondola' : L.detach ? 'detach' : 'fixed';
     L.cabin = L.gondola;                     // kept for older callers
     const spec = LIFT_TYPES[L.kind];
-    L.towerH = L.surface ? 2.5 : L.gondola ? 16 : 10.5;
-    L.stationH = L.surface ? 1.2 : L.gondola ? 3.55 : 2.72;   // cable height in the terminal: seats ~0.55 m off the snow
-    const clear = L.surface ? 0 : L.gondola ? 8 : 5.5;
+    // Drag lifts: cable 5-7 m up on light towers, hangers reeling down to the snow.
+    L.towerH = L.drag ? 7 : L.surface ? 2.5 : L.gondola ? 16 : 10.5;
+    L.stationH = L.drag ? 5.5 : L.surface ? 1.2 : L.gondola ? 3.55 : 2.72;   // cable height in the terminal: seats ~0.55 m off the snow
+    const clear = L.drag ? 4.5 : L.surface ? 0 : L.gondola ? 8 : 5.5;
     // Resample the line every ~15 m; supports at the terminals, the end of each loading platform, and towers every ~90 m.
     const raw = [];
     for (let i = 0; i < L.pts.length - 1; i++) {
@@ -1873,7 +1908,7 @@ if (LIFTS.length) {
     const span = sx.at(-1), g = raw.map(p => height(p.x, p.z)), sup = new Map();
     const iA = raw.findIndex((_, i) => sx[i] >= Math.min(14, span / 3)), iB = raw.length - 1 - [...sx].reverse().findIndex(v => v <= span - Math.min(14, span / 3));
     for (const i of [0, iA, iB, raw.length - 1]) sup.set(i, g[i] + L.stationH);
-    if (!L.surface) for (let i = iA + 6; i < iB - 3; i += 6) sup.set(i, g[i] + L.towerH);
+    if (!L.surface || L.drag) for (let i = iA + 6; i < iB - 3; i += 6) sup.set(i, g[i] + L.towerH);
     const y = new Array(raw.length);
     for (let it = 0; it < 40; it++) {
       const keys = [...sup.keys()].sort((a, b) => a - b);
@@ -1909,18 +1944,20 @@ if (LIFTS.length) {
     L.rideTime = L.Tline;
     // Structures
     L.path.forEach((p, i) => {
-      if (i === 0 || i === L.path.length - 1 || !sup.has(i) || i === iA || i === iB) return;
+      if (i === 0 || i === L.path.length - 1 || !sup.has(i) || (!L.drag && (i === iA || i === iB))) return;
       const q = L.path[Math.min(i + 1, L.path.length - 1)], r = L.path[Math.max(i - 1, 0)];
       towers.push([p.x, height(p.x, p.z), p.z, Math.atan2(-(q.x - r.x), -(q.z - r.z)), p.y - height(p.x, p.z), L.kind]);
     });
     for (const [c, D, end] of [[L.path[0], L.d0, 0], [L.path.at(-1), L.dEnd, 1]]) {
       const yaw = Math.atan2(D.x, D.z), gnd = height(c.x, c.z);
+      if (L.drag) dragTerms.push([c.x, gnd, c.z, yaw, c.y, end]);
       if (L.surface) { huts.push([c.x - D.z * 4, height(c.x - D.z * 4, c.z + D.x * 4), c.z + D.x * 4, yaw, 0.7]); continue; }
       // Bullwheel at the end of the line; the terminal body sits over it, reaching back toward the line.
       const back = end ? -1 : 1;
       // The mapped summit model includes the terminal and restaurant together.
       if (L.name === 'Ace Gondola' && end && aceSummit && Math.hypot(c.x - aceSummit.x, c.z - aceSummit.z) < 100) continue;
-      if (L.gondola) gondTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
+      if (L.gondola && baseLandmarks.housesTerminal(c)) housedTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
+      else if (L.gondola) gondTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
       else {
         chairTerms.push([c.x + D.x * back * 1.2, gnd, c.z + D.z * back * 1.2, yaw, c.y]);
         const hx = c.x + D.x * back * 12 + D.z * (CABLE_SIDE + 5), hz = c.z + D.z * back * 12 - D.x * (CABLE_SIDE + 5);
@@ -1928,7 +1965,7 @@ if (LIFTS.length) {
       }
     }
     if (L.type === 'magic_carpet') belts.push(L);
-    else for (const side of L.surface ? [CABLE_SIDE] : [-CABLE_SIDE, CABLE_SIDE]) for (let i = 0; i < L.path.length - 1; i++) {
+    else for (const side of L.surface && !L.drag ? [CABLE_SIDE] : [-CABLE_SIDE, CABLE_SIDE]) for (let i = 0; i < L.path.length - 1; i++) {
       const a = liftPoint(L, L.len[i], side), b = liftPoint(L, L.len[i + 1], side);
       cable.push(a.x, a.y, a.z, b.x, b.y, b.z);
     }
@@ -1970,16 +2007,24 @@ if (LIFTS.length) {
     // Machine room around the bullwheel: the hall centre sits 9 m in from the terminal point, so 10.5 m back out.
     v.set(x - Math.sin(yaw) * back * 10.5, y - 1, z - Math.cos(yaw) * back * 10.5); yawQ(yaw); s.set(1, cy - y + 4.8, 1);
   });
+  // Drag-lift terminals: a steel mast holding the horizontal bullwheel at cable height, drive housing on top.
+  place(new THREE.CylinderGeometry(0.32, 0.48, 1, 8).translate(0, 0.5, 0), steel, dragTerms, ([x, y, z, yaw, cy]) => { v.set(x, y - 0.5, z); yawQ(yaw); s.set(1, cy - y + 1.2, 1); });
+  const wheel = new THREE.TorusGeometry(CABLE_SIDE, 0.11, 6, 36).rotateX(Math.PI / 2);
+  const spokes = [0, 1, 2].map(k => new THREE.BoxGeometry(CABLE_SIDE * 2, 0.1, 0.12).rotateY(k * Math.PI / 3));
+  place(merge([wheel, ...spokes].map(g => coloredGeo(g, 0x5d6873))), new THREE.MeshLambertMaterial({ vertexColors: true }), dragTerms, ([x, y, z, yaw, cy]) => { v.set(x, cy, z); yawQ(yaw); s.set(1, 1, 1); });
+  place(new THREE.BoxGeometry(1.8, 1.1, 2.2).translate(0, 0.55, 0), new THREE.MeshStandardMaterial({ color: 0x8a96a2, roughness: 0.5, metalness: 0.4 }), dragTerms, ([x, y, z, yaw, cy]) => { v.set(x, cy + 0.2, z); yawQ(yaw); s.set(1, 1, 1); });
+  place(new THREE.BoxGeometry(2, 0.22, 2.4).translate(0, 0.11, 0), new THREE.MeshLambertMaterial({ color: 0xf2f6fa }), dragTerms, ([x, y, z, yaw, cy]) => { v.set(x, cy + 1.3, z); yawQ(yaw); s.set(1, 1, 1); });   // snow on top
   // Operator huts by the loading ramps and at drag-lift ends.
   place(new THREE.BoxGeometry(3, 2.8, 3.2).translate(0, 1.4, 0), new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 0.8 }), huts, ([x, y, z, yaw, k]) => { v.set(x, y - 0.3, z); yawQ(yaw); s.set(k, k, k); });
   place(new THREE.BoxGeometry(3.5, 0.4, 3.7).translate(0, 0.2, 0), new THREE.MeshLambertMaterial({ color: 0xf2f6fa }), huts, ([x, y, z, yaw, k]) => { v.set(x, y - 0.3 + 2.8 * k, z); yawQ(yaw); s.set(k, k, k); });
   // Night: a lamp on every tower and terminal (see src/lift-lighting.js).
   liftLighting = createLiftLighting({
-    scene, height, mobile: MOBILE,
+    scene, height, mobile: LOW_END,
     sources: [
       ...towers.map(t => ({ x: t[0], y: t[1] + t[4] + 0.55, z: t[2], r: t[5] === 'gondola' ? 11 : 9 })),
       ...chairTerms.map(t => ({ x: t[0], y: t[4] + 2.4, z: t[2], r: 14 })),
-      ...gondTerms.map(t => ({ x: t[0], y: t[4] + 4.6, z: t[2], r: 18 })),
+      ...gondTerms.concat(housedTerms).map(t => ({ x: t[0], y: t[4] + 4.6, z: t[2], r: 18 })),
+      ...dragTerms.map(t => ({ x: t[0], y: t[4] + 1.6, z: t[2], r: 10 })),
     ],
   });
   if (cable.length) {
@@ -2039,7 +2084,7 @@ if (LIFTS.length) {
   const hoodMat = new THREE.MeshStandardMaterial({ color: 0x3a6fa8, transparent: true, opacity: 0.45, roughness: 0.1, metalness: 0.3, depthWrite: false, side: THREE.DoubleSide });
   const CABIN_COLS = [0xc8452f, 0xe0b23a, 0x2f6fb4, 0xf0f0ec, 0x3d8c5a], SEAT_COLS = [0x24486e, 0x1d1f23, 0x8c2f2a, 0x2c5e43];
   for (const L of LIFTS) {
-    if (!L.n) continue;
+    if (!L.n || L.drag) continue;
     const h = hash2(L.pts[0].x * 3, L.pts[0].z * 7);
     const geo = L.gondola ? cabinGeo(L.occ, CABIN_COLS[(h * CABIN_COLS.length) | 0]) : chairGeo(Math.min(8, L.occ), SEAT_COLS[(h * SEAT_COLS.length) | 0]);
     const im = new THREE.InstancedMesh(geo, chairMat, L.n);
@@ -2057,6 +2102,87 @@ if (LIFTS.length) {
     }
     chairMeshes.push({ L, im, n: L.n, hood });
   }
+
+  // Drag-lift hangers: a spring box on the cable, its cord reeled out to a T-bar (two riders) or a platter
+  // (one). Up the line the bar is pulled down to the riders; on the way back it hangs reeled in under the box.
+  const hangerMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const boxGeo = merge([
+    coloredGeo(new THREE.BoxGeometry(0.16, 0.2, 0.36).translate(0, 0.04, 0), 0x30353b),                              // grip
+    coloredGeo(new THREE.CylinderGeometry(0.03, 0.03, 0.32, 5).translate(0, -0.18, 0), 0x30353b),
+    coloredGeo(new THREE.CylinderGeometry(0.17, 0.17, 0.3, 10).rotateZ(Math.PI / 2).translate(0, -0.45, 0), 0xd9a92b), // spring box
+  ]);
+  const cordGeo = coloredGeo(new THREE.CylinderGeometry(0.02, 0.02, 1, 4).translate(0, -0.5, 0), 0x25292e);
+  const barGeos = {
+    tbar: merge([
+      coloredGeo(new THREE.CylinderGeometry(0.025, 0.025, 1.1, 5).translate(0, 0.55, 0), 0x8f989f),                  // stem
+      coloredGeo(new THREE.BoxGeometry(1.0, 0.07, 0.07), 0x6b3d2a),                                                  // crossbar
+    ]),
+    platter: merge([
+      coloredGeo(new THREE.CylinderGeometry(0.022, 0.022, 1.5, 5).translate(0, 0.75, 0), 0x8f989f),                  // rigid pole
+      coloredGeo(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 12).rotateX(Math.PI / 2), 0x2a2d31),                   // button
+    ]),
+  };
+  for (const L of LIFTS) {
+    if (!L.n || !L.drag) continue;
+    const bounds = new THREE.Box3().setFromPoints(L.path).expandByScalar(30).getBoundingSphere(new THREE.Sphere());
+    const mesh = geo => {
+      const im = new THREE.InstancedMesh(geo, hangerMat, L.n);
+      im.boundingSphere = bounds; im.castShadow = true; scene.add(im); nearbyShadows.add(im); return im;
+    };
+    L.stem = L.kind === 'platter' ? 1.5 : 1.1;
+    L.slots = L.kind === 'platter' ? [0] : [-0.32, 0.32];   // where riders stand across the bar
+    dragMeshes.push({ L, box: mesh(boxGeo), cord: mesh(cordGeo), bar: mesh(barGeos[L.kind]) });
+  }
+
+  // Riders on the drag lifts: skiers facing up the line, snowboarders side-on with the front foot strapped in.
+  if (dragMeshes.length) {
+    const figure = (board, jacket) => {
+      const gear = [], top = [];
+      const add = (list, geo, col, x, y, z, rx = 0, rz = 0) => list.push(coloredGeo(geo.rotateX(rx).rotateZ(rz).translate(x, y, z), col));
+      const pants = 0x2f3440, dark = 0x1d1f23;
+      if (!board) for (const sx of [-0.13, 0.13]) {
+        add(gear, new THREE.BoxGeometry(0.08, 0.03, 1.7), 0x9c2a2a, sx, 0.015, 0.1);
+        add(gear, new THREE.BoxGeometry(0.12, 0.22, 0.3), dark, sx, 0.13, 0.02);
+        add(gear, new THREE.CapsuleGeometry(0.075, 0.3, 2, 6), pants, sx, 0.45, 0.06, 0.25);
+        add(gear, new THREE.CapsuleGeometry(0.09, 0.3, 2, 6), pants, sx, 0.8, 0.06, -0.2);
+      } else {
+        add(gear, new THREE.BoxGeometry(1.5, 0.03, 0.28), 0x202a3b, 0, 0.015, 0);
+        for (const sx of [-0.26, 0.26]) {
+          add(gear, new THREE.BoxGeometry(0.13, 0.2, 0.28), dark, sx, 0.12, 0);
+          add(gear, new THREE.CapsuleGeometry(0.075, 0.3, 2, 6), pants, sx * 0.85, 0.45, 0.05, 0.2, -sx * 0.5);
+          add(gear, new THREE.CapsuleGeometry(0.09, 0.3, 2, 6), pants, sx * 0.55, 0.8, 0.05, -0.15, -sx * 0.4);
+        }
+      }
+      add(top, new THREE.CapsuleGeometry(0.19, 0.4, 3, 8), 0xffffff, 0, 1.2, 0, -0.08);
+      for (const sx of [-1, 1]) {
+        add(top, new THREE.CapsuleGeometry(0.06, 0.4, 2, 5), 0xffffff, sx * 0.27, 1.13, 0.06, -0.3, sx * 0.12);
+        add(gear, new THREE.SphereGeometry(0.06, 6, 4), dark, sx * 0.29, 0.9, 0.16);
+      }
+      add(gear, new THREE.SphereGeometry(0.135, 10, 8), 0x202530, 0, 1.6, 0);
+      add(gear, new THREE.BoxGeometry(0.22, 0.07, 0.06), 0xe6ab53, 0, 1.6, 0.12);
+      // Snowboarders face across their board, which points up the line.
+      return [gear, top].map(list => { const g = merge(list); if (board) g.rotateY(Math.PI / 2); return g; });
+    };
+    const cap = dragMeshes.reduce((n, { L }) => n + L.n * L.slots.length, 0);
+    const riderMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const meshes = [figure(false), figure(true)].flat().map(geo => {
+      const im = new THREE.InstancedMesh(geo, riderMat, cap);
+      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.castShadow = true; im.count = 0;
+      scene.add(im); nearbyShadows.add(im); return im;
+    });
+    const JACKETS = [0xdb6545, 0x4794a5, 0xe1b44d, 0x7579b6, 0x648869, 0xd8d7cc, 0x2d3a4a, 0xb8423a];
+    for (let i = 0; i < cap; i++) for (const im of [meshes[1], meshes[3]]) im.setColorAt(i, new THREE.Color(JACKETS[(hash2(i, 41) * JACKETS.length) | 0]));
+    dragRiders = { skier: meshes.slice(0, 2), boarder: meshes.slice(2) };
+  }
+}
+// How far a drag-lift hanger's cord is reeled out: pulled down at the loading spot, let go just before the top.
+function dragReach(L, tau, s) {
+  return tau < L.Tline ? THREE.MathUtils.smoothstep(s, 0, LOAD_S) * (1 - THREE.MathUtils.smoothstep(s, L.total - 7, L.total - 2)) : 0;
+}
+// Height of a drag-lift bar under the cable grip at (x, cy, z).
+function dragBarY(L, reach, x, cy, z) {
+  const reeled = cy - 0.62 - L.stem;
+  return Math.min(reeled, THREE.MathUtils.lerp(reeled, height(x, z) + 0.78, reach));
 }
 const _cp = new THREE.Vector3(), _cd = new THREE.Vector3(), _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _one = new THREE.Vector3(1, 1, 1);
 const liftSpeedControl = document.getElementById('liftSpeed');
@@ -2074,7 +2200,36 @@ function updateLifts(dt) {
     }
     im.instanceMatrix.needsUpdate = true;
   }
+  const counts = dragRiders && { skier: 0, boarder: 0 };
+  for (const { L, box, cord, bar } of dragMeshes) {
+    const mine = S.ride?.L === L ? S.ride.k : liftQueue?.L === L ? liftQueue.k : -1;
+    for (let k = 0; k < L.n; k++) {
+      const tau = (liftTime + k * L.gap) % L.cycle, s = carrierPose(L, tau, _cp, _cd);
+      _q.setFromAxisAngle(worldUp, Math.atan2(_cd.x, _cd.z));
+      box.setMatrixAt(k, _m4.compose(_cp, _q, _one));
+      const up = dragReach(L, tau, s), rode = L.slots.map((off, j) => k === mine ? j === L.slots.length - 1 : hash2(k * 7 + j, L.pts[0].x | 0) < (j ? 0.45 : 0.75));
+      // Only a bar somebody took is pulled down; empty ones ride up reeled in under the box.
+      const reach = rode.some(Boolean) ? up : 0, cy = _cp.y, by = dragBarY(L, reach, _cp.x, cy, _cp.z);
+      _dv.set(1, Math.max(0.01, cy - 0.62 - by - L.stem), 1);
+      cord.setMatrixAt(k, _m4.compose(_cp.setY(cy - 0.62), _q, _dv));
+      bar.setMatrixAt(k, _m4.compose(_cp.setY(by), _q, _one));
+      if (!counts || reach < 0.98) continue;
+      _db.crossVectors(worldUp, _cd);
+      L.slots.forEach((off, j) => {
+        if (!rode[j] || k === mine && j === L.slots.length - 1) return;
+        const kind = hash2(k * 13 + j, 5) < 0.4 ? 'boarder' : 'skier', i = counts[kind]++;
+        _dp.copy(_cp).addScaledVector(_db, -off).addScaledVector(_cd, 0.16); _dp.y = height(_dp.x, _dp.z);
+        // Snowboarders face the stem; the rotation keeps the board along the line either way.
+        const yaw = Math.atan2(_cd.x, _cd.z) + (kind === 'boarder' && off > 0 ? Math.PI : 0);
+        _m4.compose(_dp, _q.setFromAxisAngle(worldUp, yaw), _one);
+        for (const im of dragRiders[kind]) im.setMatrixAt(i, _m4);
+      });
+    }
+    for (const im of [box, cord, bar]) im.instanceMatrix.needsUpdate = true;
+  }
+  if (counts) for (const kind of ['skier', 'boarder']) for (const im of dragRiders[kind]) { im.count = counts[kind]; im.instanceMatrix.needsUpdate = true; }
 }
+const _dv = new THREE.Vector3(), _dp = new THREE.Vector3(), _db = new THREE.Vector3();
 function nearLiftBase() {
   let best = null, bd = 35;
   for (const L of LIFTS) {
@@ -2097,7 +2252,8 @@ function startRide(L) {
   if (wait < 2.5) wait += L.gap;
   const k = ((Math.round((tLoad - liftTime - wait) / L.gap) % L.n) + L.n) % L.n;
   // Chairs: take the outside seat on the up-cable side; cabins: stand in the middle.
-  const seat = L.gondola ? 0 : (Math.min(8, L.occ) - 1) / 2 * 0.56;
+  // Drag lifts: your side of the T-bar, or astride the platter.
+  const seat = L.drag ? L.slots.at(-1) : L.gondola ? 0 : (Math.min(8, L.occ) - 1) / 2 * 0.56;
   const spot = liftPoint(L, LOAD_S, CABLE_SIDE + seat);
   liftQueue = { L, k, until: liftTime + wait, from: S.p.clone(), spot: new THREE.Vector3(spot.x, height(spot.x, spot.z), spot.z), t: 0, seat };
   toast(label, 2.2);
@@ -2108,7 +2264,9 @@ function queueStep(dt) {
   const u = THREE.MathUtils.smoothstep(Q.t, 0, 1.6);
   S.p.lerpVectors(Q.from, Q.spot, u); S.p.y = height(S.p.x, S.p.z);
   // Stand side-on with your back to the oncoming chair, facing up the line.
-  S.f.crossVectors(worldUp, L.d0).normalize(); S.n.set(0, 1, 0); S.v.set(0, 0, 0); S.air = false; S.lastY = S.p.y;
+  // On a drag lift, face up the track and let the bar come in behind you.
+  if (L.drag) S.f.copy(L.d0); else S.f.crossVectors(worldUp, L.d0).normalize();
+  S.n.set(0, 1, 0); S.v.set(0, 0, 0); S.air = false; S.lastY = S.p.y;
   if (liftTime >= Q.until) { S.ride = { L, k: Q.k, seat: Q.seat, s: LOAD_S, dir: L.d0.clone() }; liftQueue = null; }
 }
 const _rp = new THREE.Vector3(), _rd = new THREE.Vector3(), _back = new THREE.Vector3();
@@ -2124,7 +2282,12 @@ function rideStep(dt) {
     const tau = (liftTime + R.k * L.gap) % L.cycle;
     R.s = carrierPose(L, tau, _rp, _rd);
     R.dir.copy(_rd);
-    if (L.gondola) {
+    if (L.drag) {
+      // Standing on your board in the track, the bar behind your thighs pulling you up.
+      _back.crossVectors(worldUp, _rd).normalize();
+      S.p.copy(_rp).addScaledVector(_back, -R.seat).addScaledVector(_rd, 0.16); S.p.y = height(S.p.x, S.p.z);
+      S.f.copy(_rd); normalAt(S.p.x, S.p.z, S.n);
+    } else if (L.gondola) {
       // Seated inside the cabin, facing down the line out of the window.
       S.p.copy(_rp).addScaledVector(worldUp, -3.32).addScaledVector(_rd, 0.35);
       S.n.set(0, 1, 0); S.f.crossVectors(_rd, worldUp).normalize();
@@ -2138,26 +2301,35 @@ function rideStep(dt) {
     S.v.copy(_rd).multiplyScalar(lineSpeed(L, R.s));
   }
   S.air = false; S.lastY = S.p.y; S.steer = 0;
-  const unload = L.n ? L.total - (L.detach ? 7 : 4) : L.total;
+  const unload = L.n ? L.total - (L.detach || L.drag ? 7 : 4) : L.total;
   if (R.s >= unload || (L.n && (liftTime + R.k * L.gap) % L.cycle >= L.Tline)) unloadLift(L, R.dir);
 }
 function unloadLift(L, dir) {
   S.ride = null;
   const end = L.path.at(-1);
+  const exit = liftExit(L);
   if (L.gondola) {
-    // Walk out of the top station and strap in on the flat beside it.
-    const D = L.dEnd, x = end.x + D.x * 10 - D.z * (CABLE_SIDE + 9), z = end.z + D.z * 10 + D.x * (CABLE_SIDE + 9);
-    dropIn({ x, z, name: `Top of ${L.name}` });
+    // Step out of the cabin and walk out of the top station carrying the board, to the head of the run beside it,
+    // facing down it; strap in on the snow with F.
+    const D = L.dEnd, x = exit ? exit.x : end.x + D.x * 10 - D.z * (CABLE_SIDE + 9), z = exit ? exit.z : end.z + D.z * 10 + D.x * (CABLE_SIDE + 9);
+    lastDrop = exit || { x, z, name: `Top of ${L.name}` };
+    walkOff(x, z, exit ? exit.direction : D);
+    toast(`抵達 ${L.name} · 步行出站，按 F／🏂 穿上雪板`, 2.6);
     return;
   }
-  // Stand up and slide off the unload ramp, veering away from the bullwheel and toward the fall line.
+  // Stand up and slide off the unload ramp, steering toward the head of the run (at most 70° off the line).
   const out = dir.clone().applyAxisAngle(worldUp, -0.3).add(downhillDir(S.p.x, S.p.z).multiplyScalar(1.5)).normalize();
+  if (exit) {
+    out.set(exit.x - S.p.x, 0, exit.z - S.p.z).normalize();
+    const turn = Math.atan2(dir.x * out.z - dir.z * out.x, dir.x * out.x + dir.z * out.z), lim = 1.22;
+    if (Math.abs(turn) > lim) out.copy(dir).setY(0).normalize().applyAxisAngle(worldUp, -Math.sign(turn) * lim);
+  }
   S.p.y = height(S.p.x, S.p.z);
   normalAt(S.p.x, S.p.z, S.n);
   S.f.copy(out).addScaledVector(S.n, -out.dot(S.n)).normalize();
   S.v.copy(S.f).multiplyScalar(L.surface ? 1.5 : 3.2);
   S.air = false; S.lastY = S.p.y; trail.last = null;
-  lastDrop = { x: S.p.x + out.x * 8, z: S.p.z + out.z * 8, name: `Top of ${L.name}` };
+  lastDrop = exit || { x: S.p.x + out.x * 8, z: S.p.z + out.z * 8, name: `Top of ${L.name}` };
   toast(`抵達 ${L.name} 山頂站`, 1.4);
 }
 
@@ -2204,7 +2376,7 @@ function dotTexture() {
   return new THREE.CanvasTexture(c);
 }
 const DOT = dotTexture();
-const SNOW_N = MOBILE ? 1500 : 4000, SNOW_R = 70;
+const SNOW_N = GFX.snow, SNOW_R = 70;
 const snowPos = new Float32Array(SNOW_N * 3);
 for (let i = 0; i < SNOW_N * 3; i++) snowPos[i] = (Math.random() - 0.5) * SNOW_R * 2;
 const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
@@ -2231,7 +2403,7 @@ function emitSpray(p, dir, amount) {
 // ---------- Input ----------
 const keys = new Set();
 document.getElementById('conditions').addEventListener('focusin', () => keys.clear());
-const touch = { steer: 0, B: false, T: false };
+const touch = { steer: 0, walk: 0, B: false, T: false };
 addEventListener('keydown', e => {
   if (e.repeat || e.target.closest?.('select, input, button, summary')) return;
   const k = e.key.toLowerCase();
@@ -2257,15 +2429,21 @@ hold('tB', 'B'); hold('tT', 'T');
 // Steer pad: drag sideways from wherever the thumb lands; distance sets how hard you carve.
 {
   const pad = document.getElementById('pad'), knob = document.getElementById('knob');
-  let id = null, x0 = 0;
+  let id = null, x0 = 0, y0 = 0;
   const range = () => Math.min(90, innerWidth * 0.18);
-  pad.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; x0 = e.clientX; pad.setPointerCapture(id); pad.classList.add('on'); });
+  pad.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; x0 = e.clientX; y0 = e.clientY; pad.setPointerCapture(id); pad.classList.add('on'); });
   pad.addEventListener('pointermove', e => {
     if (e.pointerId !== id) return;
     touch.steer = Math.max(-1, Math.min(1, (e.clientX - x0) / range()));
-    knob.style.transform = `translateX(${touch.steer * 60}px)`;
+    if (!S.walking) { touch.walk = 0; knob.style.transform = `translateX(${touch.steer * 60}px)`; return; }
+    // On foot, the thumb's distance up or down sets walking pace; a small dead zone keeps a sideways drag to a turn on the spot.
+    const up = Math.max(-1, Math.min(1, (y0 - e.clientY) / range()));
+    touch.walk = Math.abs(up) < 0.15 ? 0 : up;
+    touch.steer = Math.abs(touch.steer) < 0.15 ? 0 : touch.steer;
+    const k = Math.min(1, 1 / Math.hypot(touch.steer, up || 0.0001));
+    knob.style.transform = `translate(${touch.steer * k * 45}px, ${-up * k * 45}px)`;
   });
-  const end = e => { if (e.pointerId !== id) return; id = null; touch.steer = 0; knob.style.transform = ''; pad.classList.remove('on'); };
+  const end = e => { if (e.pointerId !== id) return; id = null; touch.steer = touch.walk = 0; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
 }
 document.getElementById('tC').addEventListener('click', () => { camMode = (camMode + 1) % CAM_MODES.length; toast(CAM_MODES[camMode], 0.8); });
@@ -2298,9 +2476,16 @@ function syncWalkingControls() {
   document.getElementById('tT').textContent = S.walking ? '前進' : '壓低';
   document.getElementById('tB').textContent = S.walking ? '後退' : '煞車';
   document.getElementById('tJ').disabled = S.walking;
+  document.getElementById('touch').classList.toggle('walking', S.walking);
+  const pad = document.getElementById('pad');
+  pad.classList.toggle('walk', S.walking);
+  pad.setAttribute('aria-label', S.walking ? '拖曳搖桿行走及轉向' : '左右拖曳轉彎');
+  document.getElementById('padLabel').textContent = S.walking ? '拖曳行走' : '拖曳轉彎';
+  touch.steer = touch.walk = 0; touch.B = touch.T = false; document.getElementById('knob').style.transform = '';
 }
 function toggleWalking() {
   if (S.ride || liftQueue || S.air) { toast('請先回到雪地上', 1.4); return; }
+  if (S.walking && roadBarrier.contains(S.p.x, S.p.z)) { toast('道路上不能穿上雪板，請走到雪地上', 1.8); return; }
   S.walking = !S.walking;
   S.walkBlend = 0;
   if (S.walking) {
@@ -2312,7 +2497,7 @@ function toggleWalking() {
   S.v.set(0, 0, 0); S.steer = 0; S.lean = 0; S.crash = 0;
   S.awaitingPush = true; wantJump = false; trail.last = null;
   syncWalkingControls();
-  toast(S.walking ? '步行 · W/S 前後移動，A/D 轉向' : '已穿上雪板', 1.6);
+  toast(S.walking ? (matchMedia('(pointer: coarse)').matches ? '步行 · 拖曳搖桿前進、後退及轉向' : '步行 · W/S 前後移動，A/D 轉向') : '已穿上雪板', 1.6);
 }
 // Input heading is independent of the camera lag; the camera follows actual travel.
 const walkView = new THREE.Vector3(1, 0, 0);
@@ -2335,15 +2520,15 @@ const walkForward = new THREE.Vector3(), walkTarget = new THREE.Vector3();
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
 }
-function walkStep(dt, steer, forward, backward) {
+function walkStep(dt, steer, pace) {
   wantJump = false; trail.last = null; S.awaitingPush = true; S.steer = 0;
   S.crash = Math.max(0, S.crash - dt);
   walkView.applyAxisAngle(worldUp, -steer * 2.2 * dt).normalize();
   walkForward.copy(walkView);
-  if (steer && !forward && !backward) S.walkCameraHeading = walkView.clone();
+  if (steer && !pace) S.walkCameraHeading = walkView.clone();
   normalAt(S.p.x, S.p.z, S.n);
-  const direction = Number(forward) - Number(backward);
-  walkTarget.copy(walkForward).multiplyScalar(direction);
+  const direction = Math.sign(pace);
+  walkTarget.copy(walkForward).multiplyScalar(pace);
   if (walkTarget.lengthSq() > 1) walkTarget.normalize();
   if (walkTarget.lengthSq() > 0.001) {
     const yaw = Math.atan2(S.f.z, S.f.x), targetYaw = Math.atan2(walkTarget.z, walkTarget.x);
@@ -2357,13 +2542,25 @@ function walkStep(dt, steer, forward, backward) {
   S.p.addScaledVector(S.v, dt);
   S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
   S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
-  if (roadBarrier.blocks(x, z, S.p.x, S.p.z) || treeHit(S.p.x, S.p.z)) { S.p.x = x; S.p.z = z; }
+  // Roads are fine on foot; only the board is kept off them.
+  if (treeHit(S.p.x, S.p.z)) { S.p.x = x; S.p.z = z; }
   visitors.collide(S, dt, { x, z });
   S.p.y = height(S.p.x, S.p.z);
   S.v.set((S.p.x - x) / dt, 0, (S.p.z - z) / dt);
   if (direction) S.walkCameraHeading = walkTarget.clone().normalize();
   S.walkPhase += S.v.length() * dt * 5.5;
   S.lastY = S.p.y;
+}
+// Leave a gondola or cable car on foot, facing out of the station.
+function walkOff(x, z, out) {
+  S.p.set(x, height(x, z), z);
+  walkView.set(out.x, 0, out.z).normalize();
+  S.f.copy(walkView); S.n.set(0, 1, 0); S.v.set(0, 0, 0);
+  S.walkCameraHeading = walkView.clone();
+  S.walking = true; S.walkBlend = 0; S.air = false; S.crash = 0; S.steer = 0; S.lean = 0; S.lastY = S.p.y;
+  S.awaitingPush = true; wantJump = false; trail.last = null;
+  syncWalkingControls();
+  resetCamera();
 }
 function dropIn(spot) {
   if (roadBarrier.contains(spot.x, spot.z)) { toast('道路範圍不能滑行，請選擇雪道', 1.8); return; }
@@ -2391,7 +2588,7 @@ function step(dt) {
   const steerIn = Math.max(-1, Math.min(1, (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0) + touch.steer));
   const tuck = keys.has('w') || keys.has('arrowup') || touch.T;
   const brake = keys.has('s') || keys.has('arrowdown') || touch.B;
-  if (S.walking) { walkStep(dt, steerIn, tuck, brake); return; }
+  if (S.walking) { walkStep(dt, steerIn, Math.max(-1, Math.min(1, Number(tuck) - Number(brake) + touch.walk))); return; }
   if (S.awaitingPush) {
     S.v.set(0, 0, 0);
     if (!tuck && !steerIn && !wantJump) return;
@@ -2475,7 +2672,7 @@ function step(dt) {
   // Swept horizontal test also blocks jumping over roads and high-speed tunnelling.
   if (roadBarrier.blocks(previousX, previousZ, S.p.x, S.p.z)) {
     S.p.x = previousX; S.p.z = previousZ; S.v.x = S.v.z = 0;
-    if (!S.roadNotice || performance.now() > S.roadNotice) { toast('道路邊界 · 不能繼續滑行', 1.8); S.roadNotice = performance.now() + 2500; }
+    if (!S.roadNotice || performance.now() > S.roadNotice) { toast('道路邊界 · 不能滑行，按 F／🚶 步行過馬路', 2); S.roadNotice = performance.now() + 2500; }
   }
   S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
   S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
@@ -3009,9 +3206,9 @@ const midGeo = toWorld(140.68966, 42.89039);
 const midPoint = hanazonoMid?.path.reduce((best, point) =>
   Math.hypot(point.x - midGeo.x, point.z - midGeo.z) < Math.hypot(best.x - midGeo.x, best.z - midGeo.z) ? point : best);
 document.getElementById('liftCount').textContent = `（${passengerLifts.length} 條纜車${midPoint ? '，另有 1 個中間站' : ''}）`;
-function travelToStation(point, name) {
+function travelToStation(point, name, spot) {
   S.ride = null; liftQueue = null;
-  dropIn({ x: point.x, z: point.z, name });
+  dropIn(spot() || { x: point.x, z: point.z, name });
   toggleMap(false);
 }
 function startTrail(route) {
@@ -3034,7 +3231,7 @@ for (const route of [...TRAIL_ROUTES].sort((a, b) => a.name.localeCompare(b.name
   item.textContent = label; item.addEventListener('click', () => startTrail(route));
   document.getElementById('trailListItems').appendChild(item);
 }
-function addLiftDestination(point, name, kind, markerClass, symbol) {
+function addLiftDestination(point, name, kind, markerClass, symbol, spot) {
   const { u, v } = frac(point.x, point.z);
   const button = document.createElement('button');
   button.type = 'button'; button.className = `lift-stop ${markerClass}`;
@@ -3045,19 +3242,21 @@ function addLiftDestination(point, name, kind, markerClass, symbol) {
   button.style.left = `${u * 100}%`; button.style.top = `${v * 100}%`;
   button.addEventListener('click', e => {
     e.stopPropagation();
-    if (!mapDragged) travelToStation(point, name);
+    if (!mapDragged) travelToStation(point, name, spot);
   });
   document.getElementById('liftStops').appendChild(button);
   const item = document.createElement('button');
   item.type = 'button'; item.textContent = `${kind} · ${name}`;
-  item.addEventListener('click', () => travelToStation(point, name));
+  item.addEventListener('click', () => travelToStation(point, name, spot));
   document.getElementById('liftListItems').appendChild(item);
 }
 for (const L of passengerLifts) {
   const kind = L.gondola ? '吊艙' : L.type === 'mixed_lift' ? '混合式' : '吊椅';
   const name = L.name === 'Lift' ? `未命名${kind}纜車` : L.name;
-  addLiftDestination(L.path[0], `${name} 入口`, kind, L.gondola ? 'gondola' : L.type === 'mixed_lift' ? 'mixed' : 'chair', L.gondola ? '艙' : L.type === 'mixed_lift' ? '混' : '椅');
-  if (L === hanazonoMid && midPoint) addLiftDestination(midPoint, `${name} 中間站`, '中間站', 'gondola', '中');
+  // Lift bases: at the queue entrance, ready to board. Mid-station: out of the station, at the head of the run.
+  addLiftDestination(L.path[0], `${name} 入口`, kind, L.gondola ? 'gondola' : L.type === 'mixed_lift' ? 'mixed' : 'chair', L.gondola ? '艙' : L.type === 'mixed_lift' ? '混' : '椅',
+    () => liftExits.baseSpot(L, `${name} 入口`));
+  if (L === hanazonoMid && midPoint) addLiftDestination(midPoint, `${name} 中間站`, '中間站', 'gondola', '中', () => liftExits.exitSpot(L, midPoint, `${name} 中間站`));
 }
 function toggleMap(show = mapEl.hidden) {
   mapEl.hidden = !show;
@@ -3227,7 +3426,7 @@ function zoneName() {
 let hudT = 0, miniT = 0;
 function updateHud(dt) {
   if ((toastT -= dt) <= 0) hud.toast.classList.remove('on');
-  if ((miniT -= dt) <= 0) { miniT = MOBILE ? 1 / 12 : 1 / 24; drawMini(); }
+  if ((miniT -= dt) <= 0) { miniT = 1 / GFX.miniFps; drawMini(); }
   if ((hudT -= dt) > 0) return;
   hudT = 0.1;
   hud.spd.textContent = Math.round(S.v.length() * 3.6);
@@ -3239,7 +3438,7 @@ function updateHud(dt) {
   const piste = !S.ride && pisteAt(S.p.x, S.p.z);
   const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
   liftSpeedControl.hidden = !(S.ride || liftQueue);
-  if (liftQueue) hud.zone.textContent = `${Math.max(0, Math.ceil((liftQueue.until - liftTime) / liftSpeed))} 秒後搭乘${liftQueue.L.gondola ? '吊艙' : '吊椅'} · ${liftQueue.L.name}`;
+  if (liftQueue) hud.zone.textContent = `${Math.max(0, Math.ceil((liftQueue.until - liftTime) / liftSpeed))} 秒後搭乘${liftQueue.L.gondola ? '吊艙' : liftQueue.L.drag ? '拖牽' : '吊椅'} · ${liftQueue.L.name}`;
   else if (S.ride) {
     const R = S.ride, L = R.L, left = L.n ? L.Tline - (liftTime + R.k * L.gap) % L.cycle : (L.total - R.s) / L.v;
     hud.zone.textContent = `${L.name} · 約 ${fmt(Math.max(0, left / liftSpeed))} 抵達山頂`;
@@ -3254,15 +3453,35 @@ function updateHud(dt) {
 
 // ---------- Wind audio (starts on Drop in) ----------
 let audio = null;
+// iOS plays Web Audio in the "ambient" session, which the ring/silent switch mutes on the
+// speaker (headphones bypass it). Ask for the "playback" session instead; older iOS without
+// navigator.audioSession gets the same routing while a looping silent <audio> element plays.
+function silentLoop() {
+  const n = 800, v = new DataView(new ArrayBuffer(44 + n));
+  [[0, 'RIFF'], [8, 'WAVE'], [12, 'fmt '], [36, 'data']].forEach(([o, t]) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0))));
+  [[4, 36 + n, 4], [16, 16, 4], [20, 1, 2], [22, 1, 2], [24, 8000, 4], [28, 8000, 4], [32, 1, 2], [34, 8, 2], [40, n, 4]]
+    .forEach(([o, x, b]) => b === 4 ? v.setUint32(o, x, true) : v.setUint16(o, x, true));
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  const el = new Audio(URL.createObjectURL(new Blob([v], { type: 'audio/wav' })));
+  el.loop = true; el.setAttribute('playsinline', ''); el.play().catch(() => {});
+  return el;
+}
 function startAudio() {
   try {
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    const unmute = navigator.audioSession ? null : silentLoop();
     const ctx = new AudioContext(), len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
     let last = 0; for (let i = 0; i < len; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
     const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
     const gain = ctx.createGain(); gain.gain.value = 0;
     src.connect(lp).connect(gain).connect(ctx.destination); src.start();
-    audio = { ctx, lp, gain };
+    audio = { ctx, lp, gain, unmute };
+    ctx.resume().catch(() => {});
+    // iOS leaves the context "interrupted" after a call, Siri or a trip to the home screen.
+    const wake = () => { if (!paused && !document.hidden && ctx.state !== 'running') ctx.resume().catch(() => {}); };
+    document.addEventListener('visibilitychange', wake);
+    addEventListener('pointerdown', wake);
   } catch { audio = null; }
 }
 function updateAudio() {
@@ -3289,12 +3508,28 @@ const visitors = await createVisitors({
 const { createLiftQueues } = await import('./src/lift-queues.js');
 const liftQueues = createLiftQueues({
   scene, lifts: LIFTS, height, clock: () => liftTime, lowEnd: LOW_END, registerShadow: mesh => nearbyShadows.add(mesh),
-  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints],
+  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints, ...signatureLandmarks.footprints],
 });
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
 });
+// Where riders step off each lift and wait at each base (src/lift-exits.js).
+const { createLiftExits } = await import('./src/lift-exits.js');
+const liftExits = createLiftExits({
+  lifts: LIFTS, height, normalAt, onPiste, queueBases: liftQueues.bases, cableSide: CABLE_SIDE,
+  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints, ...(aceSummit ? [aceSummit.pts] : [])],
+  isRough: (x, z) => {
+    const k = lidx(x, z);
+    return k < 0 || Math.abs(x) > HALF_W || Math.abs(z) > HALF_D || DEN[k] > 25 || waterM[k] > 60 || roadBarrier.contains(x, z) || treeHit(x, z);
+  },
+});
+const exitCache = new Map();
+function liftExit(L) {
+  if (!exitCache.has(L)) exitCache.set(L, liftExits.exitSpot(L));
+  return exitCache.get(L);
+}
+for (const spot of SPOTS) if (spot.lift) { const e = liftExit(spot.lift); if (e) Object.assign(spot, { x: e.x, z: e.z, direction: e.direction }); }
 
 dropIn(SPOTS[0]);
 updateTrees(0, 99);
@@ -3305,7 +3540,10 @@ function setPaused(on) {
   if (!running || on === paused) return;
   paused = on; pauseEl.hidden = !on;
   keys.clear(); touch.steer = 0; touch.B = touch.T = false;
-  if (audio) audio.ctx[on ? 'suspend' : 'resume']().catch(() => {});
+  if (audio) {
+    audio.ctx[on ? 'suspend' : 'resume']().catch(() => {});
+    if (audio.unmute) on ? audio.unmute.pause() : audio.unmute.play().catch(() => {});
+  }
   last = performance.now(); acc = 0;
   if (on) document.getElementById('pResume').focus(); else canvas.focus();
 }
@@ -3317,6 +3555,12 @@ document.getElementById('tPause').addEventListener('click', () => setPaused(true
 document.getElementById('pResume').addEventListener('click', () => setPaused(false));
 document.getElementById('pRestart').addEventListener('click', restartRun);
 document.getElementById('pHome').addEventListener('click', () => { location.href = location.pathname; });
+// Graphics settings are baked in at load, so a change in the pause menu reloads straight back into this resort.
+{
+  const apply = document.getElementById('pGfxApply'), loaded = GFX.choice;
+  bindGraphicsPicker(document.querySelectorAll('#pauseGfx button'), id => { apply.hidden = id === loaded; });
+  apply.addEventListener('click', () => location.assign(`${location.pathname}?resort=${RESORT.id}`));
+}
 addEventListener('keydown', e => {
   if (e.repeat || !running) return;
   const k = e.key.toLowerCase();
@@ -3333,7 +3577,7 @@ function frame(now) {
   const frameSeconds = (now - last) / 1000;
   const dt = Math.min(0.05, frameSeconds); last = now;
   if (document.hidden) { requestAnimationFrame(frame); return; }
-  if (MOBILE && simOn()) renderQuality.sample(frameSeconds);
+  if (simOn()) renderQuality.sample(frameSeconds);
   if (simOn()) {
     acc += dt;
     while (acc >= 1 / 120) { step(1 / 120); acc -= 1 / 120; }
@@ -3364,9 +3608,10 @@ $('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} �
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { saveRecord(RESORT.id, { runs: record(RESORT.id).runs + 1 }); $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
-window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, toggleWalking, roadBarrier, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;
 window.__liftQueues = liftQueues;
+window.__liftExits = { liftExits, liftExit };
 window.__sim = { renderer, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
 </script>
