@@ -456,7 +456,7 @@ import { RIDERS, pref, record, saveRecord } from './src/riders.js';
 import { chooseResort } from './src/home.js';
 import { createLoading } from './src/loading.js';
 import { createLiftLighting } from './src/lift-lighting.js';
-import { createBaseLandmarks, keepBesideTerminal, namePoiBuildings } from './src/base-landmarks.js';
+import { createBaseLandmarks, keepBesideTerminal, namePoiBuildings, baseLandmarkProfile } from './src/base-landmarks.js';
 
 // ---------- Resort: the home screen picks one; ?resort=appi deep-links past it. Everything below reads its data the same way ----------
 const RESORT = new URLSearchParams(location.search).has('resort') ? currentResort() : await chooseResort(), DATA = RESORT.data;
@@ -1458,13 +1458,15 @@ if (LANDW.buildings.length) {
   for (const B of LANDW.buildings) {
     let pts = B.pts;
     if (pts.length < 3) continue;
-    if (ends.some(e => pts.some(p => Math.hypot(p.x - e.x, p.z - e.z) < 30) || Math.hypot(pts[0].x - e.x, pts[0].z - e.z) < 30) && !keepBesideTerminal(B, ends)) continue;
+    const station = baseLandmarkProfile(B.name, RESORT.id)?.station;   // a station building that houses its terminal
+    if (!station && ends.some(e => pts.some(p => Math.hypot(p.x - e.x, p.z - e.z) < 30) || Math.hypot(pts[0].x - e.x, pts[0].z - e.z) < 30) && !keepBesideTerminal(B, ends)) continue;
     // Counter-clockwise seen from above (x east, z south), so walls face out.
     let area = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; area += p.x * q.z - q.x * p.z; }
     if (area > 0) pts = [...pts].reverse();
     area = Math.abs(area) / 2;
     let gmin = Infinity, gmax = -Infinity;
     for (const p of pts) { const h = height(p.x, p.z); gmin = Math.min(gmin, h); gmax = Math.max(gmax, h); }
+    if (station) { baseLandmarks.station(pts, gmin, gmax, baseLandmarkProfile(B.name, RESORT.id)); continue; }
     const hotel = hotelProfile(B.name);
     const restaurant = restaurantProfile(B.name);
     const y0 = gmin - 1, top = gmax + (hotel?.height ?? B.h);
@@ -1799,7 +1801,7 @@ function carrierPose(L, tau, pos, dir) {
 const chairMeshes = [];
 let liftTime = 0;
 if (LIFTS.length) {
-  const towers = [], cable = [], chairTerms = [], gondTerms = [], huts = [], belts = [];
+  const towers = [], cable = [], chairTerms = [], gondTerms = [], housedTerms = [], huts = [], belts = [];
   for (const L of LIFTS) {
     L.surface = SURFACE_LIFT.test(L.type);
     L.gondola = /gondola|cable_car/.test(L.type);
@@ -1870,7 +1872,8 @@ if (LIFTS.length) {
       const back = end ? -1 : 1;
       // The mapped summit model includes the terminal and restaurant together.
       if (L.name === 'Ace Gondola' && end && aceSummit && Math.hypot(c.x - aceSummit.x, c.z - aceSummit.z) < 100) continue;
-      if (L.gondola) gondTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
+      if (L.gondola && baseLandmarks.housesTerminal(c)) housedTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
+      else if (L.gondola) gondTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
       else {
         chairTerms.push([c.x + D.x * back * 1.2, gnd, c.z + D.z * back * 1.2, yaw, c.y]);
         const hx = c.x + D.x * back * 12 + D.z * (CABLE_SIDE + 5), hz = c.z + D.z * back * 12 - D.x * (CABLE_SIDE + 5);
@@ -1929,7 +1932,7 @@ if (LIFTS.length) {
     sources: [
       ...towers.map(t => ({ x: t[0], y: t[1] + t[4] + 0.55, z: t[2], r: t[5] === 'gondola' ? 11 : 9 })),
       ...chairTerms.map(t => ({ x: t[0], y: t[4] + 2.4, z: t[2], r: 14 })),
-      ...gondTerms.map(t => ({ x: t[0], y: t[4] + 4.6, z: t[2], r: 18 })),
+      ...gondTerms.concat(housedTerms).map(t => ({ x: t[0], y: t[4] + 4.6, z: t[2], r: 18 })),
     ],
   });
   if (cable.length) {
