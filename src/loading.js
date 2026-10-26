@@ -5,7 +5,7 @@ const TIPS = [
   '跳躍後左右轉可以旋轉。',
   '點小地圖可直接傳送到雪道入口或纜車。',
   '在纜車山腳站搭乘，可選 1×–10× 速度。',
-  '夜晚會自動開啟頭燈。',
+  '夜晚纜車柱燈會亮起，沿纜車線滑行最清楚。',
 ];
 
 const frame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
