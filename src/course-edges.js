@@ -11,6 +11,10 @@ export function courseWidth(difficulty, x, z, mappedWidth) {
 const NARROW_NAME = /下山|連絡|renraku|林道|帰り|ツアー|connector|access|ski[ -]?out|return|cat[ -]?(walk|track)|link|road/i;
 export const isConnectorName = name => NARROW_NAME.test(name || '');
 
+// Widths a resort publishes for its own runs (resort config `widths`: [{ match, w }] in metres), for runs OSM
+// maps as a centreline with no width tag.
+export const publishedWidth = (name, table = []) => table.find(t => t.match.test(name || ''))?.w;
+
 // Measure a run's cleared corridor against mapped woods: every ~20 m, step out from the centreline on both
 // sides until the trees start. Samples where the woods cover the centreline (woods mapped right over the run)
 // or never reach within 60 m (open slopes) say nothing. With enough clean samples the median is the width.

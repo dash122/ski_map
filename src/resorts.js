@@ -2,7 +2,7 @@
 // Data folders are built by the tools in tools/ from the boxes in tools/resorts.json.
 // flora: what grows where, for the trees (defaults are Niseko's: Sakhalin fir and birch, treeline about 880 m).
 //   treeline m · conifer share above the lowlands · low: below this, white birch and larch plantations ·
-//   rime: snow-monster firs at the treeline (Japan) · larch: share of the broadleaf slot that is larch ·
+//   rime: snow-monster firs at the treeline (Japan) · juhyo: Zao's full-size snow monsters in a wide band below it · larch: share of the broadleaf slot that is larch ·
 //   cover: extra wood where OSM maps none · firBias: distant canopy reads as conifer ·
 //   conifers: sakhalin | maries | sugi | douglas | spruce · broadleaf: birch | beech
 export const RESORTS = {
@@ -104,14 +104,20 @@ export const RESORTS = {
     code: 'GAJ', name: '藏王溫泉', en: 'Zao Onsen', region: '山形縣 · 藏王連峰', thumb: 'thumbs/zao.webp',
     sub: '在山形縣藏王溫泉的真實地形上滑雪：從地藏山頂穿過冬季的樹冰「雪怪」，一路滑回溫泉街。',
     summit: 'Jizo', summitZone: '藏王地藏山頂・樹冰原', backcountry: '藏王野雪區',
-    // Mt. Jizo (1736 m), top of the Zao Ropeway; Mt. Kumano (1841 m) to the south-east is higher but unlifted.
-    peak: { lon: 140.4330, lat: 38.1515 },
-    // Approximate base areas (labels only, not survey data).
+    // Mt. Jizo (OSM peak, 1736 m), just above the Zao Ropeway's summit station; Mt. Kumano (1841 m) is higher but unlifted.
+    peak: { lon: 140.4320, lat: 38.1520 },
+    // Base areas from the OSM lift terminals (labels only, not survey data).
     bases: [
-      { name: 'Zao Onsen', lon: 140.3985, lat: 38.1665 },
-      { name: 'Uwanodai', lon: 140.3960, lat: 38.1700 },
-      { name: 'Chuo Kogen', lon: 140.4150, lat: 38.1600 },
+      { name: 'Zao Ropeway Sanroku', lon: 140.3953, lat: 38.1616 },
+      { name: 'Uwanodai', lon: 140.3981, lat: 38.1709 },
+      { name: 'Chuo Kogen', lon: 140.4161, lat: 38.1700 },
+      { name: 'Juhyo Kogen', lon: 140.4107, lat: 38.1517 },
+      { name: 'Kurohime', lon: 140.3928, lat: 38.1452 },
     ],
+    // Run widths the resort publishes (Yamagata City tourism course guide): the Ohira (大平, mapped 太平) course is about 30 m.
+    widths: [{ match: /^(太平|大平)コース$/, w: 30 }],
+    // Signature landmark: the stone Jizo at the top of the Zao Ropeway, buried to the chest in winter (position approximate).
+    jizo: { lon: 140.4307, lat: 38.1541 },
     // Snow-capped volcano on the horizon: Mt. Gassan, north-west across the Yamagata basin.
     volcano: { lon: 140.0270, lat: 38.5490 },
   },

@@ -13,6 +13,7 @@ const VIEWS = {
   chaserrugg: { from: [9.3128, 47.1565], at: [9.3127, 47.1930, 1300] }, // Below the Chäserrugg summit, down the north slopes to Unterwasser and the Säntis
   rusutsu: { from: [140.9238, 42.7116], at: [140.811, 42.826, 1100], cam: [30, 28] }, // Isola summit looking north-west to Mt. Yotei
   teine: { from: [141.1935, 43.0770], at: [141.30, 43.16, 0] }, // Mt. Teine summit, looking down to Sapporo and Ishikari Bay
+  zao: { from: [140.4300, 38.1548], at: [140.027, 38.549, 1500], cam: [25, 20] }, // Juhyo field below Mt. Jizo, over the Yamagata basin to Mt. Gassan
   gala: { from: [138.7712, 36.9466], at: [138.7996, 36.9503, 350] }, // Steep upper slopes below the Coach summit, facing the station
 };
 const base = process.env.URL || 'http://localhost:4173/';
