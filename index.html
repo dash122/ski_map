@@ -60,6 +60,9 @@ canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block
 kbd { font-family: var(--display); font-weight: 600; color: var(--snow); background: rgba(255,255,255,0.12); border-radius: 3px; padding: 0 5px; }
 #toast { top: 30%; left: 50%; transform: translateX(-50%); font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); text-shadow: 0 2px 18px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.25s; width: max-content; max-width: 88vw; text-align: center; text-wrap: balance; line-height: 1.05; }
 #toast.on { opacity: 1; }
+/* Passing through a station building's doors: a short fade, since the inside isn't explorable. */
+#fade { position: fixed; inset: 0; z-index: 1; background: #06090d; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+#fade.on { opacity: 1; }
 #prompt { bottom: calc(170px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); pointer-events: auto; background: var(--signal); color: var(--ink); border: 0; }
 #liftSpeed { top: calc(170px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); padding: 7px 9px; display: flex; gap: 8px; align-items: center; pointer-events: auto; font-size: 12px; }
 #liftSpeed select { font: inherit; color: var(--snow); background: var(--ink); border: 1px solid var(--mist); border-radius: 4px; padding: 4px; }
@@ -388,6 +391,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
   </div>
 </details>
 <div class="hud" id="toast"></div>
+<div id="fade"></div>
 <button class="hud btn" id="prompt" hidden></button>
 
 <div id="rcol">
@@ -1627,6 +1631,10 @@ const signatureLandmarks = createSignatureLandmarks({
   footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints],
 });
 LANDMARKS.push(...signatureLandmarks.landmarks);
+// Buildings with a gondola terminal inside (src/housed-stations.js): walk in through the doors to board, out on arrival.
+const { createHousedStations } = await import('./src/housed-stations.js');
+const housedStations = createHousedStations({ scene, resort: RESORT.id, buildings: LANDW.buildings, lifts: LIFTS, height });
+LANDMARKS.push(...housedStations.landmarks);
 
 // ---------- Mapped road surfaces and lamps ----------
 await load.at(72, '鋪設道路與路燈');
@@ -1957,7 +1965,7 @@ if (LIFTS.length) {
       // The mapped summit model includes the terminal and restaurant together.
       if (L.name === 'Ace Gondola' && end && aceSummit && Math.hypot(c.x - aceSummit.x, c.z - aceSummit.z) < 100) continue;
       if (L.gondola && baseLandmarks.housesTerminal(c)) housedTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
-      else if (L.gondola) gondTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
+      else if (L.gondola && !housedStations.housesTerminal(c)) gondTerms.push([c.x + D.x * back * 9, gnd, c.z + D.z * back * 9, yaw, c.y, back]);
       else {
         chairTerms.push([c.x + D.x * back * 1.2, gnd, c.z + D.z * back * 1.2, yaw, c.y]);
         const hx = c.x + D.x * back * 12 + D.z * (CABLE_SIDE + 5), hz = c.z + D.z * back * 12 - D.x * (CABLE_SIDE + 5);
@@ -2301,11 +2309,29 @@ function rideStep(dt) {
     S.v.copy(_rd).multiplyScalar(lineSpeed(L, R.s));
   }
   S.air = false; S.lastY = S.p.y; S.steer = 0;
-  const unload = L.n ? L.total - (L.detach || L.drag ? 7 : 4) : L.total;
-  if (R.s >= unload || (L.n && (liftTime + R.k * L.gap) % L.cycle >= L.Tline)) unloadLift(L, R.dir);
+  if (R.leaving) return;
+  const unload = L.n ? L.total - (L.detach || L.drag ? 7 : 4) : L.total, tau = L.n ? (liftTime + R.k * L.gap) % L.cycle : 0;
+  if (R.down) { if (tau >= 2 * L.Tline + L.Tturn || (tau >= L.Tline + L.Tturn && R.s <= 7)) unloadLift(L, R.dir, true); }
+  else if (R.s >= unload || (L.n && tau >= L.Tline)) unloadLift(L, R.dir);
 }
-function unloadLift(L, dir) {
+function unloadLift(L, dir, down = false) {
+  // A terminal inside a building: stay in the cabin while the screen fades, then walk out through its doors.
+  const door = L.gondola && doorwayAt(L, down ? 0 : -1);
+  if (door) {
+    S.ride.leaving = true;
+    throughDoor(() => { S.ride = null; walkOutOf(door); });
+    toast(`抵達 ${L.name} · 從 ${door.name} 步行出站`, 2.6);
+    return;
+  }
   S.ride = null;
+  if (down) {
+    // Back at the bottom terminal: step out beside it, facing away from the line.
+    const D = L.d0, c = L.path[0], x = c.x - D.x * 10 - D.z * (CABLE_SIDE + 9), z = c.z - D.z * 10 + D.x * (CABLE_SIDE + 9);
+    lastDrop = { x, z, name: `Bottom of ${L.name}` };
+    walkOff(x, z, { x: -D.x, z: -D.z });
+    toast(`抵達 ${L.name} 山下站 · 按 F／🏂 穿上雪板`, 2.6);
+    return;
+  }
   const end = L.path.at(-1);
   const exit = liftExit(L);
   if (L.gondola) {
@@ -2331,6 +2357,46 @@ function unloadLift(L, dir) {
   S.air = false; S.lastY = S.p.y; trail.last = null;
   lastDrop = exit || { x: S.p.x + out.x * 8, z: S.p.z + out.z * 8, name: `Top of ${L.name}` };
   toast(`抵達 ${L.name} 山頂站`, 1.4);
+}
+
+// ---------- Station buildings: walk in through the doors to board, walk out on arrival ----------
+const fadeEl = document.getElementById('fade');
+let doorPass = false, doorHintAt = 0;
+function throughDoor(action) {
+  if (doorPass) return;
+  doorPass = true; fadeEl.classList.add('on');
+  setTimeout(() => { action(); resetCamera(); fadeEl.classList.remove('on'); setTimeout(() => { doorPass = false; }, 450); }, 420);
+}
+const doorwayAt = (L, end) => housedStations.doorways.find(d => d.L === L && (d.end < 0) === (end < 0));
+// Seat the rider in the cabin creeping through the station now: up from the bottom terminal, or down from the top.
+function boardInside(L, down) {
+  liftQueue = null; S.walking = false; syncWalkingControls(); S.crash = 0; S.v.set(0, 0, 0);
+  const t0 = down ? L.Tline + L.Tturn : 0;
+  const k = ((Math.ceil((t0 - liftTime) / L.gap) % L.n) + L.n) % L.n;
+  S.ride = { L, k, seat: 0, s: down ? L.total : 0, dir: down ? L.dEnd.clone().negate() : L.d0.clone(), down };
+  rideStep(0);
+  toast(`${L.name} · ${down ? '搭乘吊艙下山' : L.spec.label}`, 2.2);
+}
+function walkOutOf(door) {
+  walkOff(door.x + door.out.x * 1.5, door.z + door.out.z * 1.5, door.out);
+  S.autoWalk = 1.6; S.exitDoor = door;
+  lastDrop = { x: door.x + door.out.x * 14, z: door.z + door.out.z * 14, name: door.name };
+}
+// Walking into a station's doors takes you through to the gondola; on the board you get a reminder to walk.
+function checkDoors() {
+  if (doorPass || S.ride || liftQueue) return;
+  for (const d of housedStations.doorways) {
+    const dist = Math.hypot(S.p.x - d.x, S.p.z - d.z);
+    if (S.walking && dist < 3.2 && S.v.x * d.out.x + S.v.z * d.out.z < -0.4) {
+      S.autoWalk = 0.6;                       // keep stepping in while the screen fades
+      throughDoor(() => { S.autoWalk = 0; boardInside(d.L, d.end < 0); });
+      return;
+    }
+    if (dist < 30 && performance.now() > doorHintAt) {
+      doorHintAt = performance.now() + 12000;
+      toast(S.walking ? `走進 ${d.name} 搭乘 ${d.L.name}${d.end < 0 ? '下山' : ''}` : `按 F／🚶 脫下雪板，步行進入 ${d.name}`, 2.2);
+    }
+  }
 }
 
 // ---------- Board tracks in the snow ----------
@@ -2543,7 +2609,7 @@ function walkStep(dt, steer, pace) {
   S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
   S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
   // Roads are fine on foot; only the board is kept off them.
-  if (treeHit(S.p.x, S.p.z)) { S.p.x = x; S.p.z = z; }
+  if (treeHit(S.p.x, S.p.z) || housedStations.blocks(S.p.x, S.p.z)) { S.p.x = x; S.p.z = z; }
   visitors.collide(S, dt, { x, z });
   S.p.y = height(S.p.x, S.p.z);
   S.v.set((S.p.x - x) / dt, 0, (S.p.z - z) / dt);
@@ -2564,7 +2630,7 @@ function walkOff(x, z, out) {
 }
 function dropIn(spot) {
   if (roadBarrier.contains(spot.x, spot.z)) { toast('道路範圍不能滑行，請選擇雪道', 1.8); return; }
-  S.walking = false; syncWalkingControls();
+  S.walking = false; S.autoWalk = 0; syncWalkingControls();
   lastDrop = spot;
   const n = normalAt(spot.x, spot.z, new THREE.Vector3());
   S.p.set(spot.x, height(spot.x, spot.z), spot.z);
@@ -2588,6 +2654,8 @@ function step(dt) {
   const steerIn = Math.max(-1, Math.min(1, (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0) + touch.steer));
   const tuck = keys.has('w') || keys.has('arrowup') || touch.T;
   const brake = keys.has('s') || keys.has('arrowdown') || touch.B;
+  checkDoors();
+  if (S.walking && S.autoWalk > 0) { S.autoWalk -= dt; walkStep(dt, 0, 0.5); return; }
   if (S.walking) { walkStep(dt, steerIn, Math.max(-1, Math.min(1, Number(tuck) - Number(brake) + touch.walk))); return; }
   if (S.awaitingPush) {
     S.v.set(0, 0, 0);
@@ -2674,6 +2742,10 @@ function step(dt) {
     S.p.x = previousX; S.p.z = previousZ; S.v.x = S.v.z = 0;
     if (!S.roadNotice || performance.now() > S.roadNotice) { toast('道路邊界 · 不能滑行，按 F／🚶 步行過馬路', 2); S.roadNotice = performance.now() + 2500; }
   }
+  if (housedStations.blocks(S.p.x, S.p.z)) {
+    S.p.x = previousX; S.p.z = previousZ; S.v.multiplyScalar(-0.15);
+    if (S.crash <= 0) { S.crash = 1; toast('撞到建築物了！', 1.2); }
+  }
   S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
   S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
   visitors.collide(S, dt, { x: previousX, z: previousZ });
@@ -2751,6 +2823,13 @@ function updateCamera(dt) {
   const look = tmp2.copy(camAt).addScaledVector(camDir, camMode === 2 ? 12 : 3).add({ x: 0, y: camMode === 2 ? 0.4 : 1.0, z: 0 });
   camLook.lerp(look, S.walking ? 1 - Math.exp(-18 * dt) : damp(camMode === 2 ? 20 : 8));
   camera.lookAt(camLook);
+  // Walking out of a station: watch from the snow outside as you come through the doors, then the chase resumes.
+  if (S.exitDoor && S.walking && S.autoWalk > 0) {
+    const d = S.exitDoor, x = d.x + d.out.x * 11 - d.out.z * 5, z = d.z + d.out.z * 11 + d.out.x * 5;
+    camera.position.set(x, Math.max(height(x, z) + 1.8, S.p.y + 2.2), z);
+    camera.lookAt(S.p.x, S.p.y + 1.3, S.p.z);
+    camPos.copy(camera.position); camLook.set(S.p.x, S.p.y + 1.3, S.p.z);
+  } else S.exitDoor = null;
   // Speed feel: a wider lens at pace, eased in.
   const sp = S.v.length();
   const fov = (camera.aspect < 1 ? 74 : 62) + Math.min(14, Math.max(0, sp - 8) * 0.45);
@@ -3288,7 +3367,7 @@ document.getElementById('mzIn').addEventListener('click', e => { e.stopPropagati
 document.getElementById('mzOut').addEventListener('click', e => { e.stopPropagation(); setMiniZoom(miniZoom + 1); });
 // Where to head next: the top station while riding, otherwise the nearest lift base, preferring bases below you.
 function miniTarget() {
-  if (S.ride) return { p: S.ride.L.pts.at(-1), name: S.ride.L.name, top: true };
+  if (S.ride) return { p: S.ride.down ? S.ride.L.pts[0] : S.ride.L.pts.at(-1), name: S.ride.L.name, top: !S.ride.down };
   let best = null, bs = Infinity;
   for (const L of LIFTS) {
     const p = L.pts[0], d = Math.hypot(p.x - S.p.x, p.z - S.p.z), below = height(p.x, p.z) <= S.p.y + 40;
@@ -3440,8 +3519,9 @@ function updateHud(dt) {
   liftSpeedControl.hidden = !(S.ride || liftQueue);
   if (liftQueue) hud.zone.textContent = `${Math.max(0, Math.ceil((liftQueue.until - liftTime) / liftSpeed))} 秒後搭乘${liftQueue.L.gondola ? '吊艙' : liftQueue.L.drag ? '拖牽' : '吊椅'} · ${liftQueue.L.name}`;
   else if (S.ride) {
-    const R = S.ride, L = R.L, left = L.n ? L.Tline - (liftTime + R.k * L.gap) % L.cycle : (L.total - R.s) / L.v;
-    hud.zone.textContent = `${L.name} · 約 ${fmt(Math.max(0, left / liftSpeed))} 抵達山頂`;
+    const R = S.ride, L = R.L, tau = L.n ? (liftTime + R.k * L.gap) % L.cycle : 0;
+    const left = R.down ? 2 * L.Tline + L.Tturn - tau : L.n ? L.Tline - tau : (L.total - R.s) / L.v;
+    hud.zone.textContent = `${L.name} · 約 ${fmt(Math.max(0, left / liftSpeed))} 抵達${R.down ? '山下站' : '山頂'}`;
   }
   else if (!piste && !S.walking && edgeNow && edgeNow.depth > 3) hud.zone.textContent = `雪道外 · 離${edgeNow.piste.name || '雪道'} ${Math.round(edgeNow.dist)} 公尺`;
   else if (piste && piste.name) hud.zone.innerHTML = `<span class="dot" style="background:${diffOf(piste.diff).color}"></span>${piste.name.replace(/[<&>]/g, '')} · ${diffOf(piste.diff).label}`;
@@ -3613,5 +3693,5 @@ window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, 
 window.__visitors = visitors;
 window.__liftQueues = liftQueues;
 window.__liftExits = { liftExits, liftExit };
-window.__sim = { renderer, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
+window.__sim = { renderer, doorways: housedStations.doorways, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
 </script>
