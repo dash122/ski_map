@@ -3204,15 +3204,35 @@ function updateHud(dt) {
 
 // ---------- Wind audio (starts on Drop in) ----------
 let audio = null;
+// iOS plays Web Audio in the "ambient" session, which the ring/silent switch mutes on the
+// speaker (headphones bypass it). Ask for the "playback" session instead; older iOS without
+// navigator.audioSession gets the same routing while a looping silent <audio> element plays.
+function silentLoop() {
+  const n = 800, v = new DataView(new ArrayBuffer(44 + n));
+  [[0, 'RIFF'], [8, 'WAVE'], [12, 'fmt '], [36, 'data']].forEach(([o, t]) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0))));
+  [[4, 36 + n, 4], [16, 16, 4], [20, 1, 2], [22, 1, 2], [24, 8000, 4], [28, 8000, 4], [32, 1, 2], [34, 8, 2], [40, n, 4]]
+    .forEach(([o, x, b]) => b === 4 ? v.setUint32(o, x, true) : v.setUint16(o, x, true));
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  const el = new Audio(URL.createObjectURL(new Blob([v], { type: 'audio/wav' })));
+  el.loop = true; el.setAttribute('playsinline', ''); el.play().catch(() => {});
+  return el;
+}
 function startAudio() {
   try {
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    const unmute = navigator.audioSession ? null : silentLoop();
     const ctx = new AudioContext(), len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
     let last = 0; for (let i = 0; i < len; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
     const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
     const gain = ctx.createGain(); gain.gain.value = 0;
     src.connect(lp).connect(gain).connect(ctx.destination); src.start();
-    audio = { ctx, lp, gain };
+    audio = { ctx, lp, gain, unmute };
+    ctx.resume().catch(() => {});
+    // iOS leaves the context "interrupted" after a call, Siri or a trip to the home screen.
+    const wake = () => { if (!paused && !document.hidden && ctx.state !== 'running') ctx.resume().catch(() => {}); };
+    document.addEventListener('visibilitychange', wake);
+    addEventListener('pointerdown', wake);
   } catch { audio = null; }
 }
 function updateAudio() {
@@ -3255,7 +3275,10 @@ function setPaused(on) {
   if (!running || on === paused) return;
   paused = on; pauseEl.hidden = !on;
   keys.clear(); touch.steer = 0; touch.B = touch.T = false;
-  if (audio) audio.ctx[on ? 'suspend' : 'resume']().catch(() => {});
+  if (audio) {
+    audio.ctx[on ? 'suspend' : 'resume']().catch(() => {});
+    if (audio.unmute) on ? audio.unmute.pause() : audio.unmute.play().catch(() => {});
+  }
   last = performance.now(); acc = 0;
   if (on) document.getElementById('pResume').focus(); else canvas.focus();
 }
