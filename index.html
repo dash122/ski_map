@@ -671,7 +671,8 @@ if (OSM) {
   const SURFACE_LIFT_TYPES = /t-bar|j-bar|platter|drag_lift|magic_carpet|rope_tow/;
   const topSpot = L => {
     const [a, b] = [L.pts.at(-2), L.pts.at(-1)], d = Math.hypot(b.x - a.x, b.z - a.z) || 1, out = /gondola|cable_car/.test(L.type) ? 34 : 16;
-    return { name: `Top of ${L.name}`, top: height(b.x, b.z), ...flatNear(b.x + (b.x - a.x) / d * out, b.z + (b.z - a.z) / d * out, 14) };
+    // Refined to a clear, rideable exit beside the terminal once the stations, trees and buildings exist (liftExits).
+    return { name: `Top of ${L.name}`, top: height(b.x, b.z), lift: L, ...flatNear(b.x + (b.x - a.x) / d * out, b.z + (b.z - a.z) / d * out, 14) };
   };
   RESORTS.forEach((r, ri) => {
     const ra = Math.atan2(r.z - PEAK.z, r.x - PEAK.x);
@@ -2094,20 +2095,26 @@ function rideStep(dt) {
 function unloadLift(L, dir) {
   S.ride = null;
   const end = L.path.at(-1);
+  const exit = liftExit(L);
   if (L.gondola) {
-    // Walk out of the top station and strap in on the flat beside it.
-    const D = L.dEnd, x = end.x + D.x * 10 - D.z * (CABLE_SIDE + 9), z = end.z + D.z * 10 + D.x * (CABLE_SIDE + 9);
-    dropIn({ x, z, name: `Top of ${L.name}` });
+    // Walk out of the top station and strap in at the head of the run beside it.
+    const D = L.dEnd, x = exit ? exit.x : end.x + D.x * 10 - D.z * (CABLE_SIDE + 9), z = exit ? exit.z : end.z + D.z * 10 + D.x * (CABLE_SIDE + 9);
+    dropIn({ x, z, name: `Top of ${L.name}`, direction: exit?.direction });
     return;
   }
-  // Stand up and slide off the unload ramp, veering away from the bullwheel and toward the fall line.
+  // Stand up and slide off the unload ramp, steering toward the head of the run (at most 70° off the line).
   const out = dir.clone().applyAxisAngle(worldUp, -0.3).add(downhillDir(S.p.x, S.p.z).multiplyScalar(1.5)).normalize();
+  if (exit) {
+    out.set(exit.x - S.p.x, 0, exit.z - S.p.z).normalize();
+    const turn = Math.atan2(dir.x * out.z - dir.z * out.x, dir.x * out.x + dir.z * out.z), lim = 1.22;
+    if (Math.abs(turn) > lim) out.copy(dir).setY(0).normalize().applyAxisAngle(worldUp, -Math.sign(turn) * lim);
+  }
   S.p.y = height(S.p.x, S.p.z);
   normalAt(S.p.x, S.p.z, S.n);
   S.f.copy(out).addScaledVector(S.n, -out.dot(S.n)).normalize();
   S.v.copy(S.f).multiplyScalar(L.surface ? 1.5 : 3.2);
   S.air = false; S.lastY = S.p.y; trail.last = null;
-  lastDrop = { x: S.p.x + out.x * 8, z: S.p.z + out.z * 8, name: `Top of ${L.name}` };
+  lastDrop = exit || { x: S.p.x + out.x * 8, z: S.p.z + out.z * 8, name: `Top of ${L.name}` };
   toast(`抵達 ${L.name} 山頂站`, 1.4);
 }
 
@@ -2959,9 +2966,9 @@ const midGeo = toWorld(140.68966, 42.89039);
 const midPoint = hanazonoMid?.path.reduce((best, point) =>
   Math.hypot(point.x - midGeo.x, point.z - midGeo.z) < Math.hypot(best.x - midGeo.x, best.z - midGeo.z) ? point : best);
 document.getElementById('liftCount').textContent = `（${passengerLifts.length} 條纜車${midPoint ? '，另有 1 個中間站' : ''}）`;
-function travelToStation(point, name) {
+function travelToStation(point, name, spot) {
   S.ride = null; liftQueue = null;
-  dropIn({ x: point.x, z: point.z, name });
+  dropIn(spot() || { x: point.x, z: point.z, name });
   toggleMap(false);
 }
 function startTrail(route) {
@@ -2984,7 +2991,7 @@ for (const route of [...TRAIL_ROUTES].sort((a, b) => a.name.localeCompare(b.name
   item.textContent = label; item.addEventListener('click', () => startTrail(route));
   document.getElementById('trailListItems').appendChild(item);
 }
-function addLiftDestination(point, name, kind, markerClass, symbol) {
+function addLiftDestination(point, name, kind, markerClass, symbol, spot) {
   const { u, v } = frac(point.x, point.z);
   const button = document.createElement('button');
   button.type = 'button'; button.className = `lift-stop ${markerClass}`;
@@ -2995,19 +3002,21 @@ function addLiftDestination(point, name, kind, markerClass, symbol) {
   button.style.left = `${u * 100}%`; button.style.top = `${v * 100}%`;
   button.addEventListener('click', e => {
     e.stopPropagation();
-    if (!mapDragged) travelToStation(point, name);
+    if (!mapDragged) travelToStation(point, name, spot);
   });
   document.getElementById('liftStops').appendChild(button);
   const item = document.createElement('button');
   item.type = 'button'; item.textContent = `${kind} · ${name}`;
-  item.addEventListener('click', () => travelToStation(point, name));
+  item.addEventListener('click', () => travelToStation(point, name, spot));
   document.getElementById('liftListItems').appendChild(item);
 }
 for (const L of passengerLifts) {
   const kind = L.gondola ? '吊艙' : L.type === 'mixed_lift' ? '混合式' : '吊椅';
   const name = L.name === 'Lift' ? `未命名${kind}纜車` : L.name;
-  addLiftDestination(L.path[0], `${name} 入口`, kind, L.gondola ? 'gondola' : L.type === 'mixed_lift' ? 'mixed' : 'chair', L.gondola ? '艙' : L.type === 'mixed_lift' ? '混' : '椅');
-  if (L === hanazonoMid && midPoint) addLiftDestination(midPoint, `${name} 中間站`, '中間站', 'gondola', '中');
+  // Lift bases: at the queue entrance, ready to board. Mid-station: out of the station, at the head of the run.
+  addLiftDestination(L.path[0], `${name} 入口`, kind, L.gondola ? 'gondola' : L.type === 'mixed_lift' ? 'mixed' : 'chair', L.gondola ? '艙' : L.type === 'mixed_lift' ? '混' : '椅',
+    () => liftExits.baseSpot(L, `${name} 入口`));
+  if (L === hanazonoMid && midPoint) addLiftDestination(midPoint, `${name} 中間站`, '中間站', 'gondola', '中', () => liftExits.exitSpot(L, midPoint, `${name} 中間站`));
 }
 function toggleMap(show = mapEl.hidden) {
   mapEl.hidden = !show;
@@ -3245,6 +3254,22 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
 });
+// Where riders step off each lift and wait at each base (src/lift-exits.js).
+const { createLiftExits } = await import('./src/lift-exits.js');
+const liftExits = createLiftExits({
+  lifts: LIFTS, height, normalAt, onPiste, queueBases: liftQueues.bases, cableSide: CABLE_SIDE,
+  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints, ...(aceSummit ? [aceSummit.pts] : [])],
+  isRough: (x, z) => {
+    const k = lidx(x, z);
+    return k < 0 || Math.abs(x) > HALF_W || Math.abs(z) > HALF_D || DEN[k] > 25 || waterM[k] > 60 || roadBarrier.contains(x, z) || treeHit(x, z);
+  },
+});
+const exitCache = new Map();
+function liftExit(L) {
+  if (!exitCache.has(L)) exitCache.set(L, liftExits.exitSpot(L));
+  return exitCache.get(L);
+}
+for (const spot of SPOTS) if (spot.lift) { const e = liftExit(spot.lift); if (e) Object.assign(spot, { x: e.x, z: e.z, direction: e.direction }); }
 
 dropIn(SPOTS[0]);
 updateTrees(0, 99);
@@ -3318,5 +3343,6 @@ window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, 
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;
 window.__liftQueues = liftQueues;
+window.__liftExits = { liftExits, liftExit };
 window.__sim = { renderer, updateLifts, carrierPose, height, updateTrees, get trees() { return treeCount; }, get chunks() { return chunks.size; }, get queue() { return liftQueue; }, get time() { return liftTime; }, advance(secs, dt = 1 / 30) { for (let t = 0; t < secs; t += dt) { updateLifts(dt); for (let i = 0; i < 4; i++) step(dt / 4); } } };
 </script>
