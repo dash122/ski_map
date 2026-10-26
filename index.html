@@ -182,6 +182,9 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 #pad .track { position: relative; width: 168px; height: 54px; border-radius: 27px; background: rgba(13,27,42,0.45); border: 1px solid rgba(255,255,255,0.25); }
 #knob { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; margin: -21px; border-radius: 50%; background: var(--snow); opacity: 0.85; transition: transform 0.15s; }
 #pad.on #knob { transition: none; }
+/* On foot the pad is a joystick: push up to walk, down to step back, sideways to turn. */
+#pad.walk .track { width: 132px; height: 132px; border-radius: 50%; }
+#touch.walking .grp { display: none; }
 #pad span { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--snow); opacity: 0.7; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
 #touch .grp { display: grid; grid-template-columns: auto auto; gap: 10px; align-items: center; pointer-events: auto; }
 #touch button { width: 60px; height: 60px; border-radius: 50%; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--snow); background: rgba(13,27,42,0.55); border: 1px solid rgba(255,255,255,0.25); touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -383,7 +386,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 <label class="hud panel" id="liftSpeed" hidden>纜車速度 <select id="liftSpeedSelect" aria-label="纜車速度"></select></label>
 </div>
 <div id="touch">
-  <div id="pad" aria-label="左右拖曳轉彎"><span>拖曳轉彎</span><div class="track"><div id="knob"></div></div></div>
+  <div id="pad" aria-label="左右拖曳轉彎"><span id="padLabel">拖曳轉彎</span><div class="track"><div id="knob"></div></div></div>
   <div class="grp"><button id="tB">煞車</button><button id="tJ">跳躍</button><button id="tT">壓低</button></div>
 </div>
 
@@ -2095,9 +2098,11 @@ function unloadLift(L, dir) {
   S.ride = null;
   const end = L.path.at(-1);
   if (L.gondola) {
-    // Walk out of the top station and strap in on the flat beside it.
+    // Step out of the cabin and walk out of the top station carrying the board; strap in on the snow with F.
     const D = L.dEnd, x = end.x + D.x * 10 - D.z * (CABLE_SIDE + 9), z = end.z + D.z * 10 + D.x * (CABLE_SIDE + 9);
-    dropIn({ x, z, name: `Top of ${L.name}` });
+    lastDrop = { x, z, name: `Top of ${L.name}` };
+    walkOff(x, z, D);
+    toast(`抵達 ${L.name} · 步行出站，按 F／🏂 穿上雪板`, 2.6);
     return;
   }
   // Stand up and slide off the unload ramp, veering away from the bullwheel and toward the fall line.
@@ -2181,7 +2186,7 @@ function emitSpray(p, dir, amount) {
 // ---------- Input ----------
 const keys = new Set();
 document.getElementById('conditions').addEventListener('focusin', () => keys.clear());
-const touch = { steer: 0, B: false, T: false };
+const touch = { steer: 0, walk: 0, B: false, T: false };
 addEventListener('keydown', e => {
   if (e.repeat || e.target.closest?.('select, input, button, summary')) return;
   const k = e.key.toLowerCase();
@@ -2207,15 +2212,21 @@ hold('tB', 'B'); hold('tT', 'T');
 // Steer pad: drag sideways from wherever the thumb lands; distance sets how hard you carve.
 {
   const pad = document.getElementById('pad'), knob = document.getElementById('knob');
-  let id = null, x0 = 0;
+  let id = null, x0 = 0, y0 = 0;
   const range = () => Math.min(90, innerWidth * 0.18);
-  pad.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; x0 = e.clientX; pad.setPointerCapture(id); pad.classList.add('on'); });
+  pad.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; x0 = e.clientX; y0 = e.clientY; pad.setPointerCapture(id); pad.classList.add('on'); });
   pad.addEventListener('pointermove', e => {
     if (e.pointerId !== id) return;
     touch.steer = Math.max(-1, Math.min(1, (e.clientX - x0) / range()));
-    knob.style.transform = `translateX(${touch.steer * 60}px)`;
+    if (!S.walking) { touch.walk = 0; knob.style.transform = `translateX(${touch.steer * 60}px)`; return; }
+    // On foot, the thumb's distance up or down sets walking pace; a small dead zone keeps a sideways drag to a turn on the spot.
+    const up = Math.max(-1, Math.min(1, (y0 - e.clientY) / range()));
+    touch.walk = Math.abs(up) < 0.15 ? 0 : up;
+    touch.steer = Math.abs(touch.steer) < 0.15 ? 0 : touch.steer;
+    const k = Math.min(1, 1 / Math.hypot(touch.steer, up || 0.0001));
+    knob.style.transform = `translate(${touch.steer * k * 45}px, ${-up * k * 45}px)`;
   });
-  const end = e => { if (e.pointerId !== id) return; id = null; touch.steer = 0; knob.style.transform = ''; pad.classList.remove('on'); };
+  const end = e => { if (e.pointerId !== id) return; id = null; touch.steer = touch.walk = 0; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
 }
 document.getElementById('tC').addEventListener('click', () => { camMode = (camMode + 1) % CAM_MODES.length; toast(CAM_MODES[camMode], 0.8); });
@@ -2248,9 +2259,16 @@ function syncWalkingControls() {
   document.getElementById('tT').textContent = S.walking ? '前進' : '壓低';
   document.getElementById('tB').textContent = S.walking ? '後退' : '煞車';
   document.getElementById('tJ').disabled = S.walking;
+  document.getElementById('touch').classList.toggle('walking', S.walking);
+  const pad = document.getElementById('pad');
+  pad.classList.toggle('walk', S.walking);
+  pad.setAttribute('aria-label', S.walking ? '拖曳搖桿行走及轉向' : '左右拖曳轉彎');
+  document.getElementById('padLabel').textContent = S.walking ? '拖曳行走' : '拖曳轉彎';
+  touch.steer = touch.walk = 0; touch.B = touch.T = false; document.getElementById('knob').style.transform = '';
 }
 function toggleWalking() {
   if (S.ride || liftQueue || S.air) { toast('請先回到雪地上', 1.4); return; }
+  if (S.walking && roadBarrier.contains(S.p.x, S.p.z)) { toast('道路上不能穿上雪板，請走到雪地上', 1.8); return; }
   S.walking = !S.walking;
   S.walkBlend = 0;
   if (S.walking) {
@@ -2262,7 +2280,7 @@ function toggleWalking() {
   S.v.set(0, 0, 0); S.steer = 0; S.lean = 0; S.crash = 0;
   S.awaitingPush = true; wantJump = false; trail.last = null;
   syncWalkingControls();
-  toast(S.walking ? '步行 · W/S 前後移動，A/D 轉向' : '已穿上雪板', 1.6);
+  toast(S.walking ? (matchMedia('(pointer: coarse)').matches ? '步行 · 拖曳搖桿前進、後退及轉向' : '步行 · W/S 前後移動，A/D 轉向') : '已穿上雪板', 1.6);
 }
 // Input heading is independent of the camera lag; the camera follows actual travel.
 const walkView = new THREE.Vector3(1, 0, 0);
@@ -2285,15 +2303,15 @@ const walkForward = new THREE.Vector3(), walkTarget = new THREE.Vector3();
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
 }
-function walkStep(dt, steer, forward, backward) {
+function walkStep(dt, steer, pace) {
   wantJump = false; trail.last = null; S.awaitingPush = true; S.steer = 0;
   S.crash = Math.max(0, S.crash - dt);
   walkView.applyAxisAngle(worldUp, -steer * 2.2 * dt).normalize();
   walkForward.copy(walkView);
-  if (steer && !forward && !backward) S.walkCameraHeading = walkView.clone();
+  if (steer && !pace) S.walkCameraHeading = walkView.clone();
   normalAt(S.p.x, S.p.z, S.n);
-  const direction = Number(forward) - Number(backward);
-  walkTarget.copy(walkForward).multiplyScalar(direction);
+  const direction = Math.sign(pace);
+  walkTarget.copy(walkForward).multiplyScalar(pace);
   if (walkTarget.lengthSq() > 1) walkTarget.normalize();
   if (walkTarget.lengthSq() > 0.001) {
     const yaw = Math.atan2(S.f.z, S.f.x), targetYaw = Math.atan2(walkTarget.z, walkTarget.x);
@@ -2307,13 +2325,25 @@ function walkStep(dt, steer, forward, backward) {
   S.p.addScaledVector(S.v, dt);
   S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
   S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
-  if (roadBarrier.blocks(x, z, S.p.x, S.p.z) || treeHit(S.p.x, S.p.z)) { S.p.x = x; S.p.z = z; }
+  // Roads are fine on foot; only the board is kept off them.
+  if (treeHit(S.p.x, S.p.z)) { S.p.x = x; S.p.z = z; }
   visitors.collide(S, dt, { x, z });
   S.p.y = height(S.p.x, S.p.z);
   S.v.set((S.p.x - x) / dt, 0, (S.p.z - z) / dt);
   if (direction) S.walkCameraHeading = walkTarget.clone().normalize();
   S.walkPhase += S.v.length() * dt * 5.5;
   S.lastY = S.p.y;
+}
+// Leave a gondola or cable car on foot, facing out of the station.
+function walkOff(x, z, out) {
+  S.p.set(x, height(x, z), z);
+  walkView.set(out.x, 0, out.z).normalize();
+  S.f.copy(walkView); S.n.set(0, 1, 0); S.v.set(0, 0, 0);
+  S.walkCameraHeading = walkView.clone();
+  S.walking = true; S.walkBlend = 0; S.air = false; S.crash = 0; S.steer = 0; S.lean = 0; S.lastY = S.p.y;
+  S.awaitingPush = true; wantJump = false; trail.last = null;
+  syncWalkingControls();
+  resetCamera();
 }
 function dropIn(spot) {
   if (roadBarrier.contains(spot.x, spot.z)) { toast('道路範圍不能滑行，請選擇雪道', 1.8); return; }
@@ -2341,7 +2371,7 @@ function step(dt) {
   const steerIn = Math.max(-1, Math.min(1, (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0) + touch.steer));
   const tuck = keys.has('w') || keys.has('arrowup') || touch.T;
   const brake = keys.has('s') || keys.has('arrowdown') || touch.B;
-  if (S.walking) { walkStep(dt, steerIn, tuck, brake); return; }
+  if (S.walking) { walkStep(dt, steerIn, Math.max(-1, Math.min(1, Number(tuck) - Number(brake) + touch.walk))); return; }
   if (S.awaitingPush) {
     S.v.set(0, 0, 0);
     if (!tuck && !steerIn && !wantJump) return;
@@ -2425,7 +2455,7 @@ function step(dt) {
   // Swept horizontal test also blocks jumping over roads and high-speed tunnelling.
   if (roadBarrier.blocks(previousX, previousZ, S.p.x, S.p.z)) {
     S.p.x = previousX; S.p.z = previousZ; S.v.x = S.v.z = 0;
-    if (!S.roadNotice || performance.now() > S.roadNotice) { toast('道路邊界 · 不能繼續滑行', 1.8); S.roadNotice = performance.now() + 2500; }
+    if (!S.roadNotice || performance.now() > S.roadNotice) { toast('道路邊界 · 不能滑行，按 F／🚶 步行過馬路', 2); S.roadNotice = performance.now() + 2500; }
   }
   S.p.x = Math.max(-HALF_W, Math.min(HALF_W, S.p.x));
   S.p.z = Math.max(-HALF_D, Math.min(HALF_D, S.p.z));
@@ -3314,7 +3344,7 @@ $('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} �
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { saveRecord(RESORT.id, { runs: record(RESORT.id).runs + 1 }); $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
-window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, toggleWalking, roadBarrier, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;
 window.__liftQueues = liftQueues;
