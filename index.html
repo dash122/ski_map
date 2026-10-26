@@ -1548,6 +1548,13 @@ if (LANDW.buildings.length) {
   LANDMARKS.sort((a, b) => Number(b.hotel) - Number(a.hotel) || b.area - a.area);
   console.log(`buildings: ${LANDW.buildings.length}, ${(wallPos.length + roofPos.length) / 9} triangles`);
 }
+// Signature landmarks without OSM footprints (statues, monuments, unmapped restaurants), beside their lift or building.
+const { createSignatureLandmarks } = await import('./src/signature-landmarks.js');
+const signatureLandmarks = createSignatureLandmarks({
+  scene, resort: RESORT.id, lifts: LIFTS, buildings: LANDW.buildings, height,
+  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints],
+});
+LANDMARKS.push(...signatureLandmarks.landmarks);
 
 // ---------- Mapped road surfaces and lamps ----------
 await load.at(72, '鋪設道路與路燈');
@@ -3239,7 +3246,7 @@ const visitors = await createVisitors({
 const { createLiftQueues } = await import('./src/lift-queues.js');
 const liftQueues = createLiftQueues({
   scene, lifts: LIFTS, height, clock: () => liftTime, lowEnd: LOW_END, registerShadow: mesh => nearbyShadows.add(mesh),
-  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints],
+  footprints: [...LANDW.buildings.map(b => b.pts), ...baseLandmarks.footprints, ...signatureLandmarks.footprints],
 });
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight, false);

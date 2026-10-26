@@ -11,6 +11,9 @@ const HOTELS = [
   { match: /^Ki Niseko$/, name: 'Ki Niseko', height: 24, color: 0xc0b19a, trim: 0x574536, rhythm: 5.5, balconies: false },
   { match: /^The Vale$/, name: 'The Vale Niseko', height: 21, color: 0xada79b, trim: 0x383d40, rhythm: 6, balconies: true },
   { match: /^The Green Leaf Niseko/, name: 'The Green Leaf', height: 19, color: 0xd0c6b5, trim: 0x526158, rhythm: 7, balconies: false },
+  // Appi Kogen: the white tower of the former Appi Grand Hotel and the InterContinental beside the gondola base.
+  { match: /^ANA Crowne Plaza Appi Kogen – Tower Building$/, name: 'ANA Crowne Plaza Appi Kogen', height: 60, color: 0xe6e3dc, trim: 0x8a8d90, rhythm: 4.2, balconies: false },
+  { match: /^ANA InterContinental Appi Kogen Resort$/, name: 'ANA InterContinental Appi Kogen', color: 0x5f5a53, trim: 0x2e2b28, rhythm: 5, balconies: true },
 ];
 
 export function hotelProfile(name) {
