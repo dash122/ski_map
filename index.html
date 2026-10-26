@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <meta name="apple-mobile-web-app-title" content="Slop Niseko">
 <meta property="og:title" content="Slop Niseko">
-<meta property="og:description" content="Snowboard the real terrain of Niseko, Appi, Gala Yuzawa, Sapporo Teine, Cypress Mountain and Chäserrugg in your browser.">
+<meta property="og:description" content="Snowboard the real terrain of Niseko, Appi, Gala Yuzawa, Sapporo Teine, Rusutsu, Zao Onsen, Cypress Mountain and Chäserrugg in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://dash122.github.io/ski_map/">
 <meta property="og:image" content="https://dash122.github.io/ski_map/icons/og-image.jpg">
@@ -461,7 +461,7 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { courseSegments, courseWidth, isConnectorName, measureCourseWidth } from './src/course-edges.js';
+import { courseSegments, courseWidth, isConnectorName, measureCourseWidth, publishedWidth } from './src/course-edges.js';
 import { ridingResistance, SKILLS } from './src/riding-speed.js';
 import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
 import { createRenderQuality } from './src/render-quality.js';
@@ -639,20 +639,22 @@ const woodAt = (x, z) => {
   const i = Math.floor((x + WIDTH / 2) * LPX), j = Math.floor((z + DEPTH / 2) * LPX);
   return i >= 0 && j >= 0 && i < LW && j < LH && woodsM[j * LW + i] > 127;
 };
-const WIDTH_SOURCE = { osm: 0, woods: 0, name: 0, default: 0, area: 0 };
+const WIDTH_SOURCE = { osm: 0, published: 0, woods: 0, name: 0, default: 0, area: 0 };
 if (OSM) {
   const g = pisteCanvas.getContext('2d'), sx = MASK_W / WIDTH, sz = MASK_H / DEPTH;
   g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
   for (const p of OSM.pistes || []) {
     const pts = worldPts(p.c); if (pts.length < 2) continue;
-    // Width, best source first: an OSM width tag, then the corridor measured between mapped woods, then the
-    // difficulty default. Connectors and descent tracks (by name) are a lane of 11 m, or the measured gap if
-    // narrower, capped at 16 m: mapped woods beside them are traced loosely and often take in a road or run.
-    const measured = !p.a && !p.w && woodsM ? measureCourseWidth(pts, woodAt) : undefined;
-    const named = !p.a && !p.w && isConnectorName(p.n) ? Math.min(16, measured ?? 11) : undefined;
-    const widthSource = p.a ? 'area' : p.w ? 'osm' : named ? 'name' : measured ? 'woods' : 'default';
+    // Width, best source first: an OSM width tag, the resort's published width for the run, then the corridor
+    // measured between mapped woods, then the difficulty default. Connectors and descent tracks (by name) are a
+    // lane of 11 m, or the measured gap if narrower, capped at 16 m: mapped woods beside them are traced loosely
+    // and often take in a road or run.
+    const published = !p.a && !p.w ? publishedWidth(p.n, RESORT.widths) : undefined;
+    const measured = !p.a && !p.w && !published && woodsM ? measureCourseWidth(pts, woodAt) : undefined;
+    const named = !p.a && !p.w && !published && isConnectorName(p.n) ? Math.min(16, measured ?? 11) : undefined;
+    const widthSource = p.a ? 'area' : p.w ? 'osm' : published ? 'published' : named ? 'name' : measured ? 'woods' : 'default';
     WIDTH_SOURCE[widthSource]++;
-    const piste = { name: p.n || '', diff: p.d || '', area: !!p.a, pts, w: p.w ?? named ?? measured, widthSource };
+    const piste = { name: p.n || '', diff: p.d || '', area: !!p.a, pts, w: p.w ?? published ?? named ?? measured, widthSource };
     PISTES.push(piste);
     g.beginPath();
     pts.forEach((q, i) => g[i ? 'lineTo' : 'moveTo']((q.x + WIDTH / 2) * sx, (q.z + DEPTH / 2) * sz));
@@ -1222,13 +1224,39 @@ function winterFirGeometry(distant = false, sp = CONIFERS[FLORA.conifers] || CON
 const firGeo = winterFirGeometry();
 const firFarGeo = winterFirGeometry(true);
 // Rime-crusted firs near the treeline ("snow monsters"): white lumps with a little green showing.
-const rimeGeo = merge([
+const rimeGeo = FLORA.juhyo ? juhyoGeometry() : merge([
   coloredGeo(new THREE.ConeGeometry(1.5, 5.5, 7).translate(0, 2.75, 0), 0xdbe3ea),
   coloredGeo(new THREE.IcosahedronGeometry(1.3, 0).scale(1, 0.8, 1).translate(0.3, 1.6, 0.2), 0xf3f6f9),
   coloredGeo(new THREE.IcosahedronGeometry(1.0, 0).scale(1, 0.9, 1).translate(-0.4, 3.0, -0.1), 0xeef3f7),
   coloredGeo(new THREE.IcosahedronGeometry(0.7, 0).translate(0.1, 4.4, 0.2), 0xf6f9fb),
   coloredGeo(new THREE.ConeGeometry(0.5, 1.0, 5).translate(0.9, 2.2, -0.6), 0x3a5244),
 ]);
+// Zao's juhyo: Maries firs buried in rime and snow until they stand as white figures 4–9 m tall. A lumpy column
+// leaning a little downwind, its windward (west, -x) face built out in flat "shrimp tail" crusts, the odd dark
+// bough showing on the lee side. Placed with the windward face to the north-west winter monsoon.
+function juhyoGeometry() {
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const lump = (r, sx, sy, sz, x, y, z, color, rough = 0.18) => {
+    const g = new THREE.IcosahedronGeometry(r, 1), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const vx = p.getX(i), vy = p.getY(i), vz = p.getZ(i), k = 1 + (hash2(vx * 37 + x * 5, vy * 41 + vz * 29 + y * 3) - 0.5) * rough * 2;
+      p.setXYZ(i, vx * k * sx + x, vy * k * sy + y, vz * k * sz + z);
+    }
+    g.computeVertexNormals();
+    return coloredGeo(g, color);
+  };
+  const parts = [lump(2.1, 1.1, 0.42, 1.1, 0.1, 0.35, 0, 0xe6edf3, 0.1)];   // drifted skirt
+  const tiers = [[1.75, 1.2], [1.55, 2.3], [1.3, 3.35], [1.0, 4.35], [0.7, 5.25], [0.42, 5.95]];
+  tiers.forEach(([r, y], i) => {
+    const lean = y * 0.07;
+    parts.push(lump(r, 1, 0.78, 1, lean + (rnd() - 0.5) * 0.3, y, (rnd() - 0.5) * 0.3, i % 2 ? 0xf2f6f9 : 0xe9eff4));
+    // Shrimp tails: flat rime plates grown into the wind.
+    if (i < 5) for (const dz of [-0.55, 0.45]) parts.push(lump(r * 0.55, 1.5, 0.32, 0.9, lean - r * 0.85, y + (rnd() - 0.5) * 0.4, dz * r, 0xdfe7ee, 0.25));
+    // A bough showing through on the lee side.
+    if (i > 0 && i < 4 && rnd() < 0.8) parts.push(coloredGeo(new THREE.ConeGeometry(0.32, 0.8, 5).rotateZ(-1.2).translate(lean + r * 0.8, y - 0.25, (rnd() - 0.5) * r), 0x34493d));
+  });
+  return merge(parts);
+}
 // Bare deciduous trees as crossed cards: Erman's birch, Japanese white birch, larch, beech. One atlas, a column each.
 function treeAtlas() {
   const W = 128, Hh = 256, R = GFX.level === 'low' ? 1 : 2, c = document.createElement('canvas'); c.width = W * 4 * R; c.height = Hh * R;
@@ -1321,23 +1349,30 @@ function buildChunk(ci, cj) {
     if (Math.abs(jx) > WIDTH / 2 - 20 || Math.abs(jz) > DEPTH / 2 - 20) continue;
     const k = lidx(jx, jz); if (k < 0 || !DEN[k]) continue;
     if (hash2(jx * 13, jz * 17) > DEN[k] / 255 * TREE_KEEP) continue;
+    if (nearFixed(jx, jz, 8)) continue;   // a clearing round statues and the like
     const h = height(jx, jz), tl = TREELINE(jx, jz), r = hash2(jx * 3, jz * 29), s0 = hash2(jx * 19, jz * 23), rot = hash2(jx, jz) * Math.PI * 2;
-    const add = (list, s, sy, coll, extra) => {
-      list.push([jx, h - 0.3, jz, s, sy, rot, extra]);
+    const add = (list, s, sy, coll, extra, angle = rot) => {
+      list.push([jx, h - 0.3, jz, s, sy, angle, extra]);
       const key = `${Math.floor(jx / TREE_CELL)},${Math.floor(jz / TREE_CELL)}`;
       if (!treeGrid.has(key)) treeGrid.set(key, []);
       treeGrid.get(key).push(jx, jz, coll);
     };
+    // Juhyo: 4–9 m, a little stockier with height in the band, windward face to the north-west (rot -π/4).
+    const addJuhyo = () => { const s = 0.65 + s0 * 0.8; add(rime, s, s * (0.9 + hash2(jx * 61, jz * 67) * 0.3), 1.5 * s + 0.3, 0, -Math.PI / 4 + (r - 0.5) * 0.6); };
     if (h > tl - 40) {
       // Treeline: rime-crusted firs (stunted, snow-laden firs outside Japan) and low stunted birch or larch.
-      if (r < 0.75) { const s = 0.5 + s0 * 0.6; if (FLORA.rime) add(rime, s, s, 0.6 * s + 0.4); else add(fir, s * 0.8, s * 0.85, 0.45 * s + 0.3); }
+      if (FLORA.juhyo) addJuhyo();   // Zao: nothing but snow monsters up to the ridge
+      else if (r < 0.75) { const s = 0.5 + s0 * 0.6; if (FLORA.rime) add(rime, s, s, 0.6 * s + 0.4); else add(fir, s * 0.8, s * 0.85, 0.45 * s + 0.3); }
       else { const s = 3 + s0 * 2; add(card, s * 0.8, s, 0.3, 0); }
       continue;
     }
-    const rimeShare = FLORA.rime ? THREE.MathUtils.smoothstep(h, tl - 200, tl - 40) * 0.7 : 0;
+    // Zao's juhyo band starts lower and is almost pure monster by the top of it.
+    const rimeShare = FLORA.juhyo ? THREE.MathUtils.smoothstep(h, tl - 420, tl - 120)
+      : FLORA.rime ? THREE.MathUtils.smoothstep(h, tl - 200, tl - 40) * 0.7 : 0;
     const conifer = THREE.MathUtils.clamp((h < FLORA.low ? 0.5 : FLORA.conifer) + (vnoise(jx / 260, jz / 260) - 0.5) * 1.1, 0.05, FLORA.conifer > 0.8 ? 0.98 : 0.9);
-    if (r < rimeShare) { const s = 0.6 + s0 * 0.7; add(rime, s, s, 0.6 * s + 0.4); }
-    else if (hash2(jx * 31, jz * 37) < conifer) {
+    if (r < rimeShare) { if (FLORA.juhyo) addJuhyo(); else { const s = 0.6 + s0 * 0.7; add(rime, s, s, 0.6 * s + 0.4); } }
+    // Zao's upper slopes are near-pure Maries fir: no beech in the juhyo band.
+    else if (hash2(jx * 31, jz * 37) < conifer || (FLORA.juhyo && h > tl - 420)) {
       if (h < FLORA.low && vnoise(jx / 600 + 40, jz / 600) > 0.74) { const s = 11 + s0 * 7; add(card, s * 0.45, s, 0.3, 2); }   // larch plantation
       else { const s = 0.75 + s0 * 0.85; add(fir, s, s * (0.9 + hash2(jx * 41, jz) * 0.25), 0.45 * s + 0.35); }
     } else if (hash2(jx * 53, jz * 59) < FLORA.larch) {
@@ -1422,7 +1457,12 @@ function updateTrees(dt, budget = 2) {
     if (C.rime) C.rime.castShadow = d < 60;
   }
 }
+function nearFixed(x, z, pad = 0) {
+  for (let k = 0; k < FIXED_HITS.length; k += 3) if (Math.hypot(x - FIXED_HITS[k], z - FIXED_HITS[k + 1]) < FIXED_HITS[k + 2] + pad) return true;
+  return false;
+}
 function treeHit(x, z) {
+  if (nearFixed(x, z)) return true;
   const ci = Math.floor(x / TREE_CELL), cj = Math.floor(z / TREE_CELL);
   for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
     const list = treeGrid.get(`${ci + di},${cj + dj}`);
@@ -1454,6 +1494,16 @@ try {
     LANDMARKS.push({ name: 'NEST813 · Ace Gondola 2F', ...center, area: 800, restaurant: true, hotel: false });
   }
 } catch (error) { console.warn('Ace summit mapped model unavailable', error); }
+// Fixed obstacles outside the tree chunks (statues and the like): [x, z, r, ...].
+const FIXED_HITS = [];
+if (RESORT.jizo) {
+  const { createJizoStatue } = await import('./src/jizo-statue.js');
+  const at = toWorld(RESORT.jizo.lon, RESORT.jizo.lat);
+  // Faces the nearest lift's top station.
+  const top = LIFTS.map(L => L.pts.at(-1)).reduce((b, p) => Math.hypot(p.x - at.x, p.z - at.z) < Math.hypot(b.x - at.x, b.z - at.z) ? p : b, { x: at.x, z: at.z + 1e6 });
+  FIXED_HITS.push(at.x, at.z, createJizoStatue({ scene, ...at, height, facing: Math.atan2(top.x - at.x, top.z - at.z) }));
+  LANDMARKS.push({ name: '蔵王地蔵尊 Zao Jizo', ...at, area: 600, restaurant: false, hotel: false });
+}
 let buildingLighting = null, liftLighting = null;
 const baseLandmarks = createBaseLandmarks({ scene, resort: RESORT.id, lifts: LIFTS, height });
 const { createBuildingLighting } = await import('./src/building-lighting.js');
