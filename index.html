@@ -473,7 +473,7 @@ import { RIDERS, pref, record, saveRecord } from './src/riders.js';
 import { chooseResort } from './src/home.js';
 import { createLoading } from './src/loading.js';
 import { createLiftLighting } from './src/lift-lighting.js';
-import { createBaseLandmarks, keepBesideTerminal, namePoiBuildings, baseLandmarkProfile } from './src/base-landmarks.js';
+import { createBaseLandmarks, namePoiBuildings, baseLandmarkProfile, liftEnds, terminalRelation, insidePolygon } from './src/base-landmarks.js';
 
 // ---------- Resort: the home screen picks one; ?resort=appi deep-links past it. Everything below reads its data the same way ----------
 const RESORT = new URLSearchParams(location.search).has('resort') ? currentResort() : await chooseResort(), DATA = RESORT.data;
@@ -1473,20 +1473,23 @@ if (LANDW.buildings.length) {
     const ny = (b.z - a.z) * (d.x - a.x) - (b.x - a.x) * (d.z - a.z);
     if (ny < 0) arr.push(a.x, a.y, a.z, d.x, d.y, d.z, b.x, b.y, b.z); else arr.push(a.x, a.y, a.z, b.x, b.y, b.z, d.x, d.y, d.z);
   };
-  // Lift terminals get their own structures; skip OSM footprints on top of them.
-  const ends = LIFTS.flatMap(L => [L.pts[0], L.pts.at(-1)]);
+  // Buildings that house a lift terminal are modelled as its station; ones that only clash with a terminal's
+  // loading area give way to it (src/base-landmarks.js terminalRelation). The Ace summit has its own mapped model.
+  const ends = liftEnds(LIFTS);
   for (const B of LANDW.buildings) {
     let pts = B.pts;
     if (pts.length < 3) continue;
-    const station = baseLandmarkProfile(B.name, RESORT.id)?.station;   // a station building that houses its terminal
-    if (!station && ends.some(e => pts.some(p => Math.hypot(p.x - e.x, p.z - e.z) < 30) || Math.hypot(pts[0].x - e.x, pts[0].z - e.z) < 30) && !keepBesideTerminal(B, ends)) continue;
+    if (aceSummit && insidePolygon(aceSummit.x, aceSummit.z, pts)) continue;
+    const profile = baseLandmarkProfile(B.name, RESORT.id), relation = terminalRelation(B, ends);
+    const station = profile?.station || relation === 'station';
+    if (!station && relation === 'clash') continue;
     // Counter-clockwise seen from above (x east, z south), so walls face out.
     let area = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; area += p.x * q.z - q.x * p.z; }
     if (area > 0) pts = [...pts].reverse();
     area = Math.abs(area) / 2;
     let gmin = Infinity, gmax = -Infinity;
     for (const p of pts) { const h = height(p.x, p.z); gmin = Math.min(gmin, h); gmax = Math.max(gmax, h); }
-    if (station) { baseLandmarks.station(pts, gmin, gmax, baseLandmarkProfile(B.name, RESORT.id)); continue; }
+    if (station) { baseLandmarks.station(pts, gmin, gmax, profile?.station ? profile : { name: B.name || 'Lift station' }, B); continue; }
     const hotel = hotelProfile(B.name);
     const restaurant = restaurantProfile(B.name);
     const y0 = gmin - 1, top = gmax + (hotel?.height ?? B.h);
