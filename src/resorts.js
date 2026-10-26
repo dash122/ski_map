@@ -96,6 +96,25 @@ export const RESORTS = {
     // Snow-capped volcano on the horizon: Mt. Yotei, south-west beyond the Jozankei hills.
     volcano: { lon: 140.811, lat: 42.826 },
   },
+  zao: {
+    // Maries fir (Aomori todomatsu) up to the ridge, beech below; above ~1500 m the firs rime over into juhyo.
+    flora: { treeline: 1700, conifer: 0.55, low: 900, conifers: 'maries', broadleaf: 'beech', juhyo: true },
+    id: 'zao', continent: 'asia', country: 'JP', area: '東北', label: '藏王溫泉 Zao Onsen', data: 'data/zao/',
+    title: '藏王溫泉滑雪', brand: '藏王溫泉', mountain: '藏王連峰',
+    code: 'GAJ', name: '藏王溫泉', en: 'Zao Onsen', region: '山形縣 · 藏王連峰', thumb: 'thumbs/zao.webp',
+    sub: '在山形縣藏王溫泉的真實地形上滑雪：從地藏山頂穿過冬季的樹冰「雪怪」，一路滑回溫泉街。',
+    summit: 'Jizo', summitZone: '藏王地藏山頂・樹冰原', backcountry: '藏王野雪區',
+    // Mt. Jizo (1736 m), top of the Zao Ropeway; Mt. Kumano (1841 m) to the south-east is higher but unlifted.
+    peak: { lon: 140.4330, lat: 38.1515 },
+    // Approximate base areas (labels only, not survey data).
+    bases: [
+      { name: 'Zao Onsen', lon: 140.3985, lat: 38.1665 },
+      { name: 'Uwanodai', lon: 140.3960, lat: 38.1700 },
+      { name: 'Chuo Kogen', lon: 140.4150, lat: 38.1600 },
+    ],
+    // Snow-capped volcano on the horizon: Mt. Gassan, north-west across the Yamagata basin.
+    volcano: { lon: 140.0270, lat: 38.5490 },
+  },
   cypress: {
     flora: { treeline: 1750, conifer: 0.93, low: 0, rime: false, cover: 0.16, firBias: 0.35, conifers: 'douglas', broadleaf: 'beech' },   // Douglas fir, hemlock, red alder
     id: 'cypress', continent: 'north-america', country: 'CA', area: '卑詩省', label: '賽普勒斯山 Cypress Mountain', data: 'data/cypress/',
