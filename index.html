@@ -100,6 +100,13 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 .stance small { color: var(--mist); font-family: var(--display); letter-spacing: 0.12em; text-transform: uppercase; margin-left: 4px; }
 .stance button[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.14); }
 #homeSkill { grid-template-columns: repeat(3, 1fr); }
+.stance.gfx { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.stance.gfx button { padding: 9px 2px; font: inherit; font-size: 14px; color: var(--snow); cursor: pointer; display: grid; justify-items: center; gap: 2px; -webkit-tap-highlight-color: transparent; }
+.stance.gfx small { margin-left: 0; font-size: 9px; letter-spacing: 0.08em; }
+.gfx-hint { color: var(--mist); font-size: 12px; line-height: 1.5; margin: 8px 0 0; }
+.pause-sub { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.14em; margin: 18px 0 0; }
+.pause-sub span { color: var(--mist); text-transform: uppercase; font-weight: 600; letter-spacing: 0.3em; font-size: 11px; margin-left: 6px; }
+#pGfxApply { width: 100%; margin-top: 10px; padding: 12px 14px; font-size: 15px; }
 .resorts { display: grid; gap: 12px; }
 .resorts .continent { margin: 14px 0 0; font-size: 22px; font-weight: 700; letter-spacing: 0.08em; }
 .resorts .continent:first-child { margin-top: 0; }
@@ -341,6 +348,9 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     <div class="stance" id="homeSkill" role="radiogroup" aria-label="滑行程度">
       <button type="button" role="radio" data-k="beginner">初級 <small>Beginner</small></button><button type="button" role="radio" data-k="intermediate">中級 <small>Intermediate</small></button><button type="button" role="radio" data-k="advanced">高級 <small>Advanced</small></button>
     </div>
+    <h2>畫質 <span>Graphics</span></h2>
+    <div class="stance gfx" id="homeGfx" role="radiogroup" aria-label="畫質"><button type="button" role="radio" data-g="auto">自動 <small>Auto</small></button><button type="button" role="radio" data-g="low">低 <small>Low</small></button><button type="button" role="radio" data-g="medium">中 <small>Medium</small></button><button type="button" role="radio" data-g="high">高 <small>High</small></button><button type="button" role="radio" data-g="ultra">極致 <small>Ultra</small></button></div>
+    <p class="gfx-hint">「自動」在手機上使用「中」，電腦上使用「高」。舊手機若不流暢請選「低」。</p>
     <h2>雪場 <span>Resorts</span></h2>
     <div class="resorts" id="homeResorts"></div>
   </div>
@@ -398,6 +408,9 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
       <button class="btn" id="pRestart" type="button">重新開始</button>
       <button class="btn" id="pHome" type="button">回主畫面 · 選擇其他雪場</button>
     </div>
+    <h2 class="pause-sub">畫質 <span>Graphics</span></h2>
+    <div class="stance gfx" id="pauseGfx" role="radiogroup" aria-label="畫質"><button type="button" role="radio" data-g="auto">自動 <small>Auto</small></button><button type="button" role="radio" data-g="low">低 <small>Low</small></button><button type="button" role="radio" data-g="medium">中 <small>Medium</small></button><button type="button" role="radio" data-g="high">高 <small>High</small></button><button type="button" role="radio" data-g="ultra">極致 <small>Ultra</small></button></div>
+    <button class="btn" id="pGfxApply" type="button" hidden>重新載入以套用畫質</button>
   </div>
 </div>
 
@@ -452,6 +465,7 @@ import { courseSegments, courseWidth, isConnectorName, measureCourseWidth } from
 import { ridingResistance, SKILLS } from './src/riding-speed.js';
 import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
 import { createRenderQuality } from './src/render-quality.js';
+import { graphicsPreset, bindGraphicsPicker } from './src/graphics.js';
 import { chunkGeometry, chunkInstances, createNearbyShadows } from './src/spatial-rendering.js';
 import { trailRoutes, alongTrail, createTrailSigns } from './src/trail-signs.js';
 import { currentResort } from './src/resorts.js';
@@ -463,6 +477,8 @@ import { createBaseLandmarks, keepBesideTerminal, namePoiBuildings } from './src
 
 // ---------- Resort: the home screen picks one; ?resort=appi deep-links past it. Everything below reads its data the same way ----------
 const RESORT = new URLSearchParams(location.search).has('resort') ? currentResort() : await chooseResort(), DATA = RESORT.data;
+// Read after the home screen, which can change it; everything below bakes it into geometry and textures.
+const GFX = graphicsPreset();
 const load = createLoading(RESORT);
 document.title = RESORT.title;
 document.querySelector('#brand .name').textContent = RESORT.brand;
@@ -566,8 +582,8 @@ const SPOTS = [{ name: `${RESORT.summit} summit`, ...flatNear(PEAK.x + 30, PEAK.
 // Rasterised once into masks the trees, terrain shader and trail map share. Without the file, forests fall back to noise.
 let LAND = null;
 try { const r = await load.fetch(DATA + 'land.json', '下載建築、道路與樹林', 40); if (r.ok) LAND = await r.json(); } catch { LAND = null; }
-const LOW_END = matchMedia('(pointer: coarse)').matches;
-const LW = LOW_END ? 1024 : 2048, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
+const LOW_END = GFX.lowEnd;
+const LW = GFX.landMask, LH = Math.round(LW * DEPTH / WIDTH), LPX = LW / WIDTH;
 const LANDW = { areas: {}, lines: {}, buildings: [], labels: [], pois: [] };
 if (LAND) {
   const [ow, on] = LAND.origin, Q = LAND.q;
@@ -743,7 +759,7 @@ function pisteEdge(x, z) {
 }
 let edgeNow = null;
 
-const TREE_R = LOW_END ? 750 : 1700, TREE_CHUNK = LOW_END ? 200 : 400;   // smaller mobile chunks bound streaming work
+const TREE_R = GFX.treeR, TREE_CHUNK = GFX.treeChunk;   // smaller mobile chunks bound streaming work
 const HAS_SKI = PISTES.length > 0;
 const ROAD_W = { road1: 9, road2: 7, road3: 5, track: 3.5 };
 // Woodland shoulders share the piste exclusion mask, so trees stay outside runs.
@@ -835,16 +851,16 @@ const DEN = new Uint8Array(LW * LH);
 // ---------- Renderer & scene ----------
 const canvas = document.getElementById('gl');
 const MOBILE = matchMedia('(pointer: coarse)').matches;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: GFX.antialias, powerPreference: 'high-performance' });
 // iOS kills the tab when GPU memory runs out; let the context restore instead of a blank canvas.
 canvas.addEventListener('webglcontextlost', e => e.preventDefault());
-const renderQuality = createRenderQuality({ mobile: MOBILE, pixelRatio: devicePixelRatio,
+const renderQuality = createRenderQuality({ range: GFX.ratio, pixelRatio: devicePixelRatio,
   apply: ratio => renderer.setPixelRatio(ratio) });
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = MOBILE ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = { basic: THREE.BasicShadowMap, pcf: THREE.PCFShadowMap, soft: THREE.PCFSoftShadowMap }[GFX.shadows];
 
 const scene = new THREE.Scene();
 const TRAIL_ROUTES = trailRoutes(PISTES, height);
@@ -853,7 +869,7 @@ createTrailSigns({ THREE, scene, routes: TRAIL_ROUTES, height, diffOf, scale: ma
 // Real resorts mark an open run edge with the odd pole, not a fence: where trees already line the run there are none.
 // Poles stand about every 55 m along open edges, tipped in the run's grade colour.
 {
-  const gap = MOBILE ? 80 : 55, spots = [], tip = new THREE.Color();
+  const gap = GFX.poleGap, spots = [], tip = new THREE.Color();
   for (const p of PISTES) {
     if (p.area || p.diff === 'freeride') continue;
     let next = gap / 2;
@@ -920,10 +936,10 @@ const ambient = new THREE.HemisphereLight(0xcfe3ff, 0xdfe6ee, 0.95); scene.add(a
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.9);
 const SUN_DIR = new THREE.Vector3(-0.45, 0.42, 0.78).normalize(); // low winter sun from the south-west
 sun.castShadow = true;
-sun.shadow.mapSize.setScalar(MOBILE ? 1024 : 2048);
+sun.shadow.mapSize.setScalar(GFX.shadowMap);
 Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 400 });
 sun.shadow.bias = -0.0005;
-const nearbyShadows = createNearbyShadows(MOBILE ? 90 : 140);
+const nearbyShadows = createNearbyShadows(GFX.shadowRange);
 scene.add(sun, sun.target);
 
 // Fine snow grain texture so speed reads at close range.
@@ -941,7 +957,7 @@ function snowNormalTexture() {
   }
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(MOBILE ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(GFX.anisotropy, renderer.capabilities.getMaxAnisotropy());
   return t;
 }
 function grainTexture() {
@@ -956,7 +972,7 @@ function grainTexture() {
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = Math.min(MOBILE ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
+  t.anisotropy = Math.min(GFX.anisotropy, renderer.capabilities.getMaxAnisotropy());
   return t;
 }
 
@@ -1063,8 +1079,8 @@ try {
     if (sea) col.set([0.19, 0.27, 0.36], k * 3);
     else col.set([0.94 - forest * 2.2, 0.955 - forest * 1.8, 0.99 - forest * 1.6], k * 3);
   }
-  // Phones skip every other horizon vertex: it sits kilometres away, so the detail is invisible.
-  const FS = MOBILE ? 2 : 1, idx = new Uint32Array(Math.ceil((fgx - 1) / FS) * Math.ceil((fgy - 1) / FS) * 6);
+  // Low skips every other horizon vertex: it sits kilometres away, so the detail is barely visible.
+  const FS = GFX.horizonStep, idx = new Uint32Array(Math.ceil((fgx - 1) / FS) * Math.ceil((fgy - 1) / FS) * 6);
   let p = 0;
   for (let j = 0; j < fgy - 1; j += FS) for (let i = 0; i < fgx - 1; i += FS) {
     const si = Math.min(FS, fgx - 1 - i), sj = Math.min(FS, fgy - 1 - j);
@@ -1215,7 +1231,7 @@ const rimeGeo = merge([
 ]);
 // Bare deciduous trees as crossed cards: Erman's birch, Japanese white birch, larch, beech. One atlas, a column each.
 function treeAtlas() {
-  const W = 128, Hh = 256, R = LOW_END ? 1 : 2, c = document.createElement('canvas'); c.width = W * 4 * R; c.height = Hh * R;
+  const W = 128, Hh = 256, R = GFX.level === 'low' ? 1 : 2, c = document.createElement('canvas'); c.width = W * 4 * R; c.height = Hh * R;
   const g = c.getContext('2d');
   g.scale(R, R);
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -1295,7 +1311,7 @@ cardMat.customProgramCacheKey = () => 'treecard';
 const TREE_CELL = 10;
 const treeGrid = new Map(); // "ci,cj" -> [x, z, r, ...]
 const chunks = new Map();
-const TREE_STEP = LOW_END ? 6.5 : 5, TREE_KEEP = LOW_END ? 0.5 : 0.62, NEAR_LOD = LOW_END ? 260 : 420;
+const TREE_STEP = GFX.treeStep, TREE_KEEP = GFX.treeKeep, NEAR_LOD = GFX.nearLod;
 let treeCount = 0;
 function buildChunk(ci, cj) {
   const fir = [], rime = [], card = [];
@@ -1950,7 +1966,7 @@ if (LIFTS.length) {
   place(new THREE.BoxGeometry(3.5, 0.4, 3.7).translate(0, 0.2, 0), new THREE.MeshLambertMaterial({ color: 0xf2f6fa }), huts, ([x, y, z, yaw, k]) => { v.set(x, y - 0.3 + 2.8 * k, z); yawQ(yaw); s.set(k, k, k); });
   // Night: a lamp on every tower and terminal (see src/lift-lighting.js).
   liftLighting = createLiftLighting({
-    scene, height, mobile: MOBILE,
+    scene, height, mobile: LOW_END,
     sources: [
       ...towers.map(t => ({ x: t[0], y: t[1] + t[4] + 0.55, z: t[2], r: t[5] === 'gondola' ? 11 : 9 })),
       ...chairTerms.map(t => ({ x: t[0], y: t[4] + 2.4, z: t[2], r: 14 })),
@@ -2307,7 +2323,7 @@ function dotTexture() {
   return new THREE.CanvasTexture(c);
 }
 const DOT = dotTexture();
-const SNOW_N = MOBILE ? 1500 : 4000, SNOW_R = 70;
+const SNOW_N = GFX.snow, SNOW_R = 70;
 const snowPos = new Float32Array(SNOW_N * 3);
 for (let i = 0; i < SNOW_N * 3; i++) snowPos[i] = (Math.random() - 0.5) * SNOW_R * 2;
 const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
@@ -3357,7 +3373,7 @@ function zoneName() {
 let hudT = 0, miniT = 0;
 function updateHud(dt) {
   if ((toastT -= dt) <= 0) hud.toast.classList.remove('on');
-  if ((miniT -= dt) <= 0) { miniT = MOBILE ? 1 / 12 : 1 / 24; drawMini(); }
+  if ((miniT -= dt) <= 0) { miniT = 1 / GFX.miniFps; drawMini(); }
   if ((hudT -= dt) > 0) return;
   hudT = 0.1;
   hud.spd.textContent = Math.round(S.v.length() * 3.6);
@@ -3486,6 +3502,12 @@ document.getElementById('tPause').addEventListener('click', () => setPaused(true
 document.getElementById('pResume').addEventListener('click', () => setPaused(false));
 document.getElementById('pRestart').addEventListener('click', restartRun);
 document.getElementById('pHome').addEventListener('click', () => { location.href = location.pathname; });
+// Graphics settings are baked in at load, so a change in the pause menu reloads straight back into this resort.
+{
+  const apply = document.getElementById('pGfxApply'), loaded = GFX.choice;
+  bindGraphicsPicker(document.querySelectorAll('#pauseGfx button'), id => { apply.hidden = id === loaded; });
+  apply.addEventListener('click', () => location.assign(`${location.pathname}?resort=${RESORT.id}`));
+}
 addEventListener('keydown', e => {
   if (e.repeat || !running) return;
   const k = e.key.toLowerCase();
@@ -3502,7 +3524,7 @@ function frame(now) {
   const frameSeconds = (now - last) / 1000;
   const dt = Math.min(0.05, frameSeconds); last = now;
   if (document.hidden) { requestAnimationFrame(frame); return; }
-  if (MOBILE && simOn()) renderQuality.sample(frameSeconds);
+  if (simOn()) renderQuality.sample(frameSeconds);
   if (simOn()) {
     acc += dt;
     while (acc >= 1 / 120) { step(1 / 120); acc -= 1 / 120; }
