@@ -4,7 +4,7 @@ import { createVisitorAvatars } from './visitor-avatars.js';
 import { riderContact } from './visitor-collisions.js';
 import { visitorTargetSpeed, approachSpeed } from './riding-speed.js';
 
-export async function createVisitors({ scene, lifts, height, normalAt, contains, blocks, carrierPose, clock, player, lowEnd, getAvatar, poseAvatar, cameraPosition, registerShadow = () => {}, onBump = () => {} }) {
+export async function createVisitors({ scene, lifts, height, normalAt, contains, blocks, carrierPose, clock, player, lowEnd, getAvatar, poseAvatar, cameraPosition, getCamera, registerShadow = () => {}, onBump = () => {} }) {
   const nav = createVisitorNavigation({ height, contains, blocks });
   const routes = [];
   for (const L of lifts) {
@@ -33,7 +33,7 @@ export async function createVisitors({ scene, lifts, height, normalAt, contains,
     return { ...trip, state: 'run', edge, t, speed: 7 + Math.random() * 5.5, currentSpeed: 0, launchWait: 0.5 + Math.random() * 3.5, wait: 0, k: -1, p: new THREE.Vector3(), velocity: new THREE.Vector3(), dir: new THREE.Vector3(1, 0, 0), phase: Math.random() * 6.28, laps: 0, bumpTime: 0, bumpSpeed: 0, hitCooldown: 0 };
   });
   const root = new THREE.Group(); root.name = 'Resort snowboarders'; scene.add(root);
-  const avatars = createVisitorAvatars({ root, getAvatar, poseAvatar, cameraPosition, lowEnd });
+  const avatars = createVisitorAvatars({ root, getAvatar, poseAvatar, cameraPosition, getCamera, lowEnd });
   const material = color => new THREE.MeshStandardMaterial({ color, roughness: 0.85 });
   const parts = [];
   function part(geo, mat, pose) {

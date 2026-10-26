@@ -30,6 +30,7 @@ On touch screens, on-screen buttons replace the keys. Tap the walking button to 
 Pick the mountain and your kit on the home screen, or deep-link past it with `?resort=niseko`, `rusutsu`, `teine`, `appi`, `gala`, `cypress` or `chaserrugg`. A loading bar names each step (terrain, lifts, villages…) while the resort builds. Card thumbnails in `public/thumbs/` are bluebird-daylight screenshots of the game framing each resort's signature view, rendered by `tools/render_thumbs.mjs` (Niseko overlooks Mt. Yotei, Appi faces Mt. Iwate, Gala looks down its steep upper slopes toward the Shinkansen station):
 
 - **Niseko United** (default): Mt. Niseko Annupuri, Hokkaido. Data in `public/data/`.
+- **DynaLand** (`?resort=dynaland`): Mt. Dainichigatake, Gifu, including the connected Takasu Snow Park slopes. Data in `public/data/dynaland/`.
 - **Appi Kogen**: Mt. Maemori, Iwate, with Mt. Iwate on the horizon. Data in `public/data/appi/`.
 - **Gala Yuzawa**: Mt. Takanokura, Niigata, with its gondola rising straight from the Shinkansen station and Mt. Naeba on the horizon. Data in `public/data/gala/`. Its OSM data was built from OpenStreetMap API 0.6 map tiles while Overpass was down; the monthly workflow refreshes it from Overpass.
 

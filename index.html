@@ -99,7 +99,6 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
 .stance button { padding: 9px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12); border-radius: 6px; font-size: 14px; }
 .stance small { color: var(--mist); font-family: var(--display); letter-spacing: 0.12em; text-transform: uppercase; margin-left: 4px; }
 .stance button[aria-checked="true"] { border-color: var(--signal); background: rgba(255,106,61,0.14); }
-#homeSkill { grid-template-columns: repeat(3, 1fr); }
 .stance.gfx { grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .stance.gfx button { padding: 9px 2px; font: inherit; font-size: 14px; color: var(--snow); cursor: pointer; display: grid; justify-items: center; gap: 2px; -webkit-tap-highlight-color: transparent; }
 .stance.gfx small { margin-left: 0; font-size: 9px; letter-spacing: 0.08em; }
@@ -345,9 +344,6 @@ kbd { font-family: var(--display); font-weight: 600; color: var(--snow); backgro
     <div class="stance" id="homeStance" role="radiogroup" aria-label="站姿">
       <button type="button" role="radio" data-s="regular">左腳在前 <small>Regular</small></button><button type="button" role="radio" data-s="goofy">右腳在前 <small>Goofy</small></button>
     </div>
-    <div class="stance" id="homeSkill" role="radiogroup" aria-label="滑行程度">
-      <button type="button" role="radio" data-k="beginner">初級 <small>Beginner</small></button><button type="button" role="radio" data-k="intermediate">中級 <small>Intermediate</small></button><button type="button" role="radio" data-k="advanced">高級 <small>Advanced</small></button>
-    </div>
     <h2>畫質 <span>Graphics</span></h2>
     <div class="stance gfx" id="homeGfx" role="radiogroup" aria-label="畫質"><button type="button" role="radio" data-g="auto">自動 <small>Auto</small></button><button type="button" role="radio" data-g="low">低 <small>Low</small></button><button type="button" role="radio" data-g="medium">均衡 <small>Balanced</small></button><button type="button" role="radio" data-g="high">高 <small>High</small></button><button type="button" role="radio" data-g="ultra">極致 <small>Ultra</small></button></div>
     <p class="gfx-hint">「自動」在手機上使用「均衡」（保留抗鋸齒），電腦上使用「高」。舊手機若不流暢請選「低」。</p>
@@ -467,6 +463,11 @@ import { mapFraction, mapPoint, mapHeading } from './src/map-coordinates.js';
 import { createRenderQuality } from './src/render-quality.js';
 import { graphicsPreset, bindGraphicsPicker } from './src/graphics.js';
 import { chunkGeometry, chunkInstances, createNearbyShadows } from './src/spatial-rendering.js';
+import { createRenderDetail, createTreeDetail } from './src/render-detail.js';
+import { createRenderMetrics } from './src/render-metrics.js';
+import { batchStaticLandmarks } from './src/static-batches.js';
+import { generateTrees } from './src/tree-placement.js';
+import { createTreeStream } from './src/tree-stream.js';
 import { trailRoutes, alongTrail, createTrailSigns } from './src/trail-signs.js';
 import { currentResort } from './src/resorts.js';
 import { RIDERS, pref, record, saveRecord } from './src/riders.js';
@@ -978,6 +979,8 @@ function grainTexture() {
   return t;
 }
 
+const detail = createRenderDetail({ pixelError: GFX.level === 'ultra' ? 0.8 : 1.25 });
+const renderMetrics = createRenderMetrics(renderer, new URLSearchParams(location.search).has('profile'));
 // ---------- Terrain mesh ----------
 await load.at(42, '建立地形網格');
 {
@@ -1056,9 +1059,7 @@ await load.at(42, '建立地形網格');
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = mix(roughnessFactor, 0.25, smoothstep(0.4, 0.8, land.b));`);
   };
-  const terrain = new THREE.Mesh(geo, mat);
-  terrain.receiveShadow = true;
-  scene.add(terrain);
+  detail.addGrid({ scene, geometry: geo, material: mat, width: MX, height: MZ, name: 'Terrain tile' });
 }
 
 // ---------- Horizon: the resort's volcano (Mt. Yotei, Mt. Iwate) and the wider range from a coarse DEM ----------
@@ -1148,7 +1149,20 @@ try {
       diffuseColor.rgb = mix(diffuseColor.rgb, mix(ground, snowColor, snowCover), mountain);
     `);
   };
-  scene.add(new THREE.Mesh(geo, horizonMaterial));
+  // Keep the existing Low-preset sampling, but present a compact regular grid
+  // to the detail selector. Include the final row/column for odd DEM sizes.
+  const hx = Math.ceil((fgx - 1) / FS) + 1, hz = Math.ceil((fgy - 1) / FS) + 1;
+  const sampled = new THREE.BufferGeometry();
+  for (const [name, attribute] of Object.entries(geo.attributes)) {
+    const array = new attribute.array.constructor(hx * hz * attribute.itemSize);
+    for (let j = 0; j < hz; j++) for (let i = 0; i < hx; i++) {
+      const source = (Math.min(j * FS, fgy - 1) * fgx + Math.min(i * FS, fgx - 1)) * attribute.itemSize;
+      array.set(attribute.array.subarray(source, source + attribute.itemSize), (j * hx + i) * attribute.itemSize);
+    }
+    sampled.setAttribute(name, new THREE.BufferAttribute(array, attribute.itemSize, attribute.normalized));
+  }
+  detail.addGrid({ scene, geometry: sampled, material: horizonMaterial, width: hx, height: hz,
+    tile: 64, name: 'Horizon tile', nearRange: 300 });
 } catch (err) { console.warn('horizon terrain unavailable', err); }
 
 await load.at(55, '種植樹林');
@@ -1335,56 +1349,19 @@ cardMat.onBeforeCompile = sh => {
 cardMat.customProgramCacheKey = () => 'treecard';
 
 // Trees are generated in 400 m chunks around the rider, deterministically, so a chunk regenerates identically
-// when you come back. Each chunk: near/far firs sharing one instance buffer, rime firs, bare-tree cards.
+// when you come back. Each chunk: partitioned near/far firs, rime firs, bare-tree cards.
 const TREE_CELL = 10;
 const treeGrid = new Map(); // "ci,cj" -> [x, z, r, ...]
 const chunks = new Map();
-const TREE_STEP = GFX.treeStep, TREE_KEEP = GFX.treeKeep, NEAR_LOD = GFX.nearLod;
+const TREE_STEP = GFX.treeStep, TREE_KEEP = GFX.treeKeep;
 let treeCount = 0;
-function buildChunk(ci, cj) {
-  const fir = [], rime = [], card = [];
+let treeStream = null;
+const treeConfig = () => ({ WIDTH, DEPTH, TREE_CHUNK, TREE_STEP, TREE_KEEP, TREE_CELL, LW, LH, LPX, DEN, FLORA,
+  FIXED_HITS, H, GX, CX, CZ, MESH_ST, MESH_X, MESH_Z });
+function buildChunk(ci, cj, generated = null) {
+  const { fir, rime, card, collisions } = generated || generateTrees(treeConfig(), ci, cj);
   const x0 = ci * TREE_CHUNK, z0 = cj * TREE_CHUNK;
-  for (let z = z0; z < z0 + TREE_CHUNK; z += TREE_STEP) for (let x = x0; x < x0 + TREE_CHUNK; x += TREE_STEP) {
-    const jx = x + hash2(x * 7, z * 3) * TREE_STEP, jz = z + hash2(x * 5, z * 11) * TREE_STEP;
-    if (Math.abs(jx) > WIDTH / 2 - 20 || Math.abs(jz) > DEPTH / 2 - 20) continue;
-    const k = lidx(jx, jz); if (k < 0 || !DEN[k]) continue;
-    if (hash2(jx * 13, jz * 17) > DEN[k] / 255 * TREE_KEEP) continue;
-    if (nearFixed(jx, jz, 8)) continue;   // a clearing round statues and the like
-    const h = height(jx, jz), tl = TREELINE(jx, jz), r = hash2(jx * 3, jz * 29), s0 = hash2(jx * 19, jz * 23), rot = hash2(jx, jz) * Math.PI * 2;
-    const add = (list, s, sy, coll, extra, angle = rot) => {
-      list.push([jx, h - 0.3, jz, s, sy, angle, extra]);
-      const key = `${Math.floor(jx / TREE_CELL)},${Math.floor(jz / TREE_CELL)}`;
-      if (!treeGrid.has(key)) treeGrid.set(key, []);
-      treeGrid.get(key).push(jx, jz, coll);
-    };
-    // Juhyo: 4–9 m, a little stockier with height in the band, windward face to the north-west (rot -π/4).
-    const addJuhyo = () => { const s = 0.65 + s0 * 0.8; add(rime, s, s * (0.9 + hash2(jx * 61, jz * 67) * 0.3), 1.5 * s + 0.3, 0, -Math.PI / 4 + (r - 0.5) * 0.6); };
-    if (h > tl - 40) {
-      // Treeline: rime-crusted firs (stunted, snow-laden firs outside Japan) and low stunted birch or larch.
-      if (FLORA.juhyo) addJuhyo();   // Zao: nothing but snow monsters up to the ridge
-      else if (r < 0.75) { const s = 0.5 + s0 * 0.6; if (FLORA.rime) add(rime, s, s, 0.6 * s + 0.4); else add(fir, s * 0.8, s * 0.85, 0.45 * s + 0.3); }
-      else { const s = 3 + s0 * 2; add(card, s * 0.8, s, 0.3, 0); }
-      continue;
-    }
-    // Zao's juhyo band starts lower and is almost pure monster by the top of it.
-    const rimeShare = FLORA.juhyo ? THREE.MathUtils.smoothstep(h, tl - 420, tl - 120)
-      : FLORA.rime ? THREE.MathUtils.smoothstep(h, tl - 200, tl - 40) * 0.7 : 0;
-    const conifer = THREE.MathUtils.clamp((h < FLORA.low ? 0.5 : FLORA.conifer) + (vnoise(jx / 260, jz / 260) - 0.5) * 1.1, 0.05, FLORA.conifer > 0.8 ? 0.98 : 0.9);
-    if (r < rimeShare) { if (FLORA.juhyo) addJuhyo(); else { const s = 0.6 + s0 * 0.7; add(rime, s, s, 0.6 * s + 0.4); } }
-    // Zao's upper slopes are near-pure Maries fir: no beech in the juhyo band.
-    else if (hash2(jx * 31, jz * 37) < conifer || (FLORA.juhyo && h > tl - 420)) {
-      if (h < FLORA.low && vnoise(jx / 600 + 40, jz / 600) > 0.74) { const s = 11 + s0 * 7; add(card, s * 0.45, s, 0.3, 2); }   // larch plantation
-      else { const s = 0.75 + s0 * 0.85; add(fir, s, s * (0.9 + hash2(jx * 41, jz) * 0.25), 0.45 * s + 0.35); }
-    } else if (hash2(jx * 53, jz * 59) < FLORA.larch) {
-      const s = 9 + s0 * 7; add(card, s * 0.45, s, 0.3, 2);                    // larch
-    } else if (FLORA.broadleaf === 'beech') {
-      const s = 10 + s0 * 7; add(card, s * 0.85, s, 0.3, 3);                   // beech (or red alder)
-    } else {
-      const white = h < FLORA.low && hash2(jx * 43, jz * 47) < 0.5;
-      const s = (white ? 10 : 7) + s0 * (white ? 6 : 6);
-      add(card, s * (white ? 0.55 : 0.85), s, 0.3, white ? 1 : 0);
-    }
-  }
+  for (const [key, values] of collisions) treeGrid.set(key, values);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   const inst = (geo, mat, list, f) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
@@ -1402,9 +1379,8 @@ function buildChunk(ci, cj) {
       C.firNear.setColorAt(i, tint.setRGB(0.85 + variation * 0.15,
         0.87 + variation * 0.13, 0.89 + variation * 0.11));
     });
-    C.firFar = new THREE.InstancedMesh(firFarGeo, treeMat, fir.length);
-    C.firFar.instanceColor = C.firNear.instanceColor;
-    C.firFar.instanceMatrix = C.firNear.instanceMatrix; C.firFar.boundingSphere = C.firNear.boundingSphere;
+    C.treeDetail = createTreeDetail(C.firNear, firFarGeo, GFX.level === 'ultra' ? 24 : 30);
+    C.firFar = C.treeDetail.far;
     scene.add(C.firFar); C.meshes.push(C.firNear, C.firFar);
   }
   if (rime.length) C.meshes.push(C.rime = inst(rimeGeo, treeMat, rime, std));
@@ -1445,14 +1421,19 @@ function updateTrees(dt, budget = 2) {
   }
   want.sort((a, b) => a[0] - b[0]);
   const started = performance.now();
-  for (const [, ci, cj] of want.slice(0, MOBILE && budget < 99 ? 1 : budget)) {
-    buildChunk(ci, cj);
+  treeStream?.prune(new Set(want.map(([, ci, cj]) => `${ci},${cj}`)));
+  let built = 0;
+  for (const [, ci, cj] of want) {
+    const result = budget < 99 && treeStream?.available ? treeStream.take(ci, cj) : null;
+    if (budget < 99 && treeStream?.available && !result) { treeStream.request(ci, cj); continue; }
+    buildChunk(ci, cj, result);
+    if (++built >= (MOBILE && budget < 99 ? 1 : budget)) break;
     if (budget < 99 && performance.now() - started > 3) break;
   }
   for (const [key, C] of chunks) {
     const d = dist(C.ci, C.cj);
     if (d > TREE_R + TREE_CHUNK) { dropChunk(key); continue; }
-    if (C.firNear) { C.firNear.visible = d < NEAR_LOD; C.firFar.visible = !C.firNear.visible; C.firNear.castShadow = d < 60; }
+    if (C.firNear) { C.treeDetail.update(camera, renderer.domElement.height); C.firNear.castShadow = d < 60; }
     if (C.card) C.card.castShadow = d < 60;
     if (C.rime) C.rime.castShadow = d < 60;
   }
@@ -2093,7 +2074,7 @@ if (LIFTS.length) {
     im.boundingSphere = bounds.getBoundingSphere(new THREE.Sphere());
     im.frustumCulled = true; im.castShadow = true;
     scene.add(im);
-    nearbyShadows.add(im);
+    nearbyShadows.add(im, { bounds: im.boundingSphere });
     let hood = null;
     if (L.bubble && !L.gondola) {
       const w = Math.min(8, L.occ) * 0.56 + 0.3;
@@ -2127,7 +2108,7 @@ if (LIFTS.length) {
     const bounds = new THREE.Box3().setFromPoints(L.path).expandByScalar(30).getBoundingSphere(new THREE.Sphere());
     const mesh = geo => {
       const im = new THREE.InstancedMesh(geo, hangerMat, L.n);
-      im.boundingSphere = bounds; im.castShadow = true; scene.add(im); nearbyShadows.add(im); return im;
+      im.boundingSphere = bounds; im.castShadow = true; scene.add(im); nearbyShadows.add(im, { bounds }); return im;
     };
     L.stem = L.kind === 'platter' ? 1.5 : 1.1;
     L.slots = L.kind === 'platter' ? [0] : [-0.32, 0.32];   // where riders stand across the bar
@@ -2763,7 +2744,7 @@ function updateCamera(dt) {
 const AV = { ready: false };
 
 // ---------- Rider choice: outfit and stance, remembered per browser ----------
-const SKILL = SKILLS[pref.get('skill')] ? pref.get('skill') : 'intermediate';
+const SKILL = 'advanced';
 const PICK = { rider: RIDERS.some(r => r.id === pref.get('rider')) ? pref.get('rider') : 'sage', goofy: pref.get('stance') === 'goofy' };
 function applyKit() {
   if (!AV.model) return;
@@ -3497,7 +3478,7 @@ const { createVisitors } = await import('./src/visitors.js');
 const visitors = await createVisitors({
   scene, lifts: LIFTS, height, normalAt, carrierPose, lowEnd: LOW_END,
   registerShadow: mesh => nearbyShadows.add(mesh),
-  getAvatar: () => ({ rig: AV, boardParts: carriedBoard.children }), poseAvatar, cameraPosition: () => camera.position,
+  getAvatar: () => ({ rig: AV, boardParts: carriedBoard.children }), poseAvatar, cameraPosition: () => camera.position, getCamera: () => camera,
   onBump: () => toast('撞到其他滑雪者了！', 1),
   clock: () => liftTime,
   player: (L, k) => (S.ride?.L === L && S.ride.k === k) || (liftQueue?.L === L && liftQueue.k === k),
@@ -3531,6 +3512,9 @@ function liftExit(L) {
 }
 for (const spot of SPOTS) if (spot.lift) { const e = liftExit(spot.lift); if (e) Object.assign(spot, { x: e.x, z: e.z, direction: e.direction }); }
 
+const staticBatchStats = batchStaticLandmarks(scene, [baseLandmarks.root, signatureLandmarks.root]);
+treeStream = createTreeStream(treeConfig());
+addEventListener('pagehide', e => { if (!e.persisted) treeStream.dispose(); });
 dropIn(SPOTS[0]);
 updateTrees(0, 99);
 let running = false, paused = false, last = performance.now(), acc = 0;
@@ -3577,6 +3561,7 @@ function frame(now) {
   const frameSeconds = (now - last) / 1000;
   const dt = Math.min(0.05, frameSeconds); last = now;
   if (document.hidden) { requestAnimationFrame(frame); return; }
+  renderMetrics.begin();
   if (simOn()) renderQuality.sample(frameSeconds);
   if (simOn()) {
     acc += dt;
@@ -3595,9 +3580,11 @@ function frame(now) {
   liftQueues.update(S.p, dt);
   nearbyShadows.update(S.p);
   updateTrees(dt);
+  detail.update(camera, renderer.domElement.height);
   updateHud(dt);
   updateAudio();
-  if (!window.__noRender) renderer.render(scene, camera);
+  if (!window.__noRender) { renderMetrics.beginGpu(); renderer.render(scene, camera); }
+  renderMetrics.end(frameSeconds);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -3608,7 +3595,7 @@ $('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} �
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { saveRecord(RESORT.id, { runs: record(RESORT.id).runs + 1 }); $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
-window.__ski = { weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, toggleWalking, roadBarrier, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+window.__ski = { detail, renderMetrics, staticBatchStats, treeStream, weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, toggleWalking, roadBarrier, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;
 window.__liftQueues = liftQueues;

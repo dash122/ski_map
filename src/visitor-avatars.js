@@ -3,7 +3,19 @@ import { clone } from 'three/addons/utils/SkeletonUtils.js';
 
 // Nearby visitors use the player's exact mesh, fabric maps, gear, board and IK.
 // Pool independent skeletons; share geometry, textures and outfit materials.
-export function createVisitorAvatars({ root, getAvatar, poseAvatar, cameraPosition, lowEnd }) {
+export function selectVisibleVisitors(people, camera, limit, range) {
+  camera.updateMatrixWorld();
+  const frustum = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  const sphere = new THREE.Sphere(undefined, 5), candidates = [];
+  for (let i = 0; i < people.length; i++) {
+    const distance = people[i].p.distanceToSquared(camera.position);
+    sphere.center.copy(people[i].p); sphere.center.y += 1;
+    if (distance < range * range && frustum.intersectsSphere(sphere)) candidates.push({ i, distance });
+  }
+  return candidates.sort((a, b) => a.distance - b.distance).slice(0, limit).map(p => p.i);
+}
+
+export function createVisitorAvatars({ root, getAvatar, poseAvatar, cameraPosition, getCamera, lowEnd }) {
   const pool = [], kits = [], selected = new Set();
   const colors = [0x526149, 0x2a3652, 0xc4622e, 0xdde4e8, 0x47778c, 0xb49845];
   let source;
@@ -45,8 +57,10 @@ export function createVisitorAvatars({ root, getAvatar, poseAvatar, cameraPositi
     selected.clear();
     if (!pool.length && !initialize()) return;
     const camera = cameraPosition();
-    const near = people.map((p, i) => ({ i, d: p.p.distanceToSquared(camera) })).filter(p => p.d < (lowEnd ? 140 : 240) ** 2).sort((a, b) => a.d - b.d).slice(0, pool.length);
-    for (const p of near) selected.add(p.i);
+    const range = lowEnd ? 140 : 240;
+    const near = getCamera ? selectVisibleVisitors(people, getCamera(), pool.length, range)
+      : people.map((p, i) => ({ i, d: p.p.distanceToSquared(camera) })).filter(p => p.d < range ** 2).sort((a, b) => a.d - b.d).slice(0, pool.length).map(p => p.i);
+    for (const i of near) selected.add(i);
     for (const slot of pool) slot.avatar.visible = false;
   }
   let slotIndex = 0;
@@ -68,8 +82,15 @@ export function createVisitorAvatars({ root, getAvatar, poseAvatar, cameraPositi
     slot.board.position.set(walking ? 0.35 : 0, walking ? 0.9 : 0, walking ? -0.15 : 0);
     slot.board.rotation.z = walking ? 0.35 : 0;
     slot.frame.rotation.x = Math.sin(visitor.bumpTime * 16) * Math.min(0.35, visitor.bumpTime * 0.4);
-    poseAvatar(walking ? 0.98 : seated ? 0.62 : 0.85, false, seated, slot.rig, slot.frame, slot.avatar,
-      { steer: walking || seated ? 0 : visitor.steer || 0 }, false, elapsed * 1000, walking);
+    // Keep translation smooth every frame; only distant skeletal posing runs at
+    // 30 Hz. Reassigned pool slots and pose-state changes update immediately.
+    const state = `${walking}:${seated}`;
+    const interval = visitor.p.distanceToSquared(cameraPosition()) > 60 ** 2 ? 1 / 30 : 0;
+    if (slot.visitorIndex !== index || slot.poseState !== state || visitor.bumpTime > 0 || elapsed - slot.lastPose >= interval) {
+      poseAvatar(walking ? 0.98 : seated ? 0.62 : 0.85, false, seated, slot.rig, slot.frame, slot.avatar,
+        { steer: walking || seated ? 0 : visitor.steer || 0 }, false, elapsed * 1000, walking);
+      slot.visitorIndex = index; slot.poseState = state; slot.lastPose = elapsed;
+    }
     return true;
   }
   return { begin, draw, pool };

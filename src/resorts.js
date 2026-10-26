@@ -6,6 +6,20 @@
 //   cover: extra wood where OSM maps none · firBias: distant canopy reads as conifer ·
 //   conifers: sakhalin | maries | sugi | douglas | spruce · broadleaf: birch | beech
 export const RESORTS = {
+  dynaland: {
+    flora: { treeline: 1700, conifer: 0.3, low: 800, conifers: 'sugi', broadleaf: 'beech', rime: false },
+    id: 'dynaland', continent: 'asia', country: 'JP', area: '岐阜', label: 'ダイナランド DynaLand', data: 'data/dynaland/',
+    title: 'DynaLand 滑雪', brand: 'DynaLand', mountain: '大日岳',
+    code: 'NGO', name: 'ダイナランド', en: 'DynaLand', region: '岐阜縣 · 大日岳', thumb: 'thumbs/dynaland.webp',
+    sub: '在岐阜縣郡上市大日岳東坡的真實地形上滑雪。',
+    summit: 'Dainichigatake', summitZone: '大日岳山頂', backcountry: '大日岳野雪區',
+    peak: { lon: 136.8373, lat: 36.0215 },
+    // Approximate base areas from mapped lift terminals; Takasu connects on the upper slopes.
+    bases: [
+      { name: 'DynaLand', lon: 136.8706, lat: 35.9898 },
+      { name: 'Takasu Snow Park', lon: 136.8760, lat: 35.9978 },
+    ],
+  },
   niseko: {
     id: 'niseko', continent: 'asia', country: 'JP', area: '北海道', label: '二世古 Niseko United', data: 'data/',
     title: '二世古滑雪', brand: '二世古', mountain: '二世古安努普利山',

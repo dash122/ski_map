@@ -7,6 +7,7 @@ import sharp from 'sharp';
 
 // Rider stands at `from`, facing `at` (lon, lat, metres above sea level); `cam` is the camera's [back, up] in metres.
 const VIEWS = {
+  dynaland: { from: [136.8564, 35.9914], at: [136.8706, 35.9898, 980], cam: [25, 20] }, // Alpha Liner summit facing the DynaLand base
   niseko: { from: [140.6622, 42.8715], at: [140.811, 42.826, 1300] }, // Top of King #4 above the trees, overlooking Mt. Yotei
   appi: { from: [140.9586, 39.9768], at: [141.0007, 39.8528, 1500] }, // Maemori summit slopes toward Mt. Iwate
   cypress: { from: [-123.1962, 49.4082], at: [-123.32, 49.43, 0], cam: [30, 30] }, // Top of the Sky Chair, looking west over Howe Sound

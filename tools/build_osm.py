@@ -4,6 +4,7 @@
     python3 tools/build_osm.py tools/data/osm_niseko.json public/data/osm.json
 """
 import json, sys, datetime
+from pathlib import Path
 
 LIFT_TYPES = {'cable_car', 'gondola', 'mixed_lift', 'chair_lift', 'drag_lift', 't-bar', 'j-bar',
               'platter', 'rope_tow', 'magic_carpet', 'zip_line'}
@@ -19,10 +20,23 @@ def flat(geom):
 
 def main(src, dst):
     data = json.load(open(src))
+    # Ski coverage is narrower than the terrain/fetch box for some resorts.
+    # Infer from the standard source filename used by both refresh workflows.
+    resort = Path(src).stem.removeprefix('osm_')
+    configs = json.loads(Path(__file__).with_name('resorts.json').read_text())
+    bounds = configs.get(resort, {}).get('skiBounds')
+
+    def in_ski_area(geom):
+        if not bounds:
+            return True
+        w, s, e, n = bounds
+        points = [p for p in (geom or []) if p]
+        return bool(points) and all(w <= p['lon'] <= e and s <= p['lat'] <= n for p in points)
+
     pistes, lifts, seen = [], [], set()
 
     def add_piste(tags, geom, wid):
-        if tags.get('piste:type') != 'downhill' or not geom or wid in seen:
+        if tags.get('piste:type') != 'downhill' or not geom or wid in seen or not in_ski_area(geom):
             return
         seen.add(wid)
         c = flat(geom)
@@ -39,7 +53,7 @@ def main(src, dst):
     for el in data['elements']:
         tags = el.get('tags', {})
         if el['type'] == 'way':
-            if tags.get('aerialway') in LIFT_TYPES and el.get('geometry'):
+            if tags.get('aerialway') in LIFT_TYPES and el.get('geometry') and in_ski_area(el['geometry']):
                 lift = {'n': name_of(tags) or tags['aerialway'].replace('_', ' ').title(),
                         't': tags['aerialway'], 'c': flat(el['geometry'])}
                 # Seats per chair/cabin, ride time in minutes, weather hood, detachable grip: the page sets speeds from these.
