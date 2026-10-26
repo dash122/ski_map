@@ -1,5 +1,7 @@
 // Graphics quality presets, chosen on the home screen or the pause menu and remembered per browser.
-// "Auto" picks Medium on touch devices (a modern phone holds 60 fps there) and High elsewhere.
+// "Auto" picks Balanced on touch devices (a modern phone holds 60 fps there) and High elsewhere.
+// Antialiasing stays on at every level: on phone GPUs MSAA is cheap, while pixel ratio, soft shadows
+// and tree draw distance are what cost frame rate, so those are what the levels trade.
 import { pref } from './riders.js';
 
 export const TOUCH = globalThis.matchMedia?.('(pointer: coarse)').matches ?? false;
@@ -7,7 +9,7 @@ export const TOUCH = globalThis.matchMedia?.('(pointer: coarse)').matches ?? fal
 export const LEVELS = [
   { id: 'auto', name: '自動', en: 'Auto' },
   { id: 'low', name: '低', en: 'Low' },
-  { id: 'medium', name: '中', en: 'Medium' },
+  { id: 'medium', name: '均衡', en: 'Balanced' },
   { id: 'high', name: '高', en: 'High' },
   { id: 'ultra', name: '極致', en: 'Ultra' },
 ];
@@ -15,11 +17,11 @@ export const LEVELS = [
 // ratio: [min, start, max] pixel ratio (the adaptive controller moves within it, capped by the screen).
 // lowEnd thins crowds, queues, lift lamps and shared textures; trees* set how far and how dense forests are.
 const PRESETS = {
-  low: { ratio: [0.75, 1, 1.25], antialias: false, shadows: 'basic', shadowMap: 1024, shadowRange: 90,
+  low: { ratio: [0.75, 1, 1.25], antialias: true, shadows: 'basic', shadowMap: 1024, shadowRange: 90,
     treeR: 750, treeChunk: 200, treeStep: 6.5, treeKeep: 0.5, nearLod: 260, landMask: 1024, horizonStep: 2,
     poleGap: 80, snow: 1500, anisotropy: 4, miniFps: 12, lowEnd: true },
-  medium: { ratio: [1, 1.5, 2], antialias: false, shadows: 'pcf', shadowMap: 2048, shadowRange: 120,
-    treeR: 1200, treeChunk: 200, treeStep: 5.5, treeKeep: 0.58, nearLod: 340, landMask: 2048, horizonStep: 1,
+  medium: { ratio: [1, 1.25, 1.5], antialias: true, shadows: 'pcf', shadowMap: 1024, shadowRange: 110,
+    treeR: 1100, treeChunk: 200, treeStep: 5.5, treeKeep: 0.58, nearLod: 320, landMask: 2048, horizonStep: 1,
     poleGap: 55, snow: 2500, anisotropy: 8, miniFps: 15, lowEnd: true },
   high: { ratio: [1, 2, 2], antialias: true, shadows: 'soft', shadowMap: 2048, shadowRange: 140,
     treeR: 1700, treeChunk: 400, treeStep: 5, treeKeep: 0.62, nearLod: 420, landMask: 2048, horizonStep: 1,
@@ -36,9 +38,17 @@ export function graphicsChoice() {
 export const setGraphicsChoice = id => pref.set('graphics', id);
 
 // The resolved preset for this page load; settings are baked into geometry at load, so a change reloads.
-export function graphicsPreset(choice = graphicsChoice()) {
-  const level = choice === 'auto' ? (TOUCH ? 'medium' : 'high') : choice;
-  return { choice, level, ...PRESETS[level] };
+export function graphicsPreset(choice = graphicsChoice(), touch = TOUCH) {
+  const level = choice === 'auto' ? (touch ? 'medium' : 'high') : choice;
+  const preset = { choice, level, ...PRESETS[level] };
+  // Phones: soft shadows cost several times plain PCF for little visible gain on a small screen,
+  // and past 1.75× the extra pixels are hard to see but halve the frame rate.
+  if (touch) {
+    if (preset.shadows === 'soft') preset.shadows = 'pcf';
+    const [lo, start, hi] = preset.ratio;
+    preset.ratio = [Math.min(lo, 1.25), Math.min(start, 1.75), Math.min(hi, 2)];
+  }
+  return preset;
 }
 
 // Wire a radiogroup of buttons (each with data-g) to the stored choice; onPick runs after it is saved.

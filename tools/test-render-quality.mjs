@@ -25,9 +25,15 @@ assert.equal(desktop.ratio, 2);
 const lowDpi = createRenderQuality({ range: [0.75, 1, 1.25], pixelRatio: 0.5, apply() {} });
 for (let i = 0; i < 1000; i++) lowDpi.sample(1 / 30);
 assert(lowDpi.ratio <= 0.5, 'never exceed the native resolution');
-const levels = ['low', 'medium', 'high', 'ultra'].map(graphicsPreset);
+const levels = ['low', 'medium', 'high', 'ultra'].map(l => graphicsPreset(l, false));
 for (let i = 1; i < levels.length; i++) {
   assert(levels[i].ratio[2] >= levels[i - 1].ratio[2] && levels[i].treeR > levels[i - 1].treeR, `${levels[i].level} is at least ${levels[i - 1].level}`);
 }
-assert.equal(graphicsPreset('auto').level, 'high', 'auto is High without a touch screen');
+assert.equal(graphicsPreset('auto', false).level, 'high', 'auto is High without a touch screen');
+assert.equal(graphicsPreset('auto', true).level, 'medium', 'auto is Balanced on phones');
+for (const l of ['low', 'medium', 'high', 'ultra']) {
+  const phone = graphicsPreset(l, true);
+  assert(phone.antialias, `${l} keeps antialiasing on phones`);
+  assert(phone.shadows !== 'soft' && phone.ratio[2] <= 2, `${l} stays within phone limits`);
+}
 console.log('Render quality: overload, recovery, bounds and tab-pause checks passed.');
