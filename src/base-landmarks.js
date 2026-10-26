@@ -9,7 +9,9 @@ export const BASE_LANDMARKS = [
   // GALA Yuzawa Station / Skicenter Kawabanga (JR East, 1990): a four-storey steel-frame station and ski centre,
   // white walls with the vermilion GALA name. The Shinkansen platform runs underneath; the Diligence gondola
   // boards inside the building and leaves through its mountain-side wall. The station houses the gondola terminal.
-  { resort: 'gala', match: /^GALA YUZAWA SKI RESORT$/i, name: 'GALA湯沢 Kawabanga', style: 'station', station: true, lift: /^Diligence$/, storeys: 4, storey: 4.6, source: 'https://www.koken-archi.co.jp/works/station/w007475/' },
+  { resort: 'gala', match: /^GALA YUZAWA SKI RESORT$/i, name: 'GALA湯沢 Kawabanga', style: 'station', station: true, lift: /^Diligence$/, storeys: 4, storey: 4.6, look: 'white',
+    glassHall: 'GALA', lettering: 'GALA YUZAWA', board: { text: 'ガーラ湯沢駅', sub: 'GALA YUZAWA STATION · スキーセンター カワバンガ', bg: '#fbfbf7', fg: '#1d2a23', band: '#2a8a4a' },
+    source: 'https://www.koken-archi.co.jp/works/station/w007475/' },
 ];
 // Places without an OSM footprint, set beside a mapped lift base. Positions are approximate.
 // A matching OSM point of interest (poi) takes precedence over the placed position.
@@ -51,6 +53,57 @@ function letteringMesh(text, width, { color = '#e0452b', weight = 800, aspect = 
 }
 const centroid = pts => pts.reduce((c, p) => ({ x: c.x + p.x / pts.length, z: c.z + p.z / pts.length }), { x: 0, z: 0 });
 
+// Station claddings by region: Japanese resorts favour pale metal panels, Swiss and Canadian ones timber over stone.
+const STATION_LOOKS = {
+  white: { wall: 0xeceeea, trim: 0x8b949b, plinth: 0xb9bcb8, sign: '#1f4e79' },
+  panel: { wall: 0xd9dcd7, trim: 0x6d767d, plinth: 0x9fa39f, sign: '#1f4e79' },
+  timber: { wall: 0x6b4a32, trim: 0x3a3430, plinth: 0x8f8a82, sign: '#2a2724' },
+};
+const TIMBER_RESORTS = /^(chaserrugg|cypress)$/;
+const lookFor = resort => TIMBER_RESORTS.test(resort) ? 'timber' : 'panel';
+const SURFACE = /t-bar|j-bar|platter|drag_lift|magic_carpet|rope_tow/;
+
+// Both ends of every mapped lift, with the unit direction from the end toward the line.
+export function liftEnds(lifts) {
+  const ends = [];
+  for (const L of lifts) {
+    const p = L.pts; if (!p || p.length < 2) continue;
+    const kind = SURFACE.test(L.type) ? 'surface' : /gondola|cable_car/.test(L.type) ? 'gondola' : 'chair';
+    for (const [e, q, end] of [[p[0], p[1], 0], [p.at(-1), p.at(-2), 1]]) {
+      const l = Math.hypot(q.x - e.x, q.z - e.z) || 1;
+      ends.push({ L, kind, end, x: e.x, z: e.z, dx: (q.x - e.x) / l, dz: (q.z - e.z) / l });
+    }
+  }
+  return ends;
+}
+const polygonArea = pts => Math.abs(pts.reduce((a, p, i) => { const q = pts[(i + 1) % pts.length]; return a + p.x * q.z - q.x * p.z; }, 0)) / 2;
+// A terminal stands inside the building, or a building named as a gondola station all but touches one.
+function housesEnd(pts, e, name = '') {
+  return insidePolygon(e.x, e.z, pts) || (e.kind === 'gondola' && STATION.test(name) && !/ticket|券/i.test(name) && edgeDistance(e.x, e.z, pts) < 8);
+}
+// The working area each terminal model needs clear, in its frame: s from the end toward the line, u across.
+// Sizes match the terminal models in index.html and src/lift-exits.js.
+const WORK = { gondola: [-6, 24, 9], chair: [-3, 5.5, 5], surface: [-2.5, 2.5, 6.5] };
+function overlapsWork(pts, e) {
+  const [s0, s1, uh] = WORK[e.kind], at = (s, u) => ({ x: e.x + e.dx * s - e.dz * u, z: e.z + e.dz * s + e.dx * u });
+  for (let s = s0; s <= s1; s += 1.5) for (let u = -uh; u <= uh; u += 1.5) { const p = at(s, u); if (insidePolygon(p.x, p.z, pts)) return true; }
+  return pts.some(p => { const dx = p.x - e.x, dz = p.z - e.z, s = dx * e.dx + dz * e.dz, u = -dx * e.dz + dz * e.dx; return s > s0 && s < s1 && Math.abs(u) < uh; });
+}
+// How a mapped building relates to the lift terminals around it:
+//   'station': a chair or gondola terminal stands inside it, so it is kept and modelled around the terminal;
+//   'clash':   it overlaps a terminal's loading area, hall or bullwheel without housing it, so it gives way;
+//   'keep':    anything else, built as usual.
+// Applies to every resort, so new resorts get their lift stations without hand work.
+export function terminalRelation(B, ends) {
+  const pts = B.pts;
+  if (!pts || pts.length < 3) return 'keep';
+  const c = centroid(pts), r = Math.max(...pts.map(p => Math.hypot(p.x - c.x, p.z - c.z)));
+  const near = ends.filter(e => Math.hypot(e.x - c.x, e.z - c.z) < r + 40);
+  if (!near.length) return 'keep';
+  if (polygonArea(pts) >= 120 && near.some(e => e.kind !== 'surface' && housesEnd(pts, e, B.name))) return 'station';
+  return near.some(e => overlapsWork(pts, e)) ? 'clash' : 'keep';
+}
+
 // Unnamed footprints take the name of a mapped café, restaurant or hotel point inside them.
 export function namePoiBuildings(buildings, pois) {
   for (const poi of pois) {
@@ -59,13 +112,6 @@ export function namePoiBuildings(buildings, pois) {
     poi.building = B;
     if (!B.name) { B.name = poi.name; B.poi = poi.kind; }
   }
-}
-
-// Lift terminals have their own models, so OSM footprints on top of them are dropped. Named buildings
-// beside a terminal (restaurants, ticket offices) stay unless the terminal point actually falls on them.
-export function keepBesideTerminal(B, ends) {
-  if (!B.name || STATION.test(B.name)) return false;
-  return !ends.some(e => insidePolygon(e.x, e.z, B.pts) || edgeDistance(e.x, e.z, B.pts) < 6);
 }
 
 const signCache = new Map();
@@ -187,16 +233,19 @@ export function createBaseLandmarks({ scene, resort, lifts, height }) {
     root.add(group);
   }
 
-  // GALA Yuzawa Station: the OSM footprint extruded to four storeys of white panels with ribbon windows, a grey
-  // metal parapet, a glazed gable hall rising through the middle, and a portal where the gondola leaves.
-  // The terminal hall projects out of the portal; the generic gondola hall is skipped (see housesTerminal).
+  // Station buildings around lift terminals (see terminalRelation): the OSM footprint extruded to whole storeys of
+  // regional cladding with ribbon windows, a parapet, and a portal wherever a cable leaves through a wall. A housed
+  // gondola gets its loading hall projecting out of the portal (the generic timber hall is skipped, see housesTerminal);
+  // a housed chair keeps its steel bullwheel housing inside. Profiles add hand-made extras (GALA's glass hall and signs).
   const housed = [];
-  function createStation(pts, gmin, gmax, profile) {
+  function createStation(pts, gmin, gmax, profile, B = {}) {
+    const look = STATION_LOOKS[profile.look ?? lookFor(resort)];
     const group = new THREE.Group(); group.name = `${profile.name} model`;
-    const white = new THREE.MeshLambertMaterial({ color: 0xeceeea });
-    const metal = new THREE.MeshLambertMaterial({ color: 0x8b949b });
-    const pieces = { white: [], metal: [], glass: [], snow: [] };
-    const c = centroid(pts), y0 = gmin - 1, top = gmax + profile.storeys * profile.storey;
+    const white = new THREE.MeshLambertMaterial({ color: look.wall });
+    const metal = new THREE.MeshLambertMaterial({ color: look.trim });
+    const plinth = new THREE.MeshLambertMaterial({ color: look.plinth });
+    const pieces = { white: [], metal: [], glass: [], snow: [], plinth: [] };
+    const c = centroid(pts);
     const box = (list, length, h, depth, x, y, z, yaw) => {
       const g = new THREE.BoxGeometry(length, h, depth); g.rotateY(yaw); g.translate(x, y, z); list.push(g);
     };
@@ -206,28 +255,32 @@ export function createBaseLandmarks({ scene, resort, lifts, height }) {
     const th = 0.5 * Math.atan2(2 * sxz, sxx - szz), A = { x: Math.cos(th), z: Math.sin(th) }, N = { x: -A.z, z: A.x };
     const S = p => (p.x - c.x) * A.x + (p.z - c.z) * A.z, V = p => (p.x - c.x) * N.x + (p.z - c.z) * N.z;
     const W = (s, v) => ({ x: c.x + A.x * s + N.x * v, z: c.z + A.z * s + N.z * v });
-    // The gondola: bottom terminal inside the footprint, cable heading out through a wall.
-    const L = lifts.find(l => profile.lift.test(l.name) && l.pts?.length > 1 && insidePolygon(l.pts[0].x, l.pts[0].z, pts));
-    let T = null, D = null;
-    if (L) {
-      T = L.pts[0]; const q = L.pts[1], l = Math.hypot(q.x - T.x, q.z - T.z) || 1; D = { x: (q.x - T.x) / l, z: (q.z - T.z) / l };
-      housed.push({ x: T.x, z: T.z });
+    // Terminals this building houses, each with its cable heading out through a wall.
+    const inside = liftEnds(lifts).filter(e => e.kind !== 'surface' && (!profile.lift || profile.lift.test(e.L.name)) && housesEnd(pts, e, B.name));
+    for (const e of inside) {
+      e.ground = height(e.x, e.z); e.width = e.kind === 'gondola' ? 19 : 12; e.portalTop = e.ground + (e.kind === 'gondola' ? 11 : 6.5);
+      housed.push({ x: e.x, z: e.z });
     }
-    const groundT = T ? height(T.x, T.z) : gmin, portalTop = groundT + 11, PORTAL = 19;
+    // Whole storeys of the OSM height, tall enough to clear every portal.
+    const storeys = profile.storeys ?? Math.max(1, Math.round((B.h || 9) / 4.2));
+    const storey = profile.storey ?? Math.max(3.6, (B.h || 9) / storeys);
+    // Floor level at the terminal: on a slope the downhill side shows a tall plinth and the uphill side digs in.
+    const T = inside.find(e => e.kind === 'gondola') ?? inside[0], D = T && { x: T.dx, z: T.dz };
+    const floor = T ? T.ground : gmax;
+    const y0 = gmin - 1, top = Math.max(floor + storeys * storey, gmax + 3.5, ...inside.map(e => e.portalTop + 2.5));
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i], b = pts[(i + 1) % pts.length], length = Math.hypot(b.x - a.x, b.z - a.z);
       if (length < 0.5) continue;
       const tx = (b.x - a.x) / length, tz = (b.z - a.z) / length, yaw = -Math.atan2(tz, tx);
       let n = { x: -tz, z: tx };
       if (((a.x + b.x) / 2 - c.x) * n.x + ((a.z + b.z) / 2 - c.z) * n.z < 0) n = { x: -n.x, z: -n.z };
-      // Where the cable crosses this wall, an opening PORTAL m wide up to portalTop.
-      let open = null;
-      if (T) {
-        const den = D.x * tz - D.z * tx;
-        if (Math.abs(den) > 1e-3) {
-          const r = ((a.x - T.x) * tz - (a.z - T.z) * tx) / den, u = ((a.x - T.x) * D.z - (a.z - T.z) * D.x) / den;
-          if (r > 0 && u > -PORTAL / 2 && u < length + PORTAL / 2) open = [u - PORTAL / 2, u + PORTAL / 2];
-        }
+      // Where a cable crosses this wall, an opening as wide as its loading bay, up to its portalTop.
+      const opens = [];
+      for (const e of inside) {
+        const den = e.dx * tz - e.dz * tx;
+        if (Math.abs(den) < 1e-3) continue;
+        const r = ((a.x - e.x) * tz - (a.z - e.z) * tx) / den, u = ((a.x - e.x) * e.dz - (a.z - e.z) * e.dx) / den;
+        if (r > 0 && u > -e.width / 2 && u < length + e.width / 2) opens.push({ u0: u - e.width / 2, u1: u + e.width / 2, top: e.portalTop });
       }
       // Wall runs [u0, u1] along the segment, from y = lo to hi.
       const run = (list, u0, u1, lo, hi, out, depth) => {
@@ -235,39 +288,41 @@ export function createBaseLandmarks({ scene, resort, lifts, height }) {
         const m = (u0 + u1) / 2;
         box(list, u1 - u0 + (out ? 0 : depth), hi - lo, depth, a.x + tx * m + n.x * out, (lo + hi) / 2, a.z + tz * m + n.z * out, yaw);
       };
-      const spans = (lo, hi) => (open && lo < portalTop) ? [[0, open[0]], [open[1], length]] : [[0, length]];
+      // A horizontal band of wall, interrupted by any portal it reaches down into.
       const band = (list, lo, hi, out, depth) => {
-        for (const [u0, u1] of spans(lo, hi)) run(list, u0, u1, lo, hi, out, depth);
-        if (open && lo < portalTop && hi > portalTop) run(list, open[0], open[1], portalTop, hi, out, depth);
+        const cuts = opens.filter(o => lo < o.top).sort((p, q) => p.u0 - q.u0);
+        let u = 0;
+        for (const o of cuts) { run(list, u, o.u0, lo, hi, out, depth); if (hi > o.top) run(list, o.u0, o.u1, o.top, hi, out, depth); u = Math.max(u, o.u1); }
+        run(list, u, length, lo, hi, out, depth);
       };
-      // Solid wall, then a dark ribbon window and a thin white sill on each storey above the ground floor.
-      band(pieces.white, y0, top, 0, 0.5);
-      if (open) run(pieces.white, open[0], open[1], portalTop, top, 0, 0.5);
-      for (let k = 1; k < profile.storeys; k++) {
-        const fy = gmax + k * profile.storey;
+      // Plinth up to the floor, solid wall above, then a dark ribbon window and a thin sill on each upper storey.
+      band(pieces.plinth, y0, floor + 0.4, 0.05, 0.6);
+      band(pieces.white, floor + 0.4, top, 0, 0.5);
+      for (let k = 1; k < storeys; k++) {
+        const fy = floor + k * storey;
+        if (fy + 2.9 > top - 0.3) break;
         band(pieces.glass, fy + 0.9, fy + 2.9, 0.28, 0.08);
         band(pieces.white, fy + 0.75, fy + 0.9, 0.4, 0.3);
       }
-      // Ground floor: glazed entrance front on the long façades, a white plinth on the rest.
-      // On the downhill side the ground floor sits on the street, below the uphill floor level.
+      // Ground floor: glazed front on longer façades. On the downhill side it sits on the street, below the uphill floor.
       const gl = Math.max(height(a.x, a.z), height(b.x, b.z));
-      if (length > 12) band(pieces.glass, gl + 0.4, gl + 3.4, 0.28, 0.08);
-      // Grey metal parapet and its snow cap.
-      band(pieces.metal, top, top + 1.3, 0.3, 0.7);
-      band(pieces.snow, top + 1.3, top + 1.5, 0.3, 0.8);
+      if (length > 12) band(pieces.glass, gl + 0.4, gl + 3.0, 0.28, 0.08);
+      // Metal parapet and its snow cap.
+      band(pieces.metal, top, top + 1.1, 0.3, 0.7);
+      band(pieces.snow, top + 1.1, top + 1.3, 0.3, 0.8);
       // Columns between window bays.
       const bays = Math.round(length / 7.2);
       for (let j = 1; j < bays; j++) {
         const u = length * j / bays;
-        if (open && u > open[0] && u < open[1]) continue;
-        box(pieces.white, 0.6, top - gmax - 1, 0.5, a.x + tx * u + n.x * 0.35, (gmax + 1 + top) / 2, a.z + tz * u + n.z * 0.35, yaw);
+        if (opens.some(o => u > o.u0 && u < o.u1)) continue;
+        box(pieces.white, 0.6, top - floor - 1, 0.5, a.x + tx * u + n.x * 0.35, (floor + 1 + top) / 2, a.z + tz * u + n.z * 0.35, yaw);
       }
     }
     // Roof slab (ceiling inside, snow on top).
     const shape = new THREE.Shape(pts.map(p => new THREE.Vector2(p.x, -p.z)));
     const slab = new THREE.ExtrudeGeometry(shape, { depth: 0.8, bevelEnabled: false }); slab.rotateX(-Math.PI / 2); slab.translate(0, top - 0.4, 0);
     pieces.snow.push(slab);
-    // Gable hall over the middle: glass roof and glazed gable ends looking up the mountain and down to the road.
+    // GALA: a glass gable hall over the middle, its gables looking up the mountain and down to the road.
     const ss = pts.map(S), vs = pts.map(V);
     const halfLong = (Math.max(...ss) - Math.min(...ss)) / 2, sMid = (Math.max(...ss) + Math.min(...ss)) / 2;
     const vAt = s => {
@@ -282,11 +337,9 @@ export function createBaseLandmarks({ scene, resort, lifts, height }) {
     const hallS = sMid - halfLong * 0.15, hallLen = Math.min(26, halfLong * 0.45);
     let [hv0, hv1] = [-Infinity, Infinity];
     for (const f of [-0.5, 0, 0.5]) { const [lo, hi] = vAt(hallS + f * hallLen); hv0 = Math.max(hv0, lo); hv1 = Math.min(hv1, hi); }
-    let hall = null;
-    if (Number.isFinite(hv0) && hv1 - hv0 > 20) {
+    if (profile.glassHall && Number.isFinite(hv0) && hv1 - hv0 > 20) {
       hv0 += 1.5; hv1 -= 1.5;
-      const rise = 9, h0 = top + 1.3, s0 = hallS - hallLen / 2, s1 = hallS + hallLen / 2;
-      hall = { s0, s1, v0: hv0, v1: hv1 };
+      const rise = 9, h0 = top + 1.1, s0 = hallS - hallLen / 2, s1 = hallS + hallLen / 2;
       const P = (s, v, y) => { const w = W(s, v); return [w.x, y, w.z]; };
       // Ridge runs across the building (v), so the gables face the slope and the road.
       const ridge = [P(hallS, hv0, h0 + rise), P(hallS, hv1, h0 + rise)];
@@ -315,56 +368,64 @@ export function createBaseLandmarks({ scene, resort, lifts, height }) {
       }
       // The vermilion GALA name on the gable glass, both ends.
       for (const [v, sgn] of [[hv0, -1], [hv1, 1]]) {
-        const w = W(hallS, v + sgn * 0.35), sign = letteringMesh('GALA', hallLen * 0.5, { aspect: 3.2 });
+        const w = W(hallS, v + sgn * 0.35), sign = letteringMesh(profile.glassHall, hallLen * 0.5, { aspect: 3.2 });
         sign.position.set(w.x, h0 + rise * 0.3, w.z); sign.rotation.y = Math.atan2(N.x * sgn, N.z * sgn); group.add(sign);
       }
     }
-    // Lettering on the two long façades, and a JR-style station name board over the entrance on the road side.
+    // Façades: the longest wall on each side of the long axis.
     const sides = [];
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i], b = pts[(i + 1) % pts.length], length = Math.hypot(b.x - a.x, b.z - a.z);
       let n = { x: -(b.z - a.z) / length, z: (b.x - a.x) / length };
       const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
       if ((mx - c.x) * n.x + (mz - c.z) * n.z < 0) n = { x: -n.x, z: -n.z };
-      if (length > 15) sides.push({ a, b, length, n, mx, mz });
+      if (length > 6) sides.push({ a, b, length, n, mx, mz });
     }
-    // The longest wall on each side of the long axis: the mountain side carries the name, the road side the entrance.
     const longSides = [1, -1].map(sgn => sides.filter(f => (f.n.x * N.x + f.n.z * N.z) * sgn > 0.6).sort((p, q) => q.length - p.length)[0]).filter(Boolean);
-    for (const f of longSides) {
-      const yaw = -Math.atan2(f.b.z - f.a.z, f.b.x - f.a.x), w = Math.min(40, f.length * 0.7), t = letteringMesh('GALA YUZAWA', w, { aspect: 7 });
+    // Hand-made profiles: painted lettering on both, and a station board and entrance canopy on the side away from the cable.
+    if (profile.lettering) for (const f of longSides) {
+      const yaw = -Math.atan2(f.b.z - f.a.z, f.b.x - f.a.x), w = Math.min(40, f.length * 0.7), t = letteringMesh(profile.lettering, w, { aspect: 7 });
       t.position.set(f.mx + f.n.x * 0.62, top - 0.5 - w / 14, f.mz + f.n.z * 0.62); t.rotation.y = Math.atan2(f.n.x, f.n.z); group.add(t);
-      if (T && (f.n.x * D.x + f.n.z * D.z) > 0) continue;
+      if (!profile.board || (D && (f.n.x * D.x + f.n.z * D.z) > 0)) continue;
       const gl = Math.max(height(f.a.x, f.a.z), height(f.b.x, f.b.z));
-      const board = signMesh('ガーラ湯沢駅', 14, { sub: 'GALA YUZAWA STATION · スキーセンター カワバンガ', bg: '#fbfbf7', fg: '#1d2a23', band: '#2a8a4a' });
+      const board = signMesh(profile.board.text, 14, profile.board);
       board.position.set(f.mx + f.n.x * 0.65, gl + 5.8, f.mz + f.n.z * 0.65); board.rotation.y = Math.atan2(f.n.x, f.n.z); group.add(board);
-      // Entrance canopy.
       box(pieces.metal, Math.min(22, f.length * 0.8), 0.45, 4, f.mx + f.n.x * 2.3, gl + 3.7, f.mz + f.n.z * 2.3, yaw);
       box(pieces.snow, Math.min(22, f.length * 0.8) + 0.2, 0.15, 4.2, f.mx + f.n.x * 2.3, gl + 4.0, f.mz + f.n.z * 2.3, yaw);
     }
-    // Gondola terminal hall projecting through the portal: white-clad roof on steel columns over the loading bay.
-    if (T) {
-      const cy = groundT + 3.55, hallW = 14.2, hallL = 26, yaw = Math.atan2(D.x, D.z);
-      const hc = { x: T.x + D.x * 9, z: T.z + D.z * 9 };
+    // Every other station: its name over the portal the main cable leaves through.
+    if (!profile.lettering && T) {
+      const label = B.name || T.L.name, f = sides.filter(f => f.n.x * T.dx + f.n.z * T.dz > 0.5).sort((p, q) => q.length - p.length)[0];
+      if (label && f) {
+        const sign = signMesh(label, Math.min(12, Math.max(4, f.length * 0.6)), { bg: look.sign });
+        sign.position.set(f.mx + f.n.x * 0.62, Math.min(top - 1, T.portalTop + 1.8), f.mz + f.n.z * 0.62); sign.rotation.y = Math.atan2(f.n.x, f.n.z); group.add(sign);
+      }
+    }
+    for (const e of inside) {
+      const yaw = Math.atan2(e.dx, e.dz);
+      // Canopy band over the portal on the outside.
+      box(pieces.metal, e.width + 2, 0.8, 0.9, e.x + e.dx * 0.1, e.portalTop + 0.4, e.z + e.dz * 0.1, yaw + Math.PI / 2);
+      if (e.kind !== 'gondola') continue;
+      // Gondola loading hall projecting through the portal: clad roof on steel columns over the loading bay.
+      const cy = e.ground + 3.55, hallW = 14.2, hallL = 26, hc = { x: e.x + e.dx * 9, z: e.z + e.dz * 9 };
       box(pieces.white, hallW, 1.6, hallL, hc.x, cy + 3.6, hc.z, yaw);
       box(pieces.snow, hallW + 0.8, 0.3, hallL + 0.8, hc.x, cy + 4.55, hc.z, yaw);
       box(pieces.metal, hallW + 0.4, 0.5, hallL + 0.4, hc.x, cy + 2.6, hc.z, yaw);
       for (const a of [-1, 1]) for (const b of [-1, -0.33, 0.33, 1]) {
-        const x = hc.x + D.z * a * (hallW / 2 - 0.3) + D.x * b * (hallL / 2 - 0.3), z = hc.z - D.x * a * (hallW / 2 - 0.3) + D.z * b * (hallL / 2 - 0.3);
+        const x = hc.x + e.dz * a * (hallW / 2 - 0.3) + e.dx * b * (hallL / 2 - 0.3), z = hc.z - e.dx * a * (hallW / 2 - 0.3) + e.dz * b * (hallL / 2 - 0.3);
         const gy = height(x, z), g = new THREE.CylinderGeometry(0.28, 0.28, cy + 2.6 - gy + 1, 8); g.translate(x, (cy + 2.6 + gy - 1) / 2, z); pieces.metal.push(g);
       }
-      // Canopy band over the portal on the outside.
-      box(pieces.metal, PORTAL + 2, 0.8, 0.9, T.x + D.x * 0.1, portalTop + 0.4, T.z + D.z * 0.1, yaw + Math.PI / 2);
     }
     // Boxes, cylinders and the extruded slab differ in index and uv layout; merge them as plain triangles.
     const plain = g => { const out = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(out.attributes)) if (k !== 'position' && k !== 'normal') out.deleteAttribute(k); return out; };
-    for (const [key, material] of Object.entries({ white, metal, glass, snow })) {
+    for (const [key, material] of Object.entries({ white, metal, glass, snow, plinth })) {
       if (!pieces[key].length) continue;
       const mesh = new THREE.Mesh(mergeGeometries(pieces[key].map(plain)), material);
       pieces[key].forEach(g => g.dispose()); mesh.name = `${profile.name} ${key}`; group.add(mesh);
     }
     group.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
     root.add(group);
-    landmarks.push({ name: profile.name, ...c, area: 5000, restaurant: true, hotel: false });
+    if (profile.lettering || B.name) landmarks.push({ name: profile.name, ...c, area: profile.lettering ? 5000 : 900, restaurant: !!profile.lettering, hotel: false });
     named.push({ B: { name: profile.name }, pts, profile });
   }
   const housesTerminal = p => housed.some(h => Math.hypot(h.x - p.x, h.z - p.z) < 1);

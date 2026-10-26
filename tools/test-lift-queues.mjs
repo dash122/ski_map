@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { planQueue, alongPath } from '../src/lift-queues.js';
-import { insidePolygon, keepBesideTerminal, namePoiBuildings } from '../src/base-landmarks.js';
+import { insidePolygon, namePoiBuildings, liftEnds, terminalRelation } from '../src/base-landmarks.js';
 
 const quad = planQueue({ gondola: false, occ: 4 });
 assert.equal(quad.lanes, 5);
@@ -25,10 +25,19 @@ assert.deepEqual([at.x, at.z], [10, 5]);
 
 const square = [{ x: 0, z: 0 }, { x: 20, z: 0 }, { x: 20, z: 20 }, { x: 0, z: 20 }];
 assert(insidePolygon(5, 5, square) && !insidePolygon(25, 5, square));
-assert(keepBesideTerminal({ name: 'Hanazono EDGE', pts: square }, [{ x: 40, z: 10 }]), 'named restaurant beside a terminal stays');
-assert(!keepBesideTerminal({ name: 'Hanazono EDGE', pts: square }, [{ x: 10, z: 10 }]), 'terminal point on the footprint drops it');
-assert(!keepBesideTerminal({ name: 'Gondola Station', pts: square }, [{ x: 40, z: 10 }]), 'mapped station buildings give way to the terminal model');
-assert(!keepBesideTerminal({ name: '', pts: square }, [{ x: 40, z: 10 }]));
+// A chair running east from (40, 10) and a gondola running south from (10, 10).
+const chairEnds = liftEnds([{ name: 'Quad', type: 'chair_lift', pts: [{ x: 40, z: 10 }, { x: 140, z: 10 }] }]);
+const gondolaEnds = liftEnds([{ name: 'Gondola', type: 'gondola', pts: [{ x: 10, z: 10 }, { x: 10, z: 300 }] }]);
+assert.equal(chairEnds[0].dx, 1, 'bottom end points up the line');
+assert.equal(chairEnds[1].dx, -1, 'top end points back down the line');
+assert.equal(terminalRelation({ name: 'Hanazono EDGE', pts: square }, chairEnds), 'keep', 'a building beside a terminal stays');
+assert.equal(terminalRelation({ name: '', pts: square }, gondolaEnds), 'station', 'a terminal inside the footprint makes it the station');
+const besideBay = [{ x: 40, z: 14 }, { x: 52, z: 14 }, { x: 52, z: 24 }, { x: 40, z: 24 }];
+assert.equal(terminalRelation({ name: 'Ticket hut', pts: besideBay }, chairEnds), 'clash', 'a hut on the loading bay gives way');
+assert.equal(terminalRelation({ name: 'Gondola Station', pts: square.map(p => ({ x: p.x + 14, z: p.z })) }, gondolaEnds.map(e => ({ ...e, x: e.x + 2 }))), 'station', 'a mapped station a few metres off its terminal houses it');
+const tbar = liftEnds([{ name: 'T', type: 't-bar', pts: [{ x: 10, z: 10 }, { x: 10, z: 200 }] }]);
+assert.notEqual(terminalRelation({ name: '', pts: square }, tbar), 'station', 'surface lifts never get a station');
+assert.equal(terminalRelation({ name: '', pts: square.map(p => ({ x: p.x + 500, z: p.z })) }, gondolaEnds), 'keep');
 const buildings = [{ name: '', pts: square }], pois = [{ name: 'Hana1 Café', kind: 'cafe', x: 5, z: 5 }, { name: 'Kiosk', kind: 'cafe', x: 50, z: 5 }];
 namePoiBuildings(buildings, pois);
 assert.equal(buildings[0].name, 'Hana1 Café', 'POI names its footprint');
