@@ -1249,13 +1249,17 @@ const rimeGeo = FLORA.juhyo ? juhyoGeometry() : merge([
   coloredGeo(new THREE.IcosahedronGeometry(0.7, 0).translate(0.1, 4.4, 0.2), 0xf6f9fb),
   coloredGeo(new THREE.ConeGeometry(0.5, 1.0, 5).translate(0.9, 2.2, -0.6), 0x3a5244),
 ]);
+// Zao's full-size juhyo are about 1,400 triangles each and stand in their thousands. Once one is under ~30 px
+// tall it swaps, like the firs, to the same stacked silhouette in coarse lumps without the shrimp tails and
+// boughs (140 triangles), which are a pixel or two at that size.
+const rimeFarGeo = FLORA.juhyo ? juhyoGeometry(true) : null;
 // Zao's juhyo: Maries firs buried in rime and snow until they stand as white figures 4–9 m tall. A lumpy column
 // leaning a little downwind, its windward (west, -x) face built out in flat "shrimp tail" crusts, the odd dark
 // bough showing on the lee side. Placed with the windward face to the north-west winter monsoon.
-function juhyoGeometry() {
+function juhyoGeometry(distant = false) {
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const lump = (r, sx, sy, sz, x, y, z, color, rough = 0.18) => {
-    const g = new THREE.IcosahedronGeometry(r, 1), p = g.attributes.position;
+    const g = new THREE.IcosahedronGeometry(r, distant ? 0 : 1), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const vx = p.getX(i), vy = p.getY(i), vz = p.getZ(i), k = 1 + (hash2(vx * 37 + x * 5, vy * 41 + vz * 29 + y * 3) - 0.5) * rough * 2;
       p.setXYZ(i, vx * k * sx + x, vy * k * sy + y, vz * k * sz + z);
@@ -1269,9 +1273,9 @@ function juhyoGeometry() {
     const lean = y * 0.07;
     parts.push(lump(r, 1, 0.78, 1, lean + (rnd() - 0.5) * 0.3, y, (rnd() - 0.5) * 0.3, i % 2 ? 0xf2f6f9 : 0xe9eff4));
     // Shrimp tails: flat rime plates grown into the wind.
-    if (i < 5) for (const dz of [-0.55, 0.45]) parts.push(lump(r * 0.55, 1.5, 0.32, 0.9, lean - r * 0.85, y + (rnd() - 0.5) * 0.4, dz * r, 0xdfe7ee, 0.25));
+    if (i < 5 && !distant) for (const dz of [-0.55, 0.45]) parts.push(lump(r * 0.55, 1.5, 0.32, 0.9, lean - r * 0.85, y + (rnd() - 0.5) * 0.4, dz * r, 0xdfe7ee, 0.25));
     // A bough showing through on the lee side.
-    if (i > 0 && i < 4 && rnd() < 0.8) parts.push(coloredGeo(new THREE.ConeGeometry(0.32, 0.8, 5).rotateZ(-1.2).translate(lean + r * 0.8, y - 0.25, (rnd() - 0.5) * r), 0x34493d));
+    if (i > 0 && i < 4 && rnd() < 0.8 && !distant) parts.push(coloredGeo(new THREE.ConeGeometry(0.32, 0.8, 5).rotateZ(-1.2).translate(lean + r * 0.8, y - 0.25, (rnd() - 0.5) * r), 0x34493d));
   });
   return merge(parts);
 }
@@ -1387,7 +1391,14 @@ function buildChunk(ci, cj, generated = null) {
     C.firFar = C.treeDetail.far;
     scene.add(C.firFar); C.meshes.push(C.firNear, C.firFar);
   }
-  if (rime.length) C.meshes.push(C.rime = inst(rimeGeo, treeMat, rime, std));
+  if (rime.length) {
+    C.meshes.push(C.rime = inst(rimeGeo, treeMat, rime, std));
+    if (rimeFarGeo) {
+      // A juhyo is a big soft blob, so the coarse one holds up to a larger size than a fir's far version.
+      C.rimeDetail = createTreeDetail(C.rime, rimeFarGeo, GFX.level === 'ultra' ? 36 : 55);
+      scene.add(C.rimeDetail.far); C.meshes.push(C.rimeDetail.far);
+    }
+  }
   if (card.length) {
     C.card = inst(cardGeo, cardMat, card, ([x, y, z, w, hgt, rot]) => { ps.set(x, y - 0.2, z); q.setFromAxisAngle(up, rot); sc.set(w, hgt, w); });
     C.card.geometry = cardGeo.clone();   // small: each chunk carries its own variant attribute
@@ -1439,7 +1450,7 @@ function updateTrees(dt, budget = 2) {
     if (d > TREE_R + TREE_CHUNK) { dropChunk(key); continue; }
     if (C.firNear) { C.treeDetail.update(camera, renderer.domElement.height); C.firNear.castShadow = d < 60; }
     if (C.card) C.card.castShadow = d < 60;
-    if (C.rime) C.rime.castShadow = d < 60;
+    if (C.rime) { C.rimeDetail?.update(camera, renderer.domElement.height); C.rime.castShadow = d < 60; }
   }
 }
 function nearFixed(x, z, pad = 0) {
