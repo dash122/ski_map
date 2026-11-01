@@ -32,7 +32,7 @@ const context = vm.createContext({ THREE, S, AV, camera, rider, body, stance, ca
   tmp: new THREE.Vector3(), tmp2: new THREE.Vector3(), worldUp: new THREE.Vector3(0, 1, 0), HALF_W: 100, HALF_D: 100,
   document: { getElementById: () => ({ addEventListener() {} }) }, liftQueue: null, camMode: 0,
   wantJump: false, trail: {}, normalAt: (x, z, n) => n.set(0, 1, 0), height: () => 0,
-  roadBarrier: { blocks: () => blocked }, treeHit: () => false, visitors: { collide() {} } });
+  roadBarrier: { blocks: () => true }, treeHit: () => blocked, housedStations: { blocks: () => false }, visitors: { collide() {} } });
 vm.runInContext(html.slice(html.indexOf('const walkView ='), html.indexOf('function dropIn(spot)')), context);
 vm.runInContext(html.slice(html.indexOf('const _ya ='), html.indexOf('// ---------- Lifts:')), context);
 vm.runInContext(html.slice(html.indexOf('const CAM_STEADY ='), html.indexOf('// ---------- Realistic rider:')), context);
@@ -61,10 +61,14 @@ assert(Math.max(...feet) - Math.min(...feet) > 0.25, 'actual GLB foot swings for
 assert(knees.some(q => q.angleTo(knees[0]) > 0.1), 'actual GLB knee bends across the gait');
 run(0, false, false, 180);
 assert(S.v.length() < 0.001 && S.walkBlend < 0.001, 'walking and animation settle to idle');
-blocked = true; const before = S.p.clone(); run(0, true, false);
-assert(S.p.distanceTo(before) < 0.001, 'roads block walking');
+// Roads are walkable on foot (only the board is kept off them); trees and buildings still block.
+let before = S.p.clone(); run(0, true, false, 30);
+assert(S.p.distanceTo(before) > 0.5, 'roads do not block walking');
+run(0, false, false, 180);
+blocked = true; before = S.p.clone(); run(0, true, false);
+assert(S.p.distanceTo(before) < 0.001, 'trees block walking');
 assert(S.walkBlend < 0.001, 'blocked character does not walk in place');
 S.walking = false; run(0, false, false, 120);
 assert.equal(stance.rotation.y, 0, 'riding restores board stance');
-console.log('Walking checks passed: travel-facing camera, turning/backward, real GLB foot swing and knee bending, idle, blocked gait, remount.');
+console.log('Walking checks passed: travel-facing camera, turning/backward, real GLB foot swing and knee bending, idle, walkable roads, blocked gait, remount.');
 
