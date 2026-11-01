@@ -88,3 +88,28 @@ into 2 batches. The final canvas was inspected for terrain seams and near detail
 - `node tools/test-render-metrics.mjs`: opt-in profiling, timer lifecycle,
   unavailable/disjoint timers and long-frame reporting.
 - Existing spatial rendering, render quality, visitors and lift queue tests.
+
+## Phone draw-call pass (2026-11-01)
+
+`node tools/profile-phone.mjs <resort> low,medium` loads a resort in an emulated
+phone (390×844, 3× DPR, touch) under SwiftShader and prints draw calls and
+triangles with and without the sun's shadow pass. Milliseconds from SwiftShader
+are noisy and not phone FPS; use call and triangle counts to compare.
+
+On Balanced at Niseko, the frame was about 840 draw calls for 1.5 M triangles.
+The shadow pass was only about 70 of those calls. Most calls drew a few dozen
+triangles each: 300 m cells of village buildings (184 calls, 7.6 k triangles),
+lift towers and parts (155 calls), trail boards (90+ calls, one texture each),
+and individual queue banner poles (39 calls). The changes:
+
+- `staticCell` per graphics level: building and lift-structure cells are 1,000 m
+  on Balanced and 1,200 m on Low (600 m on High/Ultra). Fewer, larger batches.
+- `signRange`: trail boards past 450 m on Balanced (350 Low, 700 High, 900 Ultra)
+  are hidden. Their textures are drawn only while a board is in range and are
+  freed 30% past it, so GPU memory holds the nearby boards (Niseko has 383).
+- Lift-queue poles join the static landmark batches.
+- On touch screens, station and queue sign canvases are drawn at half size.
+
+Result at Niseko on Balanced: 843 → 444 calls; at the Niseko Gondola base,
+724 → 327 calls, with an identical image. Trail-board textures that could be
+resident drop from about 174 MB to about 10 MB near the start.

@@ -871,7 +871,7 @@ renderer.shadowMap.type = { basic: THREE.BasicShadowMap, pcf: THREE.PCFShadowMap
 
 const scene = new THREE.Scene();
 const TRAIL_ROUTES = trailRoutes(PISTES, height);
-createTrailSigns({ THREE, scene, routes: TRAIL_ROUTES, height, diffOf, scale: matchMedia('(pointer: coarse)').matches ? 0.5 : 1 });
+const trailSigns = createTrailSigns({ THREE, scene, routes: TRAIL_ROUTES, height, diffOf, scale: matchMedia('(pointer: coarse)').matches ? 0.5 : 1, range: GFX.signRange });
 // ---------- Piste edge poles ----------
 // Real resorts mark an open run edge with the odd pole, not a fence: where trees already line the run there are none.
 // Poles stand about every 55 m along open edges, tipped in the run's grade colour.
@@ -1596,7 +1596,7 @@ if (LANDW.buildings.length) {
   const roofs = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ color: 0xf1f5f9 }));
   walls.castShadow = roofs.castShadow = true; walls.receiveShadow = roofs.receiveShadow = true;
   for (const source of [walls, roofs]) {
-    for (const geometry of chunkGeometry(source.geometry)) {
+    for (const geometry of chunkGeometry(source.geometry, GFX.staticCell)) {
       const mesh = new THREE.Mesh(geometry, source.material);
       mesh.castShadow = mesh.receiveShadow = true;
       mesh.name = 'Village building cell'; scene.add(mesh);
@@ -1971,7 +1971,7 @@ if (LIFTS.length) {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     list.forEach((it, i) => { f(it); im.setMatrixAt(i, m4.compose(v, q, s)); });
     im.castShadow = shadow; im.receiveShadow = true;
-    for (const chunk of chunkInstances(im)) { chunk.name = 'Lift structure cell'; scene.add(chunk); }
+    for (const chunk of chunkInstances(im, GFX.staticCell)) { chunk.name = 'Lift structure cell'; scene.add(chunk); }
     im.dispose();
   };
   const yawQ = yaw => q.setFromEuler(e.set(0, yaw, 0));
@@ -3596,7 +3596,7 @@ function liftExit(L) {
 }
 for (const spot of SPOTS) if (spot.lift) { const e = liftExit(spot.lift); if (e) Object.assign(spot, { x: e.x, z: e.z, direction: e.direction }); }
 
-const staticBatchStats = batchStaticLandmarks(scene, [baseLandmarks.root, signatureLandmarks.root]);
+const staticBatchStats = batchStaticLandmarks(scene, [baseLandmarks.root, signatureLandmarks.root, liftQueues.root]);
 treeStream = createTreeStream(treeConfig());
 addEventListener('pagehide', e => { if (!e.persisted) treeStream.dispose(); });
 dropIn(SPOTS[0]);
@@ -3662,7 +3662,7 @@ function frame(now) {
   updateLifts(simOn() ? dt : 0);
   visitors.update(simOn() ? dt : 0);
   liftQueues.update(S.p, dt);
-  nearbyShadows.update(S.p);
+  nearbyShadows.update(S.p); trailSigns.update(camera.position);
   updateTrees(dt);
   detail.update(camera, renderer.domElement.height);
   updateHud(dt);
@@ -3679,7 +3679,7 @@ $('credits').textContent = `海拔資料：${meta.source}；${Math.round(CX)} �
 const startBtn = $('start');
 startBtn.hidden = false; startBtn.focus();
 startBtn.addEventListener('click', () => { saveRecord(RESORT.id, { runs: record(RESORT.id).runs + 1 }); $('intro').hidden = true; running = true; startAudio(); canvas.focus(); });
-window.__ski = { detail, renderMetrics, staticBatchStats, treeStream, weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, toggleWalking, roadBarrier, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
+window.__ski = { detail, renderMetrics, staticBatchStats, treeStream, weather, WIDTH_SOURCE, landDebug: { DEN, lidx, forestM, openM, courseShoulderM, skiM, hardM }, PISTES, pisteEdge, onPiste, setMiniZoom, S, PEAK_GEO, toWorld, height, dropIn, SPOTS, step, keys, LIFTS, startRide, toggleMap, toggleWalking, roadBarrier, renderer, scene, camera, rider, AV, render: (m = 0) => { camMode = m; for (let i = 0; i < 60; i++) { poseRider(0.05); updateCamera(0.05); } trailSigns.update(camera.position); sun.position.copy(S.p).addScaledVector(SUN_DIR, 200); sun.target.position.copy(S.p); sky.position.copy(camera.position); updateHud(1); renderer.render(scene, camera); } };
 // Test hooks: advance lifts and physics without the render loop.
 window.__visitors = visitors;
 window.__liftQueues = liftQueues;

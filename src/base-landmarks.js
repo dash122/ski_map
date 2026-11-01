@@ -41,12 +41,20 @@ export function edgeDistance(x, z, pts) {
   }
   return best;
 }
+// Phones draw sign and lettering canvases at half size: a quarter of the GPU memory, and a 3–5 m sign
+// still gets more texels than screen pixels at walking distance on a phone screen.
+const TEXT_SCALE = globalThis.matchMedia?.('(pointer: coarse)').matches ? 0.5 : 1;
+function textCanvas(w, h) {
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(w * TEXT_SCALE); canvas.height = Math.round(h * TEXT_SCALE);
+  const g = canvas.getContext('2d'); g.scale(TEXT_SCALE, TEXT_SCALE);
+  return { canvas, g };
+}
 // Lettering painted straight onto a wall: transparent background.
 function letteringMesh(text, width, { color = '#e0452b', weight = 800, aspect = 6 } = {}) {
-  const canvas = document.createElement('canvas'); canvas.width = 1536; canvas.height = Math.round(1536 / aspect);
-  const g = canvas.getContext('2d');
+  const W = 1536, H = Math.round(1536 / aspect), { canvas, g } = textCanvas(W, H);
   g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.font = `${weight} ${Math.round(canvas.height * 0.78)}px sans-serif`; g.fillText(text, canvas.width / 2, canvas.height * 0.54, canvas.width * 0.96);
+  g.font = `${weight} ${Math.round(H * 0.78)}px sans-serif`; g.fillText(text, W / 2, H * 0.54, W * 0.96);
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, width / aspect), new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.2 }));
   mesh.name = `${text} lettering`; return mesh;
@@ -118,16 +126,15 @@ const signCache = new Map();
 export function signMaterial(text, { bg = '#23292d', fg = '#fff4df', sub = '', band = '' } = {}) {
   const key = [text, bg, fg, sub, band].join('|');
   if (signCache.has(key)) return signCache.get(key);
-  const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = sub ? 256 : 160;
-  const g = canvas.getContext('2d');
-  g.fillStyle = bg; g.fillRect(0, 0, canvas.width, canvas.height);
-  if (band) { g.fillStyle = band; g.fillRect(0, 0, canvas.width, 22); }
+  const W = 1024, H = sub ? 256 : 160, { canvas, g } = textCanvas(W, H);
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  if (band) { g.fillStyle = band; g.fillRect(0, 0, W, 22); }
   g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = '600 72px sans-serif'; g.fillText(text, 512, sub ? 104 : 84, 960);
   if (sub) { g.globalAlpha = 0.85; g.font = '500 46px sans-serif'; g.fillText(sub, 512, 196, 960); }
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4;
   const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-  material.userData.aspect = canvas.width / canvas.height;
+  material.userData.aspect = W / H;
   signCache.set(key, material); return material;
 }
 export function signMesh(text, width, options) {
