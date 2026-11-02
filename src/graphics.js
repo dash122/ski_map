@@ -15,18 +15,20 @@ export const LEVELS = [
 ];
 
 // ratio: [min, start, max] pixel ratio (the adaptive controller moves within it, capped by the screen).
+// staticCell is the cell size (m) for batched village buildings and lift structures: these are a few thousand
+// triangles in all, so larger cells trade a little culling for far fewer draw calls. signRange hides trail boards past it.
 // lowEnd thins crowds, queues, lift lamps and shared textures; trees* set how far and how dense forests are.
 const PRESETS = {
-  low: { ratio: [0.75, 1, 1.25], antialias: true, shadows: 'basic', shadowMap: 1024, shadowRange: 90,
+  low: { ratio: [0.75, 1, 1.25], antialias: true, shadows: 'basic', shadowMap: 1024, shadowRange: 90, staticCell: 1200, signRange: 350,
     treeR: 750, treeChunk: 200, treeStep: 6.5, treeKeep: 0.5, nearLod: 260, landMask: 1024, horizonStep: 2,
     poleGap: 80, snow: 1500, anisotropy: 4, miniFps: 12, lowEnd: true },
-  medium: { ratio: [1, 1.25, 1.5], antialias: true, shadows: 'pcf', shadowMap: 1024, shadowRange: 110,
+  medium: { ratio: [1, 1.25, 1.5], antialias: true, shadows: 'pcf', shadowMap: 1024, shadowRange: 110, staticCell: 1000, signRange: 450,
     treeR: 1100, treeChunk: 200, treeStep: 5.5, treeKeep: 0.58, nearLod: 320, landMask: 2048, horizonStep: 1,
     poleGap: 55, snow: 2500, anisotropy: 8, miniFps: 15, lowEnd: true },
-  high: { ratio: [1, 2, 2], antialias: true, shadows: 'soft', shadowMap: 2048, shadowRange: 140,
+  high: { ratio: [1, 2, 2], antialias: true, shadows: 'soft', shadowMap: 2048, shadowRange: 140, staticCell: 600, signRange: 700,
     treeR: 1700, treeChunk: 400, treeStep: 5, treeKeep: 0.62, nearLod: 420, landMask: 2048, horizonStep: 1,
     poleGap: 55, snow: 4000, anisotropy: 8, miniFps: 24, lowEnd: false },
-  ultra: { ratio: [1.5, 3, 3], antialias: true, shadows: 'soft', shadowMap: 4096, shadowRange: 180,
+  ultra: { ratio: [1.5, 3, 3], antialias: true, shadows: 'soft', shadowMap: 4096, shadowRange: 180, staticCell: 600, signRange: 900,
     treeR: 2400, treeChunk: 400, treeStep: 4.5, treeKeep: 0.66, nearLod: 560, landMask: 2048, horizonStep: 1,
     poleGap: 55, snow: 6000, anisotropy: 16, miniFps: 30, lowEnd: false },
 };

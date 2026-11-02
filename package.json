@@ -6,7 +6,8 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "build:rider": "node tools/build_rider.mjs"
+    "build:rider": "node tools/build_rider.mjs",
+    "test": "node tools/run-tests.mjs"
   },
   "dependencies": {
     "three": "0.170.0"

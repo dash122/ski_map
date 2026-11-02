@@ -97,7 +97,9 @@ export function junctionBoards(routes, height) {
   return boards;
 }
 
-export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale = 1 }) {
+// range: boards and junction panels farther than this from the camera are hidden. Each board has its own
+// texture, so each visible one is a separate draw call; a 4.6 m board is a few pixels wide past ~400 m.
+export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale = 1, range = Infinity }) {
   const root = new THREE.Group(); root.name = 'Virtual trail wayfinding'; scene.add(root);
   const poleMat = new THREE.MeshLambertMaterial({ color: '#b8442f' });
   const poleGeo = new THREE.CylinderGeometry(.055, .065, 3.2, 6);
@@ -108,12 +110,24 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
     slot.position.set(x, y, z); group.add(slot); group.updateMatrixWorld(true);
     list.push(slot.matrixWorld.clone()); group.remove(slot);
   }
-  const textures = new Map();
+  const textures = new Map(), boards = [];
   // Hundreds of boards: draw at `scale`, and free each canvas once the GPU has its copy.
-  function canvasMaterial(c, side) {
-    const texture = new THREE.CanvasTexture(c); texture.colorSpace = THREE.SRGBColorSpace;
+  // Textures are drawn only while a board using them is in range and disposed once none is, so GPU memory
+  // holds the nearby boards rather than all of them (several hundred at a big resort).
+  function canvasMaterial(draw, side) {
+    const material = new THREE.MeshLambertMaterial({ side });
+    material.userData.draw = draw;
+    return material;
+  }
+  function ensure(material) {
+    if (material.map) return;
+    const c = material.userData.draw(), texture = new THREE.CanvasTexture(c); texture.colorSpace = THREE.SRGBColorSpace;
     texture.onUpdate = () => { c.width = c.height = 1; };
-    return new THREE.MeshLambertMaterial({ map: texture, side });
+    material.map = texture; material.needsUpdate = true;
+  }
+  function release(material) {
+    if (!material.map) return;
+    material.map.dispose(); material.map = null; material.needsUpdate = true;
   }
   function board(w, h) {
     const c = document.createElement('canvas');
@@ -122,6 +136,9 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
     return { c, g, w, h };
   }
   function junctionMaterial(rows) {
+    return canvasMaterial(() => drawJunction(rows), THREE.FrontSide);
+  }
+  function drawJunction(rows) {
     const { c, g, w, h } = board(1024, 160 + rows.length * 180);
     g.fillStyle = '#151b20'; g.fillRect(0, 0, w, h);
     g.fillStyle = '#fff'; g.textBaseline = 'middle';
@@ -146,11 +163,15 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
       } else g.rect(922, y + 59, 52, 52);
       g.stroke();
     });
-    return canvasMaterial(c, THREE.FrontSide);
+    return c;
   }
   function material(route, kind) {
     const key = `${route.name}|${route.diff}|${kind}`;
     if (textures.has(key)) return textures.get(key);
+    const mat = canvasMaterial(() => drawBoard(route, kind), THREE.DoubleSide);
+    textures.set(key, mat); return mat;
+  }
+  function drawBoard(route, kind) {
     const { c, g } = board(1024, 320), slow = kind === 'slow';
     g.fillStyle = '#f7f8f3'; g.fillRect(0, 0, 1024, 320);
     g.fillStyle = slow ? '#f2ce36' : '#123966'; g.fillRect(12, 12, 1000, 296);
@@ -169,8 +190,7 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
       g.beginPath(); g.moveTo(920, 265); g.lineTo(920, 180); g.lineTo(894, 207);
       g.moveTo(920, 180); g.lineTo(946, 207); g.stroke();
     }
-    const mat = canvasMaterial(c, THREE.DoubleSide);
-    textures.set(key, mat); return mat;
+    return c;
   }
   function sign(route, distance, kind) {
     const p = alongTrail(route, distance), d = p.direction;
@@ -183,7 +203,7 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
     for (const side of [-1, 1]) {
       place(poles, group, side * 1.95, 1.6, -.06);
     }
-    root.add(group);
+    root.add(group); boards.push(board);
   }
   for (const route of routes) {
     sign(route, 22, 'start');
@@ -204,7 +224,7 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
     for (const side of [-1, 1]) {
       place(posts, group, side * 2.35, 2.8, -.08);
     }
-    root.add(group);
+    root.add(group); boards.push(panel);
   }
   for (const [geo, list] of [[poleGeo, poles], [tallPole, posts]]) {
     if (!list.length) continue;
@@ -212,5 +232,21 @@ export function createTrailSigns({ THREE, scene, routes, height, diffOf, scale =
     list.forEach((m, i) => mesh.setMatrixAt(i, m));
     mesh.computeBoundingSphere(); root.add(mesh);
   }
+  // Hide distant boards; the poles stay (two instanced draws in all). Re-check after the camera moves 25 m.
+  // A texture is kept until its last board is 30% past the range, so riding along the edge doesn't redraw it.
+  const spots = boards.map(b => { b.updateWorldMatrix(true, false); return new THREE.Vector3().setFromMatrixPosition(b.matrixWorld); });
+  const last = new THREE.Vector3(Infinity, 0, 0), show2 = range * range, keep2 = show2 * 1.69;
+  root.update = camera => {
+    if (last.distanceToSquared(camera) < 625) return;
+    last.copy(camera);
+    const keep = new Set();
+    boards.forEach((b, i) => {
+      const d2 = spots[i].distanceToSquared(camera);
+      b.visible = d2 < show2;
+      if (b.visible) ensure(b.material);
+      if (d2 < keep2) keep.add(b.material);
+    });
+    for (const b of boards) if (!keep.has(b.material)) release(b.material);
+  };
   return root;
 }

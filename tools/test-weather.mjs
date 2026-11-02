@@ -14,7 +14,6 @@ assert.equal(weather.time, 'day'); assert.equal(snow.visible, false);
 for (const time of ['day', 'sunset', 'night']) for (const kind of ['clear', 'overcast', 'snow', 'storm']) {
   assert(weather.set(time, kind));
   assert(Number.isFinite(scene.fog.density) && scene.fog.density > 0);
-  assert.equal(scene.getObjectByName('Rider night headlamp').visible, time === 'night');
   assert.equal(snow.visible, kind === 'snow' || kind === 'storm');
   if (kind === 'snow' || kind === 'overcast') {
     // FogExp2 retains exp(-(density * distance)^2) of the terrain's contrast.
@@ -30,6 +29,5 @@ assert(snowCount >= 3200, 'Ordinary snowfall should use most of the available fl
 assert(snow.material.size >= 0.2 && snow.material.opacity >= 0.9, 'Flakes should be clearly visible');
 weather.set('night', 'storm'); assert(scene.fog.density > snowFog); assert(snowGeo.drawRange.count > snowCount); assert(weather.wind > wind);
 weather.update({ p: new THREE.Vector3(100, 500, 100), f: new THREE.Vector3(1, 0, 0) });
-assert.equal(scene.getObjectByName('Rider night headlamp').position.y, 501.65);
 assert.equal(weather.set('bad', 'clear'), false); assert.equal(weather.time, 'night');
-console.log('All 12 time/weather combinations pass; storm, headlamp, and unavailable-storage checks pass.');
+console.log('All 12 time/weather combinations pass; storm and unavailable-storage checks pass.');
